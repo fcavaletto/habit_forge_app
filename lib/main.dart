@@ -190,6 +190,9 @@ class _HabitDashboardState extends State<HabitDashboard> {
 
       // Check for overdue habits after loading
       _checkOverdueHabits();
+
+      // Reschedule all reminders to ensure they're active after app restart
+      await notificationService.scheduleAllReminders(habits);
     } catch (e) {
       debugPrint('Error loading habits: $e');
       setState(() => _isLoading = false);
@@ -337,7 +340,8 @@ class _HabitDashboardState extends State<HabitDashboard> {
 
     // Manage notification scheduling based on new completion state
     if (!isCompleted && habit.enableReminders) {
-      // Habit was just completed - schedule reminder for tomorrow
+      // Habit was just completed - cancel reminder for today, schedule for tomorrow
+      await notificationService.cancelHabitReminder(habit.id);
       await notificationService.scheduleHabitReminder(habit);
     } else if (isCompleted && habit.enableReminders) {
       // Habit was marked incomplete - schedule reminder for today

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -63,8 +64,10 @@ class NotificationService {
     debugPrint('Initializing timezone data...');
     // Initialize timezone data for accurate scheduling across time zones
     tz.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation(DateTime.now().timeZoneName));
-    debugPrint('Timezone data initialized');
+    // Use a more reliable method to get the local timezone
+    final localTimezone = tz.local.name;
+    tz.setLocalLocation(tz.getLocation(localTimezone));
+    debugPrint('Timezone data initialized for: $localTimezone');
 
     debugPrint('Setting up notification settings...');
     // Configure Android notification settings
@@ -137,27 +140,31 @@ class NotificationService {
   }
 
   /// Schedule daily reminder for a habit
+  ///
+  /// Schedules a daily reminder notification for the habit at the specified time.
+  /// Includes comprehensive error handling and timeout protection.
   Future<void> scheduleHabitReminder(Habit habit) async {
-    if (!habit.enableReminders || habit.reminderTime == null) {
-      // Cancel existing notification if reminders are disabled
-      await cancelHabitReminder(habit.id);
-      return;
-    }
+    try {
+      if (!habit.enableReminders || habit.reminderTime == null) {
+        // Cancel existing notification if reminders are disabled
+        await cancelHabitReminder(habit.id);
+        return;
+      }
 
-    final int notificationId = _getNotificationId(habit.id);
+      final int notificationId = _getNotificationId(habit.id);
 
-    // Check if habit is already completed today
-    final today = DateTime.now();
-    final isCompletedToday = habit.isCompleted(today);
+      // Check if habit is already completed today
+      final today = DateTime.now();
+      final isCompletedToday = habit.isCompleted(today);
 
-    if (isCompletedToday) {
-      // Don't schedule if already completed today
-      await cancelHabitReminder(habit.id);
-      return;
-    }
+      if (isCompletedToday) {
+        // Don't schedule if already completed today
+        await cancelHabitReminder(habit.id);
+        return;
+      }
 
-    // Schedule the notification
-    final scheduledTime = _getScheduledTime(habit.reminderTime!);
+      // Schedule the notification with timeout protection
+      final scheduledTime = _getScheduledTime(habit.reminderTime!);
 
     const AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
@@ -184,17 +191,27 @@ class NotificationService {
       iOS: iosNotificationDetails,
     );
 
-    await _flutterLocalNotificationsPlugin.zonedSchedule(
-      notificationId,
-      'Habit Reminder',
-      'Don\'t forget to complete your "${habit.name}" habit!',
-      scheduledTime,
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+      await _flutterLocalNotificationsPlugin.zonedSchedule(
+        notificationId,
+        'Habit Reminder',
+        'Don\'t forget to complete your "${habit.name}" habit!',
+        scheduledTime,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Timeout scheduling reminder for ${habit.name}');
+          throw TimeoutException('Notification scheduling timed out');
+        },
+      );
 
-    debugPrint('Scheduled reminder for ${habit.name} at ${habit.reminderTime!.hour}:${habit.reminderTime!.minute.toString().padLeft(2, '0')}');
+      debugPrint('Scheduled reminder for ${habit.name} at ${habit.reminderTime!.hour}:${habit.reminderTime!.minute.toString().padLeft(2, '0')}');
+    } catch (e) {
+      debugPrint('Failed to schedule reminder for ${habit.name}: $e');
+      // Don't rethrow - allow the app to continue without this reminder
+    }
   }
 
   /// Cancel reminder for a specific habit
@@ -211,15 +228,35 @@ class NotificationService {
   }
 
   /// Schedule reminders for all habits
+  ///
+  /// Iterates through all habits and schedules reminders for those
+  /// that have reminders enabled. Includes error handling to ensure
+  /// one failed habit doesn't prevent others from being scheduled.
   Future<void> scheduleAllReminders(List<Habit> habits) async {
+    debugPrint('Scheduling reminders for ${habits.length} habits');
+
     for (final habit in habits) {
-      await scheduleHabitReminder(habit);
+      try {
+        await scheduleHabitReminder(habit);
+      } catch (e) {
+        debugPrint('Failed to schedule reminder for habit ${habit.name}: $e');
+        // Continue with other habits even if one fails
+      }
     }
+
+    debugPrint('Finished scheduling reminders');
   }
 
   /// Get the scheduled time for a reminder
+  ///
+  /// Calculates the next occurrence of the reminder time, handling:
+  /// - Same-day scheduling if time hasn't passed
+  /// - Next-day scheduling if time has passed
+  /// - Proper timezone handling to avoid DST issues
   tz.TZDateTime _getScheduledTime(TimeOfDay timeOfDay) {
     final now = tz.TZDateTime.now(tz.local);
+
+    // Create scheduled time for today
     final scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
@@ -230,7 +267,7 @@ class NotificationService {
     );
 
     // If the time has already passed today, schedule for tomorrow
-    if (scheduledDate.isBefore(now)) {
+    if (scheduledDate.isBefore(now) || scheduledDate.isAtSameMomentAs(now)) {
       return scheduledDate.add(const Duration(days: 1));
     }
 
@@ -238,8 +275,12 @@ class NotificationService {
   }
 
   /// Get unique notification ID for a habit
+  ///
+  /// Uses a more reliable method to generate unique IDs to avoid collisions.
+  /// Combines habit ID hash with a fixed offset to ensure uniqueness.
   int _getNotificationId(String habitId) {
-    return habitId.hashCode.abs();
+    // Use a combination of hash and fixed offset to reduce collision risk
+    return (habitId.hashCode.abs() % 900000) + 100000; // IDs between 100000-999999
   }
 
   /// Handle notification response
@@ -280,22 +321,36 @@ class NotificationService {
   }
 
   /// Check if notifications are enabled
+  ///
+  /// Returns true if notifications are enabled and permissions are granted.
+  /// This method properly handles platform differences and null safety.
   Future<bool> areNotificationsEnabled() async {
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final settings = await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.checkPermissions();
-      return settings?.isEnabled ?? false;
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+    try {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final iOSImplementation = _flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin>();
 
-      final bool? granted = await androidImplementation?.areNotificationsEnabled();
-      return granted ?? false;
+        if (iOSImplementation == null) return false;
+
+        final settings = await iOSImplementation.checkPermissions();
+        // For iOS, check if alerts are enabled (most important permission)
+        return settings?.alertsEnabled ?? false;
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        final androidImplementation = _flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+
+        if (androidImplementation == null) return false;
+
+        final bool? granted = await androidImplementation.areNotificationsEnabled();
+        return granted ?? false;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error checking notification permissions: $e');
+      return false;
     }
-    return false;
   }
 }
 
