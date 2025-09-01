@@ -1,0 +1,123 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub/
+build/
+flutter_*.log
+
+# Android
+android/app/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+*.jks
+*.keystore
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/.idea/
+
+# macOS
+macos/Flutter/ephemeral/
+macos/.idea/
+
+# Windows
+windows/flutter/ephemeral/
+windows/.idea/
+
+# Linux
+linux/flutter/ephemeral/
+linux/.idea/
+
+# Web
+web/.idea/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Test coverage
+coverage/
+
+# Flutter pub cache
+.pub-cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# APK files (uncomment if you want to track APK files)
+# *.apk
+# *.aab
+
+# IntelliJ IDEA
+*.iml
+*.ipr
+*.iws
+
+# Android Studio
+.gradle/
+.idea/
+*.apk
+*.ap_
+*.dex
+
+# VS Code
+.vscode/
+
+# Xcode
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Crashlytics
+crashlytics-build.properties
+
+# Generated files
+lib/generated_plugin_registrant.dart
+
+# Local development
+local.properties
+key.properties
+
+# Flutter
+flutter_*.png
+flutter_export_environment.sh
