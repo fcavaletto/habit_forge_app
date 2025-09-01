@@ -251,6 +251,7 @@ class _HabitDashboardState extends State<HabitDashboard> {
         onHabitAdded: (habit) {
           _loadHabits();
         },
+        existingHabits: _habits,
       ),
     );
   }

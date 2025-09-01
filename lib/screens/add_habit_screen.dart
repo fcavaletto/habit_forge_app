@@ -6,10 +6,12 @@ import '../services/notification_service.dart';
 /// Modal bottom sheet for adding a new habit
 class AddHabitScreen extends StatefulWidget {
   final Function(Habit) onHabitAdded;
+  final List<Habit> existingHabits;
 
   const AddHabitScreen({
     super.key,
     required this.onHabitAdded,
+    required this.existingHabits,
   });
 
   @override
@@ -28,6 +30,14 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   bool _enableReminders = false;
 
   bool _isLoading = false;
+
+  /// Check if a habit with the same name and icon already exists
+  bool _isDuplicateHabit(String name, String iconName) {
+    return widget.existingHabits.any((habit) =>
+      habit.name.toLowerCase() == name.toLowerCase().trim() &&
+      habit.iconName == iconName
+    );
+  }
 
   @override
   void dispose() {
@@ -63,23 +73,47 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   Future<void> _saveHabit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Additional duplicate check (in case validation passed but duplicate still exists)
+    if (_isDuplicateHabit(_nameController.text, _selectedIconName)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('A habit with this name and icon already exists'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-          final habit = Habit.create(
-      name: _nameController.text.trim(),
-      description: _descriptionController.text.trim(),
-      colorIndex: _selectedColorIndex,
-      iconName: _selectedIconName,
-      reminderTime: _reminderTime,
-      enableReminders: _enableReminders,
-    );
+      final habit = Habit.create(
+        name: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        colorIndex: _selectedColorIndex,
+        iconName: _selectedIconName,
+        reminderTime: _reminderTime,
+        enableReminders: _enableReminders,
+      );
 
       await habitStorage.saveHabit(habit);
 
-      // Schedule reminder notification if enabled
+      // Schedule reminder notification if enabled (with timeout to prevent hanging)
       if (_enableReminders && _reminderTime != null) {
-        await notificationService.scheduleHabitReminder(habit);
+        try {
+          await notificationService.scheduleHabitReminder(habit).timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              debugPrint('Notification scheduling timed out, but habit was saved');
+            },
+          );
+        } catch (e) {
+          debugPrint('Failed to schedule notification: $e');
+          // Don't fail the habit creation if notification scheduling fails
+        }
       }
 
       widget.onHabitAdded(habit);
@@ -92,7 +126,13 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
             duration: const Duration(seconds: 2),
           ),
         );
-        Navigator.of(context).pop();
+
+        // Ensure modal closes even if there were issues
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -178,8 +218,10 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _nameController,
+                      style: const TextStyle(color: Colors.black),
                       decoration: InputDecoration(
                         hintText: 'e.g., Drink Water, Exercise',
+                        hintStyle: TextStyle(color: Colors.grey[600]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -192,6 +234,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                         }
                         if (value.trim().length < 2) {
                           return 'Habit name must be at least 2 characters';
+                        }
+                        if (_isDuplicateHabit(value, _selectedIconName)) {
+                          return 'A habit with this name and icon already exists';
                         }
                         return null;
                       },
@@ -211,8 +256,10 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                     TextFormField(
                       controller: _descriptionController,
                       maxLines: 3,
+                      style: const TextStyle(color: Colors.black),
                       decoration: InputDecoration(
                         hintText: 'Add more details about your habit...',
+                        hintStyle: TextStyle(color: Colors.grey[600]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
