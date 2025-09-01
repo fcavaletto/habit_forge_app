@@ -2,11 +2,33 @@ import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../theme.dart';
 
-/// A card widget displaying a habit with its progress chart and controls
+/// Interactive card widget displaying a habit with progress visualization
+///
+/// This is the primary UI component for displaying habits in the main dashboard.
+/// Each card shows the habit's name, description, progress grid, streak counter,
+/// and provides interactive controls for completion and detailed viewing.
+///
+/// Key Features:
+/// - Material 3 card design with theme-aware styling
+/// - 7-day progress grid showing recent completion status
+/// - Streak counter with visual prominence
+/// - Quick completion toggle button
+/// - Tap-to-view detailed habit information
+/// - Responsive design for various screen sizes
+///
+/// The card uses the habit's assigned color from the theme palette
+/// and provides visual feedback for all user interactions.
 class HabitCard extends StatelessWidget {
+  /// The habit data to display in this card
   final Habit habit;
+
+  /// Callback when the card is tapped (typically opens detailed view)
   final VoidCallback? onTap;
+
+  /// Callback when the completion button is pressed
   final VoidCallback? onComplete;
+
+  /// Callback for settings/accessibility actions (currently unused)
   final VoidCallback? onSettings;
 
   const HabitCard({
@@ -19,29 +41,35 @@ class HabitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get theme colors and habit-specific color
     final colorScheme = Theme.of(context).colorScheme;
     final habitColor = colorScheme.habitColor(habit.colorIndex);
 
     return Card(
+      // Card styling with consistent margins and elevation
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: InkWell(
+        // Tap handler for opening detailed view
         onTap: onTap,
+        // Rounded corners for modern Material 3 design
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              // Habit icon
+              // Habit icon with themed background
+              // Shows Material Icon with habit's assigned color
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
+                  // Semi-transparent background using habit color
                   color: habitColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  _getIconData(habit.iconName),
-                  color: habitColor,
+                  _getIconData(habit.iconName), // Convert string to IconData
+                  color: habitColor, // Use full opacity for icon
                   size: 24,
                 ),
               ),
@@ -75,22 +103,25 @@ class HabitCard extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    // Progress chart (7 days grid)
+                    // Progress chart - Visual representation of recent habit completion
+                    // Uses habit.last7Days computed property for efficient data access
                     SizedBox(
-                      height: 50,
+                      height: 50, // Fixed height for consistent layout
                       child: Row(
+                        // Map each day to a visual indicator
                         children: habit.last7Days.map((completed) {
-                          return Expanded(
+                          return Expanded( // Equal width for each day
                             child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              margin: const EdgeInsets.symmetric(horizontal: 1), // Small gaps between days
                               decoration: BoxDecoration(
+                                // Completed days: full habit color, incomplete: very light tint
                                 color: completed
                                     ? habitColor
                                     : habitColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(2),
+                                borderRadius: BorderRadius.circular(2), // Rounded corners
                               ),
                               child: completed
-                                  ? Icon(
+                                  ? Icon( // Check mark for completed days
                                       Icons.check,
                                       size: 12,
                                       color: Colors.white,
