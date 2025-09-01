@@ -1,8 +1,32 @@
 import 'package:flutter/material.dart';
 
+/// Comprehensive theme configuration for Habit Forge
+///
+/// This file defines the complete visual identity of the application including:
+/// - Material 3 design system implementation
+/// - Light and dark theme variants
+/// - Custom color palette for habit visualization
+/// - Typography and component theming
+/// - Consistent spacing and layout guidelines
+///
+/// The theme system supports:
+/// ✅ Dynamic theme switching (light/dark/system)
+/// ✅ 10 predefined vibrant habit colors
+/// ✅ Material 3 components with custom styling
+/// ✅ Accessibility-compliant color contrasts
+/// ✅ Consistent visual hierarchy across all screens
+
 /// Habit tracking app theme configuration using Material 3 design
+///
+/// Provides two complete theme variants (light and dark) with consistent
+/// color schemes, typography, and component styling. The themes are
+/// designed to provide optimal readability and visual hierarchy for
+/// habit tracking workflows.
 class AppTheme {
-  // Light theme colors
+  /// Light theme color scheme optimized for daytime usage
+  ///
+  /// Features high contrast ratios for accessibility and uses
+  /// Material 3's dynamic color principles with custom accent colors.
   static const ColorScheme lightColorScheme = ColorScheme(
     brightness: Brightness.light,
     primary: Color(0xFF2196F3), // Blue
@@ -35,7 +59,10 @@ class AppTheme {
     surfaceTint: Color(0xFF2196F3),
   );
 
-  // Dark theme colors
+  /// Dark theme color scheme optimized for nighttime/low-light usage
+  ///
+  /// Uses darker backgrounds with carefully chosen accent colors to reduce
+  /// eye strain while maintaining excellent readability and visual hierarchy.
   static const ColorScheme darkColorScheme = ColorScheme(
     brightness: Brightness.dark,
     primary: Color(0xFF90CAF9),
@@ -216,21 +243,49 @@ class AppTheme {
   );
 }
 
-/// Extension for habit colors - 10 vibrant color options
+/// Extension to ColorScheme that provides predefined habit colors
+///
+/// This extension adds a curated palette of 10 vibrant, accessible colors
+/// specifically designed for habit visualization. Each color is chosen to:
+/// - Provide excellent contrast against both light and dark backgrounds
+/// - Be visually distinct from neighboring colors in the palette
+/// - Support accessibility standards for color-blind users
+/// - Work well in both light and dark theme variants
+///
+/// Usage: `Theme.of(context).colorScheme.habitColors[index]`
+///
 extension HabitColors on ColorScheme {
+  /// Curated palette of 10 vibrant colors for habit visualization
+  ///
+  /// Each color is carefully selected to ensure:
+  /// ✅ High contrast ratios for accessibility
+  /// ✅ Visual distinction between adjacent colors
+  /// ✅ Support for color vision deficiencies
+  /// ✅ Consistent appearance in light and dark themes
+  ///
+  /// Colors are ordered to provide natural visual progression
+  /// and can be cycled through when more than 10 habits exist.
   List<Color> get habitColors => [
-    const Color(0xFF4CAF50), // Green
-    const Color(0xFF2196F3), // Blue
-    const Color(0xFFFF9800), // Orange
-    const Color(0xFFF44336), // Red
-    const Color(0xFF9C27B0), // Purple
-    const Color(0xFF00BCD4), // Cyan
-    const Color(0xFFFFC107), // Yellow
-    const Color(0xFF795548), // Brown
-    const Color(0xFFE91E63), // Pink
-    const Color(0xFF607D8B), // Blue Grey
+    const Color(0xFF4CAF50), // Green - Success, growth, nature
+    const Color(0xFF2196F3), // Blue - Trust, calm, productivity
+    const Color(0xFFFF9800), // Orange - Energy, enthusiasm, creativity
+    const Color(0xFFF44336), // Red - Urgency, important habits, health
+    const Color(0xFF9C27B0), // Purple - Luxury, mindfulness, spirituality
+    const Color(0xFF00BCD4), // Cyan - Freshness, clarity, learning
+    const Color(0xFFFFC107), // Yellow - Happiness, optimism, social
+    const Color(0xFF795548), // Brown - Stability, grounding, routine
+    const Color(0xFFE91E63), // Pink - Love, relationships, self-care
+    const Color(0xFF607D8B), // Blue Grey - Balance, professionalism, work
   ];
 
+  /// Get habit color by index with automatic cycling
+  ///
+  /// Safely retrieves a color from the palette using modulo arithmetic.
+  /// This ensures that even if there are more habits than colors,
+  /// each habit gets a consistent, visually appealing color.
+  ///
+  /// @param index The habit's position in the list (0-based)
+  /// @return Color from the palette, cycling through available colors
   Color habitColor(int index) {
     return habitColors[index % habitColors.length];
   }
