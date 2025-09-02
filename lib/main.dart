@@ -407,7 +407,6 @@ class _HabitDashboardState extends State<HabitDashboard> {
           controller: scrollController, // Enable scrolling
           child: DetailedHabitCard(
             habit: habit,
-            onComplete: () => _markHabitComplete(habit), // Completion handler
             onClose: () => Navigator.of(context).pop(), // Close handler
           ),
         ),

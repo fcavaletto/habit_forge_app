@@ -223,13 +223,11 @@ class HabitCard extends StatelessWidget {
 /// A more detailed habit card with 4-week grid chart for expanded view
 class DetailedHabitCard extends StatelessWidget {
   final Habit habit;
-  final VoidCallback? onComplete;
   final VoidCallback? onClose;
 
   const DetailedHabitCard({
     super.key,
     required this.habit,
-    this.onComplete,
     this.onClose,
   });
 
@@ -362,22 +360,6 @@ class DetailedHabitCard extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
-
-            // Complete today button
-            if (onComplete != null)
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: onComplete,
-                  icon: Icon(_getIconData(habit.iconName)),
-                  label: Text('Mark as Complete Today'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: habitColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
