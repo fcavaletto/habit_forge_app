@@ -334,8 +334,8 @@ class NotificationService {
         if (iOSImplementation == null) return false;
 
         final settings = await iOSImplementation.checkPermissions();
-        // For iOS, check if alerts are enabled (most important permission)
-        return settings?.alert ?? false;
+        // For iOS, check if notifications are enabled
+        return settings?.isEnabled ?? false;
       } else if (defaultTargetPlatform == TargetPlatform.android) {
         final androidImplementation = _flutterLocalNotificationsPlugin
             .resolvePlatformSpecificImplementation<
