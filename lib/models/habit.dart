@@ -71,18 +71,26 @@ class Habit {
   }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex,
               'Color index must be between 0 and $maxColorIndex');
 
-  /// Factory constructor to create a new habit
+  /// Factory constructor to create a new habit with deterministic ID generation.
   ///
-  /// Generates a unique ID based on name and icon combination and initializes
-  /// all required fields with sensible defaults.
+  /// Generates a unique, deterministic ID based on the normalized habit name
+  /// and icon combination (format: "normalized_name_icon_name"). This ensures:
+  /// - Consistent IDs for habits with the same name and icon
+  /// - Reliable duplicate detection across archiving/unarchiving
+  /// - Predictable behavior for sample habit management
   ///
-  /// @param name Required habit name
-  /// @param description Optional detailed description
-  /// @param colorIndex Visual color theme (defaults to first color)
-  /// @param iconName Material Icon identifier (defaults to check_circle)
-  /// @param reminderTime Optional daily reminder time
+  /// The name is normalized by converting to lowercase and trimming whitespace
+  /// to ensure case-insensitive matching and handle user input variations.
+  ///
+  /// @param name Required habit name (will be trimmed and used for ID generation)
+  /// @param description Optional detailed description (will be trimmed)
+  /// @param colorIndex Visual color theme index (clamped to valid range 0-8)
+  /// @param iconName Material Design icon identifier (used for ID generation)
+  /// @param reminderTime Optional daily reminder time (null disables reminders)
   /// @param enableReminders Whether to enable reminder notifications
-  /// @return New Habit instance with generated ID and current timestamp
+  /// @param isArchived Whether habit should start in archived state
+  /// @return New Habit instance with deterministic ID and current timestamp
+  /// @throws AssertionError if colorIndex is outside valid range
   factory Habit.create({
     required String name,
     required String description,

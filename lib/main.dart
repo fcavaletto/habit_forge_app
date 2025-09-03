@@ -251,19 +251,37 @@ class _HabitDashboardState extends State<HabitDashboard> {
     });
   }
 
+  /// Adds sample habits to the user's dashboard.
+  ///
+  /// This method ensures there are always 4 sample habits available by:
+  /// 1. Unarchiving any archived sample habits (preserving their completion history)
+  /// 2. Creating missing sample habits from the predefined templates
+  /// 3. Providing clear user feedback about what actions were taken
+  ///
+  /// The method handles edge cases gracefully:
+  /// - If all sample habits are already active, shows appropriate message
+  /// - If some habits are archived, prioritizes unarchiving over creating new ones
+  /// - Provides detailed feedback about how many habits were created vs unarchived
+  ///
+  /// Sample habits include: Drink Water, Exercise, Read Book, and Sleep Early.
+  ///
+  /// @return Future that completes when sample habits have been processed
+  /// @throws StorageException if habit storage operations fail
   Future<void> _addSampleHabits() async {
     try {
-      // Get all habits (including archived) to understand current state
+      // Step 1: Gather current habit state (both active and archived)
       final allHabits = await habitStorage.getHabits(includeArchived: true);
       final archivedHabits = allHabits.where((h) => h.isArchived).toList();
 
-      int retrievedCount = 0;
-      int addedCount = 0;
+      int retrievedCount = 0; // Counter for habits restored from archive
+      int addedCount = 0;    // Counter for newly created habits
 
+      // Get the 4 predefined sample habit templates
       final sampleHabits = _getAllSampleHabits();
 
-      // STEP 1: Unarchive any archived sample habits
+      // Step 2: Unarchive any archived sample habits (preserves completion history)
       for (final archivedHabit in archivedHabits) {
+        // Check if this archived habit matches one of our sample templates
         final isSample = sampleHabits.any((sample) => archivedHabit.id == sample.id);
 
         if (isSample) {
@@ -274,9 +292,10 @@ class _HabitDashboardState extends State<HabitDashboard> {
         }
       }
 
-      // STEP 2: Create missing sample habits to ensure we have all 4
+      // Step 3: Create missing sample habits to ensure we have all 4 available
       for (final sampleHabit in sampleHabits) {
         // Check if this sample habit already exists (active or archived)
+        // Uses deterministic ID matching for reliable duplicate detection
         final alreadyExists = allHabits.any((existing) => existing.id == sampleHabit.id);
 
         if (!alreadyExists) {
@@ -287,10 +306,11 @@ class _HabitDashboardState extends State<HabitDashboard> {
         }
       }
 
-      // STEP 3: Refresh UI and show message
+      // Step 4: Refresh UI and provide user feedback
       await _loadHabits(); // Refresh UI
 
       if (mounted) {
+        // Generate appropriate user feedback message based on actions taken
         String message;
         Color backgroundColor;
 
@@ -526,10 +546,24 @@ class _HabitDashboardState extends State<HabitDashboard> {
     }
   }
 
-  /// Update sample habit progress when a habit is deleted
-
-
-  /// Get all sample habit templates
+  /// Returns a list of predefined sample habit templates.
+  ///
+  /// These sample habits serve as onboarding examples for new users and demonstrate
+  /// the app's capabilities. Each sample habit includes:
+  /// - A descriptive name and detailed description
+  /// - An appropriate Material Design icon
+  /// - A unique color index for visual differentiation
+  ///
+  /// The current sample habits are:
+  /// - "Drink Water": Daily hydration tracking (8 glasses)
+  /// - "Exercise": Physical activity goals (30 minutes)
+  /// - "Read Book": Reading habit formation (20 minutes)
+  /// - "Sleep Early": Better sleep schedule (bed by 10 PM)
+  ///
+  /// Each sample habit is created with deterministic IDs based on name+icon combination,
+  /// enabling reliable duplicate detection and archiving/unarchiving functionality.
+  ///
+  /// @return List of 4 sample Habit objects with predefined templates
   List<Habit> _getAllSampleHabits() {
     return [
       Habit.create(
@@ -685,11 +719,17 @@ class _HabitDashboardState extends State<HabitDashboard> {
     );
   }
 
-  /// Builds the empty state screen for new users
+  /// Builds the empty state onboarding screen for new users.
   ///
-  /// Shows a welcoming interface when no habits exist yet.
-  /// Provides clear call-to-action buttons for creating first habit
-  /// or loading sample data for demonstration purposes.
+  /// This screen is shown when the user has no active habits and serves as
+  /// the primary onboarding experience. It provides two clear paths:
+  /// 1. "Add Habit" - Direct creation of a custom habit
+  /// 2. "Add Sample Habits" - Quick setup with 4 predefined example habits
+  ///
+  /// The sample habits option is prominently displayed as a secondary action
+  /// to help users get started quickly with proven habit examples.
+  ///
+  /// @return Widget displaying the onboarding empty state interface
   Widget _buildEmptyState() {
     return Center(
       child: Column(

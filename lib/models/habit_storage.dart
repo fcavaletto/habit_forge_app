@@ -78,52 +78,30 @@ class HabitStorage {
     return includeArchived ? habits : habits.where((habit) => habit.isActive).toList();
   }
 
-  /// Check if a habit with the same name and icon already exists
+  /// Save a new habit to storage
   ///
-  /// @param name The habit name to check
-  /// @param iconName The icon name to check
-  /// @param excludeId Optional habit ID to exclude from the check (for updates)
-  /// @return true if a duplicate exists, false otherwise
-  Future<bool> _hasDuplicateHabit(String name, String iconName, [String? excludeId]) async {
-    final habits = await getHabits();
-    return habits.any((habit) {
-      // Skip the habit we're updating (if excludeId is provided)
-      if (excludeId != null && habit.id == excludeId) return false;
-
-      return habit.name.toLowerCase().trim() == name.toLowerCase().trim() &&
-             habit.iconName == iconName;
-    });
-  }
-
-  /// Save or update a single habit in storage
+  /// Creates a new habit in storage. Fails with a duplicate error if a habit
+  /// with the same name and icon combination already exists (since this generates
+  /// the same deterministic ID).
   ///
-  /// Handles both creating new habits and updating existing ones.
-  /// Includes duplicate prevention to ensure no two habits have the same name and icon.
-  /// If a habit with the same ID already exists, it updates the existing entry.
-  /// If a habit with the same name and icon exists, it returns a duplicate error.
+  /// Note: This method is designed for creating new habits. For updating existing
+  /// habits, use the specific update methods like updateHabitCompletion, archiveHabit, etc.
   ///
-  /// @param habit The habit to save or update
+  /// @param habit The new habit to save
   /// @return HabitSaveResult indicating success or failure with details
   Future<HabitSaveResult> saveHabit(Habit habit) async {
     try {
       final habits = await getHabits();
 
-      // Check for duplicates (excluding current habit if updating)
-      final hasDuplicate = await _hasDuplicateHabit(habit.name, habit.iconName, habit.id);
-      if (hasDuplicate) {
-        // Find the existing habit to get its name for the error message
-        final existingHabit = habits.firstWhere(
-          (h) => h.name.toLowerCase().trim() == habit.name.toLowerCase().trim() &&
-                 h.iconName == habit.iconName &&
-                 h.id != habit.id
-        );
-        return HabitSaveResult.duplicate(existingHabit.name);
-      }
-
+      // Check for duplicates using deterministic ID matching
+      // With deterministic IDs, same name+icon = same ID
       final existingIndex = habits.indexWhere((h) => h.id == habit.id);
 
       if (existingIndex >= 0) {
-        habits[existingIndex] = habit; // Update existing habit
+        // Habit with same ID exists - this is a duplicate since we're using
+        // deterministic IDs based on name+icon combination
+        final existingHabit = habits[existingIndex];
+        return HabitSaveResult.duplicate(existingHabit.name);
       } else {
         habits.add(habit); // Add new habit
       }
