@@ -43,13 +43,13 @@ The following critical issues have been resolved in your notification system:
 If notifications still don't work:
 
 **Android:**
-- Go to Settings > Apps > HabitKit > Notifications
+- Go to Settings > Apps > Habit Forge > Notifications
 - Ensure notifications are enabled
 - Check if "Allow notifications" is turned on
 - For Android 12+, check "Alarms & reminders" permission
 
 **iOS:**
-- Go to Settings > Notifications > HabitKit
+- Go to Settings > Notifications > Habit Forge
 - Ensure "Allow Notifications" is enabled
 - Check if "Alerts" are enabled
 

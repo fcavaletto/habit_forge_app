@@ -15,6 +15,6 @@ void main() {
     await tester.pumpWidget(const HabitForgeApp());
 
     // Verify that our app loads without errors
-    expect(find.text('HabitKit'), findsOneWidget);
+    expect(find.text('Habit Forge'), findsOneWidget);
   });
 }

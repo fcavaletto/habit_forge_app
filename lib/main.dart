@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:async';
 import 'theme.dart';
 import 'models/habit.dart';
 import 'models/habit_storage.dart';
@@ -84,7 +83,7 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'HabitKit', // App title shown in task switcher
+      title: 'Habit Forge', // App title shown in task switcher
       theme: AppTheme.lightTheme, // Light theme configuration
       darkTheme: AppTheme.darkTheme, // Dark theme configuration
       themeMode: _themeMode, // Current theme mode (system/light/dark)
@@ -388,7 +387,7 @@ class _HabitDashboardState extends State<HabitDashboard> {
     return Scaffold(
       // Main app bar with navigation and action buttons
       appBar: AppBar(
-        title: const Text('HabitKit'), // App branding
+        title: const Text('Habit Forge'), // App branding
         backgroundColor: Theme.of(context).colorScheme.surface, // Theme-aware background
         foregroundColor: Theme.of(context).colorScheme.onSurface, // Theme-aware text color
         elevation: 0, // Flat design for modern look
@@ -654,208 +653,3 @@ class SettingsBottomSheet extends StatelessWidget {
     );
   }
 }
-// DEPRECATED: Old AddHabitDialog class - replaced with AddHabitScreen modal bottom sheet
-// This class is no longer used but kept for reference
-/*
-class AddHabitDialog extends StatefulWidget {
-  final VoidCallback onHabitAdded;
-
-  const AddHabitDialog({super.key, required this.onHabitAdded});
-
-  @override
-  State<AddHabitDialog> createState() => _AddHabitDialogState();
-}
-
-class _AddHabitDialogState extends State<AddHabitDialog> {
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  int _selectedColorIndex = 0;
-  String _selectedIcon = 'check_circle';
-
-  final List<String> _availableIcons = [
-    'check_circle',
-    'fitness_center',
-    'local_drink',
-    'book',
-    'bed',
-    'restaurant',
-    'directions_run',
-    'school',
-    'work',
-    'favorite',
-  ];
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveHabit() async {
-    if (_nameController.text.trim().isEmpty) return;
-
-    final habit = Habit.create(
-      name: _nameController.text.trim(),
-      description: _descriptionController.text.trim(),
-      colorIndex: _selectedColorIndex,
-      iconName: _selectedIcon,
-    );
-
-    await habitStorage.saveHabit(habit);
-    widget.onHabitAdded();
-
-    // Use a post-frame callback to ensure context is still valid
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return AlertDialog(
-      title: const Text('Add New Habit'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Habit Name',
-                hintText: 'e.g., Drink Water',
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                hintText: 'e.g., Drink 8 glasses daily',
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Color',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 50,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: colorScheme.habitColors.length,
-                itemBuilder: (context, index) {
-                  final color = colorScheme.habitColors[index];
-                  final isSelected = _selectedColorIndex == index;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedColorIndex = index),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? Colors.white : Colors.transparent,
-                          width: 3,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Icon',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 50,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _availableIcons.length,
-                itemBuilder: (context, index) {
-                  final iconName = _availableIcons[index];
-                  final isSelected = _selectedIcon == iconName;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedIcon = iconName),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? colorScheme.primaryContainer
-                            : colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected
-                              ? colorScheme.primary
-                              : colorScheme.outline.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Icon(
-                        _getIconData(iconName),
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _saveHabit,
-          child: const Text('Add Habit'),
-        ),
-      ],
-    );
-  }
-
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'check_circle':
-        return Icons.check_circle;
-      case 'fitness_center':
-        return Icons.fitness_center;
-      case 'local_drink':
-        return Icons.local_drink;
-      case 'book':
-        return Icons.book;
-      case 'bed':
-        return Icons.bed;
-      case 'restaurant':
-        return Icons.restaurant;
-      case 'directions_run':
-        return Icons.directions_run;
-      case 'school':
-        return Icons.school;
-      case 'work':
-        return Icons.work;
-      case 'favorite':
-        return Icons.favorite;
-      default:
-        return Icons.check_circle;
-    }
-  }
-}
-*/

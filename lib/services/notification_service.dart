@@ -440,7 +440,7 @@ class NotificationService {
       await _flutterLocalNotificationsPlugin.show(
         _testNotificationId,
         'Test Notification',
-        'This is a test notification from HabitKit - if you see this, notifications are working!',
+        'This is a test notification from Habit Forge - if you see this, notifications are working!',
         notificationDetails,
       );
       
@@ -482,7 +482,7 @@ class NotificationService {
       fullScreenIntent: false,
       category: AndroidNotificationCategory.reminder,
       channelShowBadge: true,
-      ticker: 'Test notification from HabitKit',
+              ticker: 'Test notification from Habit Forge',
       enableLights: true,
       ledColor: Color(0xFF00FF00),
       ledOnMs: 1000,
@@ -513,7 +513,7 @@ class NotificationService {
       await _flutterLocalNotificationsPlugin.zonedSchedule(
         _scheduledTestNotificationId,
         'Scheduled Test Notification',
-        'This is a scheduled test notification from HabitKit - if you see this, scheduled notifications are working!',
+        'This is a scheduled test notification from Habit Forge - if you see this, scheduled notifications are working!',
         tzScheduledTime,
         notificationDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -535,7 +535,7 @@ class NotificationService {
           await _flutterLocalNotificationsPlugin.zonedSchedule(
             _scheduledTestNotificationId,
             'Scheduled Test Notification (Inexact)',
-            'This is a scheduled test notification from HabitKit - if you see this, scheduled notifications are working!',
+            'This is a scheduled test notification from Habit Forge - if you see this, scheduled notifications are working!',
             tzScheduledTime,
             notificationDetails,
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -577,7 +577,7 @@ class NotificationService {
         fullScreenIntent: false,
         category: AndroidNotificationCategory.reminder,
         channelShowBadge: true,
-        ticker: 'Backup test notification from HabitKit',
+        ticker: 'Backup test notification from Habit Forge',
         enableLights: true,
         ledColor: Color(0xFFFF0000),
         ledOnMs: 2000,
@@ -637,7 +637,7 @@ class NotificationService {
         fullScreenIntent: false,
         category: AndroidNotificationCategory.reminder,
         channelShowBadge: true,
-        ticker: 'Backup test notification from HabitKit (Inexact)',
+        ticker: 'Backup test notification from Habit Forge (Inexact)',
         enableLights: true,
         ledColor: Color(0xFFFF0000),
         ledOnMs: 2000,
