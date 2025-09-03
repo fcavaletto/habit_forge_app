@@ -30,8 +30,38 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   bool _enableReminders = false;
 
   bool _isLoading = false;
+  String? _errorMessage;
 
 
+
+  @override
+  void initState() {
+    super.initState();
+    // Clear error message when user starts typing
+    _nameController.addListener(_clearError);
+    _descriptionController.addListener(_clearError);
+  }
+
+  void _clearError() {
+    if (_errorMessage != null && mounted) {
+      setState(() => _errorMessage = null);
+    }
+  }
+
+  void _onIconChanged(String iconName) {
+    setState(() => _selectedIconName = iconName);
+    _clearError(); // Clear error when icon changes
+  }
+
+  void _onColorChanged(int colorIndex) {
+    setState(() => _selectedColorIndex = colorIndex);
+    _clearError(); // Clear error when color changes
+  }
+
+  void _onFrequencyChanged(Frequency frequency) {
+    setState(() => _selectedFrequency = frequency);
+    _clearError(); // Clear error when frequency changes
+  }
 
   @override
   void dispose() {
@@ -98,15 +128,10 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       if (!result.success) {
         // Handle save failure (duplicate or error)
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.errorMessage ?? 'Failed to save habit'),
-              backgroundColor: result.errorMessage?.contains('already exists') == true
-                ? Colors.orange
-                : Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          setState(() {
+            _errorMessage = result.errorMessage ?? 'Failed to save habit';
+            _isLoading = false;
+          });
         }
         return; // Don't proceed with notification setup if save failed
       }
@@ -238,6 +263,40 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
 
           const Divider(height: 1),
 
+          // Error message display
+          if (_errorMessage != null)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _errorMessage!.contains('already exists') ? Colors.orange[50] : Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _errorMessage!.contains('already exists') ? Colors.orange : Colors.red,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _errorMessage!.contains('already exists') ? Icons.warning : Icons.error,
+                    color: _errorMessage!.contains('already exists') ? Colors.orange : Colors.red,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(
+                        color: _errorMessage!.contains('already exists') ? Colors.orange[900] : Colors.red[900],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Form
           Expanded(
             child: SingleChildScrollView(
@@ -318,9 +377,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                     const SizedBox(height: 12),
                     IconSelector(
                       selectedIconName: _selectedIconName,
-                      onIconSelected: (iconName) {
-                        setState(() => _selectedIconName = iconName);
-                      },
+                      onIconSelected: _onIconChanged,
                     ),
 
                     const SizedBox(height: 24),
@@ -336,9 +393,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                     const SizedBox(height: 12),
                     ColorSelector(
                       selectedColorIndex: _selectedColorIndex,
-                      onColorSelected: (index) {
-                        setState(() => _selectedColorIndex = index);
-                      },
+                      onColorSelected: _onColorChanged,
                     ),
 
                     const SizedBox(height: 24),
@@ -354,9 +409,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                     const SizedBox(height: 12),
                     FrequencySelector(
                       selectedFrequency: _selectedFrequency,
-                      onFrequencySelected: (frequency) {
-                        setState(() => _selectedFrequency = frequency);
-                      },
+                      onFrequencySelected: _onFrequencyChanged,
                     ),
 
                     const SizedBox(height: 24),
