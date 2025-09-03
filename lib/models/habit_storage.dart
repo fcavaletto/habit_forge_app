@@ -3,6 +3,37 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'habit.dart';
 
+/// Result of a habit save operation
+class HabitSaveResult {
+  final bool success;
+  final String? errorMessage;
+  final Habit? savedHabit;
+
+  const HabitSaveResult._({
+    required this.success,
+    this.errorMessage,
+    this.savedHabit,
+  });
+
+  /// Successfully saved the habit
+  factory HabitSaveResult.success(Habit habit) {
+    return HabitSaveResult._(success: true, savedHabit: habit);
+  }
+
+  /// Failed to save due to duplicate habit
+  factory HabitSaveResult.duplicate(String existingHabitName) {
+    return HabitSaveResult._(
+      success: false,
+      errorMessage: 'A habit with the name "$existingHabitName" and the same icon already exists',
+    );
+  }
+
+  /// Failed to save due to other error
+  factory HabitSaveResult.error(String message) {
+    return HabitSaveResult._(success: false, errorMessage: message);
+  }
+}
+
 /// Service class for habit data persistence and retrieval
 ///
 /// Handles all data storage operations using SharedPreferences for local persistence.
@@ -43,24 +74,62 @@ class HabitStorage {
     }).whereType<Habit>().toList(); // Filter out null values from failed parsing
   }
 
+  /// Check if a habit with the same name and icon already exists
+  ///
+  /// @param name The habit name to check
+  /// @param iconName The icon name to check
+  /// @param excludeId Optional habit ID to exclude from the check (for updates)
+  /// @return true if a duplicate exists, false otherwise
+  Future<bool> _hasDuplicateHabit(String name, String iconName, [String? excludeId]) async {
+    final habits = await getHabits();
+    return habits.any((habit) {
+      // Skip the habit we're updating (if excludeId is provided)
+      if (excludeId != null && habit.id == excludeId) return false;
+
+      return habit.name.toLowerCase().trim() == name.toLowerCase().trim() &&
+             habit.iconName == iconName;
+    });
+  }
+
   /// Save or update a single habit in storage
   ///
   /// Handles both creating new habits and updating existing ones.
+  /// Includes duplicate prevention to ensure no two habits have the same name and icon.
   /// If a habit with the same ID already exists, it updates the existing entry.
-  /// Otherwise, it adds the habit as a new entry.
+  /// If a habit with the same name and icon exists, it returns a duplicate error.
   ///
   /// @param habit The habit to save or update
-  Future<void> saveHabit(Habit habit) async {
-    final habits = await getHabits();
-    final existingIndex = habits.indexWhere((h) => h.id == habit.id);
+  /// @return HabitSaveResult indicating success or failure with details
+  Future<HabitSaveResult> saveHabit(Habit habit) async {
+    try {
+      final habits = await getHabits();
 
-    if (existingIndex >= 0) {
-      habits[existingIndex] = habit; // Update existing habit
-    } else {
-      habits.add(habit); // Add new habit
+      // Check for duplicates (excluding current habit if updating)
+      final hasDuplicate = await _hasDuplicateHabit(habit.name, habit.iconName, habit.id);
+      if (hasDuplicate) {
+        // Find the existing habit to get its name for the error message
+        final existingHabit = habits.firstWhere(
+          (h) => h.name.toLowerCase().trim() == habit.name.toLowerCase().trim() &&
+                 h.iconName == habit.iconName &&
+                 h.id != habit.id
+        );
+        return HabitSaveResult.duplicate(existingHabit.name);
+      }
+
+      final existingIndex = habits.indexWhere((h) => h.id == habit.id);
+
+      if (existingIndex >= 0) {
+        habits[existingIndex] = habit; // Update existing habit
+      } else {
+        habits.add(habit); // Add new habit
+      }
+
+      await _saveHabits(habits); // Persist changes
+      return HabitSaveResult.success(habit);
+    } catch (e) {
+      debugPrint('Error saving habit: $e');
+      return HabitSaveResult.error('Failed to save habit: $e');
     }
-
-    await _saveHabits(habits); // Persist changes
   }
 
   /// Permanently delete a habit from storage

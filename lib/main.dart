@@ -6,6 +6,7 @@ import 'models/habit_storage.dart';
 import 'widgets/habit_card.dart';
 import 'screens/add_habit_screen.dart';
 import 'screens/calendar_screen.dart';
+import 'screens/settings_screen.dart';
 import 'services/notification_service.dart';
 
 /// Application entry point
@@ -278,8 +279,31 @@ class _HabitDashboardState extends State<HabitDashboard> {
       ),
     ];
 
+    int addedCount = 0;
+    int duplicateCount = 0;
+
     for (final habit in sampleHabits) {
-      await habitStorage.saveHabit(habit);
+      final result = await habitStorage.saveHabit(habit);
+      if (result.success) {
+        addedCount++;
+      } else if (result.errorMessage?.contains('already exists') == true) {
+        duplicateCount++;
+      }
+    }
+
+    // Show feedback to user
+    if (mounted) {
+      final message = addedCount > 0
+        ? 'Added $addedCount sample habit${addedCount == 1 ? '' : 's'}${duplicateCount > 0 ? ' ($duplicateCount already exist)' : ''}'
+        : 'All sample habits already exist';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: addedCount > 0 ? Colors.green : Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
 
     await _loadHabits();
@@ -320,17 +344,19 @@ class _HabitDashboardState extends State<HabitDashboard> {
     await _loadHabits();
   }
 
-  /// Shows the settings modal bottom sheet
+  /// Navigates to the settings screen
   ///
-  /// Displays theme selection options and additional app settings.
-  /// Provides access to theme switching and sample data generation.
+  /// Opens a full-screen settings page with theme selection options
+  /// and additional app settings. Provides access to theme switching
+  /// and sample data generation with a proper navigation experience.
   void _showSettings() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SettingsBottomSheet(
-        currentThemeMode: widget.themeMode, // Pass current theme
-        onThemeChanged: widget.onThemeChanged, // Theme change callback
-        onAddSampleHabits: _addSampleHabits, // Sample data callback
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SettingsScreen(
+          currentThemeMode: widget.themeMode, // Pass current theme
+          onThemeChanged: widget.onThemeChanged, // Theme change callback
+          onAddSampleHabits: _addSampleHabits, // Sample data callback
+        ),
       ),
     );
   }
@@ -506,149 +532,6 @@ class _HabitDashboardState extends State<HabitDashboard> {
             onComplete: () => _markHabitComplete(habit),
           );
         },
-      ),
-    );
-  }
-}
-
-/// Settings modal bottom sheet
-///
-/// Provides access to app settings and preferences including:
-/// - Theme mode selection (light/dark/system)
-/// - Sample data generation for testing
-/// - Additional app configuration options
-///
-/// Uses a clean, modal design that slides up from the bottom
-/// and provides immediate access to key settings without
-/// navigating away from the main screen.
-class SettingsBottomSheet extends StatelessWidget {
-  /// Current theme mode for UI state display
-  final ThemeMode currentThemeMode;
-
-  /// Callback for theme mode changes
-  final ValueChanged<ThemeMode> onThemeChanged;
-
-  /// Callback for adding sample habits
-  final VoidCallback onAddSampleHabits;
-
-  const SettingsBottomSheet({
-    super.key,
-    required this.currentThemeMode,
-    required this.onThemeChanged,
-    required this.onAddSampleHabits,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Settings',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Theme',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildThemeOption(
-                  context,
-                  'Light',
-                  ThemeMode.light,
-                  Icons.light_mode,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildThemeOption(
-                  context,
-                  'Dark',
-                  ThemeMode.dark,
-                  Icons.dark_mode,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildThemeOption(
-                  context,
-                  'System',
-                  ThemeMode.system,
-                  Icons.settings_suggest,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () {
-              onAddSampleHabits();
-              Navigator.of(context).pop();
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Add Sample Habits'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildThemeOption(
-    BuildContext context,
-    String label,
-    ThemeMode mode,
-    IconData icon,
-  ) {
-    final isSelected = currentThemeMode == mode;
-    return InkWell(
-      onTap: () {
-        onThemeChanged(mode);
-        Navigator.of(context).pop();
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primaryContainer
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

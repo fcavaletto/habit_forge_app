@@ -31,13 +31,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
 
   bool _isLoading = false;
 
-  /// Check if a habit with the same name and icon already exists
-  bool _isDuplicateHabit(String name, String iconName) {
-    return widget.existingHabits.any((habit) =>
-      habit.name.toLowerCase() == name.toLowerCase().trim() &&
-      habit.iconName == iconName
-    );
-  }
+
 
   @override
   void dispose() {
@@ -73,20 +67,6 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   Future<void> _saveHabit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Additional duplicate check (in case validation passed but duplicate still exists)
-    if (_isDuplicateHabit(_nameController.text, _selectedIconName)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('A habit with this name and icon already exists'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-      return;
-    }
-
     // Validate that reminder time is set when reminders are enabled
     if (_enableReminders && _reminderTime == null) {
       if (mounted) {
@@ -113,17 +93,36 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
         enableReminders: _enableReminders,
       );
 
-      await habitStorage.saveHabit(habit);
+      final result = await habitStorage.saveHabit(habit);
+
+      if (!result.success) {
+        // Handle save failure (duplicate or error)
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.errorMessage ?? 'Failed to save habit'),
+              backgroundColor: result.errorMessage?.contains('already exists') == true
+                ? Colors.orange
+                : Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return; // Don't proceed with notification setup if save failed
+      }
+
+      // Habit saved successfully
+      final savedHabit = result.savedHabit!;
 
       // Handle notification permissions and scheduling if reminders are enabled
       if (_enableReminders && _reminderTime != null) {
         try {
           // Check and request permissions specifically for reminders
           final hasPermissions = await notificationService.checkAndRequestPermissionsForReminders();
-          
+
           if (hasPermissions) {
             // Permissions granted, schedule the reminder
-            await notificationService.scheduleHabitReminder(habit).timeout(
+            await notificationService.scheduleHabitReminder(savedHabit).timeout(
               const Duration(seconds: 5),
               onTimeout: () {
                 debugPrint('Notification scheduling timed out, but habit was saved');
@@ -157,12 +156,12 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
         }
       }
 
-      widget.onHabitAdded(habit);
+      widget.onHabitAdded(savedHabit);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Habit "${habit.name}" added successfully!'),
+            content: Text('Habit "${savedHabit.name}" added successfully!'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
@@ -275,9 +274,6 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                         }
                         if (value.trim().length < 2) {
                           return 'Habit name must be at least 2 characters';
-                        }
-                        if (_isDuplicateHabit(value, _selectedIconName)) {
-                          return 'A habit with this name and icon already exists';
                         }
                         return null;
                       },
