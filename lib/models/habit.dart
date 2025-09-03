@@ -45,6 +45,9 @@ class Habit {
   /// Whether daily reminders are enabled for this habit
   final bool enableReminders;
 
+  /// Whether this habit is archived (hidden from main view but not deleted)
+  final bool isArchived;
+
   /// Maximum number of habit colors available in the theme
   static const int maxColorIndex = 9;
 
@@ -64,12 +67,13 @@ class Habit {
     this.iconName = defaultIconName,
     this.reminderTime,
     this.enableReminders = false,
-  }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex, 
+    this.isArchived = false,
+  }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex,
               'Color index must be between 0 and $maxColorIndex');
 
   /// Factory constructor to create a new habit
   ///
-  /// Generates a unique ID based on current timestamp and initializes
+  /// Generates a unique ID based on name and icon combination and initializes
   /// all required fields with sensible defaults.
   ///
   /// @param name Required habit name
@@ -86,9 +90,14 @@ class Habit {
     String iconName = defaultIconName,
     TimeOfDay? reminderTime,
     bool enableReminders = false,
+    bool isArchived = false,
   }) {
+    // Generate deterministic ID based on normalized name and icon
+    final normalizedName = name.toLowerCase().trim();
+    final id = '${normalizedName}_${iconName}';
+
     return Habit(
-      id: DateTime.now().millisecondsSinceEpoch.toString(), // Unique timestamp-based ID
+      id: id, // Deterministic ID based on name + icon
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
       colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
@@ -97,6 +106,7 @@ class Habit {
       iconName: iconName,
       reminderTime: reminderTime,
       enableReminders: enableReminders,
+      isArchived: isArchived,
     );
   }
 
@@ -233,17 +243,22 @@ class Habit {
   /// @return The most recent date when the habit was completed, or null if never completed
   DateTime? get lastCompletedDate {
     if (completions.isEmpty) return null;
-    
+
     final completedDates = completions.entries
         .where((entry) => entry.value)
         .map((entry) => entry.key)
         .toList();
-    
+
     if (completedDates.isEmpty) return null;
-    
+
     completedDates.sort((a, b) => b.compareTo(a)); // Sort in descending order
     return completedDates.first;
   }
+
+  /// Check if the habit is active (not archived)
+  ///
+  /// @return true if habit is not archived, false otherwise
+  bool get isActive => !isArchived;
 
   /// Copy with updated fields
   Habit copyWith({
@@ -256,6 +271,7 @@ class Habit {
     String? iconName,
     TimeOfDay? reminderTime,
     bool? enableReminders,
+    bool? isArchived,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -267,6 +283,7 @@ class Habit {
       iconName: iconName ?? this.iconName,
       reminderTime: reminderTime ?? this.reminderTime,
       enableReminders: enableReminders ?? this.enableReminders,
+      isArchived: isArchived ?? this.isArchived,
     );
   }
 
@@ -292,6 +309,7 @@ class Habit {
           ? {'hour': reminderTime!.hour, 'minute': reminderTime!.minute}
           : null,
       'enableReminders': enableReminders,
+      'isArchived': isArchived,
       // Convert DateTime keys to ISO strings for JSON compatibility
       'completions': completions.map(
         (key, value) => MapEntry(key.toIso8601String(), value),
@@ -331,6 +349,7 @@ class Habit {
       iconName: json['iconName'] as String? ?? defaultIconName, // Default icon
       reminderTime: reminderTime,
       enableReminders: json['enableReminders'] as bool? ?? false, // Default disabled
+      isArchived: json['isArchived'] as bool? ?? false, // Default to not archived
       // Reconstruct completion map with DateTime keys
       completions: (json['completions'] as Map<String, dynamic>).map(
         (key, value) => MapEntry(DateTime.parse(key), value as bool),

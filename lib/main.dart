@@ -252,61 +252,82 @@ class _HabitDashboardState extends State<HabitDashboard> {
   }
 
   Future<void> _addSampleHabits() async {
-    final sampleHabits = [
-      Habit.create(
-        name: 'Drink Water',
-        description: 'Drink 8 glasses of water daily',
-        colorIndex: 0,
-        iconName: 'local_drink',
-      ),
-      Habit.create(
-        name: 'Exercise',
-        description: '30 minutes of physical activity',
-        colorIndex: 1,
-        iconName: 'fitness_center',
-      ),
-      Habit.create(
-        name: 'Read Book',
-        description: 'Read for at least 20 minutes',
-        colorIndex: 2,
-        iconName: 'book',
-      ),
-      Habit.create(
-        name: 'Sleep Early',
-        description: 'Go to bed by 10 PM',
-        colorIndex: 3,
-        iconName: 'bed',
-      ),
-    ];
+    try {
+      // Get all habits (including archived) to understand current state
+      final allHabits = await habitStorage.getHabits(includeArchived: true);
+      final archivedHabits = allHabits.where((h) => h.isArchived).toList();
 
-    int addedCount = 0;
-    int duplicateCount = 0;
+      int retrievedCount = 0;
+      int addedCount = 0;
 
-    for (final habit in sampleHabits) {
-      final result = await habitStorage.saveHabit(habit);
-      if (result.success) {
-        addedCount++;
-      } else if (result.errorMessage?.contains('already exists') == true) {
-        duplicateCount++;
+      final sampleHabits = _getAllSampleHabits();
+
+      // STEP 1: Unarchive any archived sample habits
+      for (final archivedHabit in archivedHabits) {
+        final isSample = sampleHabits.any((sample) => archivedHabit.id == sample.id);
+
+        if (isSample) {
+          final success = await habitStorage.unarchiveHabit(archivedHabit.id);
+          if (success) {
+            retrievedCount++;
+          }
+        }
+      }
+
+      // STEP 2: Create missing sample habits to ensure we have all 4
+      for (final sampleHabit in sampleHabits) {
+        // Check if this sample habit already exists (active or archived)
+        final alreadyExists = allHabits.any((existing) => existing.id == sampleHabit.id);
+
+        if (!alreadyExists) {
+          final result = await habitStorage.saveHabit(sampleHabit);
+          if (result.success) {
+            addedCount++;
+          }
+        }
+      }
+
+      // STEP 3: Refresh UI and show message
+      await _loadHabits(); // Refresh UI
+
+      if (mounted) {
+        String message;
+        Color backgroundColor;
+
+        if (retrievedCount > 0 && addedCount > 0) {
+          message = '$addedCount sample habit${addedCount != 1 ? 's' : ''} created. $retrievedCount unarchived.';
+          backgroundColor = Colors.green;
+        } else if (retrievedCount > 0) {
+          message = '$retrievedCount sample habit${retrievedCount != 1 ? 's' : ''} unarchived.';
+          backgroundColor = Colors.blue;
+        } else if (addedCount > 0) {
+          message = '$addedCount sample habit${addedCount != 1 ? 's' : ''} created.';
+          backgroundColor = Colors.green;
+        } else {
+          message = 'All samples are already active.';
+          backgroundColor = Colors.orange;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: backgroundColor,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error in _addSampleHabits: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding sample habits: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
-
-    // Show feedback to user
-    if (mounted) {
-      final message = addedCount > 0
-        ? 'Added $addedCount sample habit${addedCount == 1 ? '' : 's'}${duplicateCount > 0 ? ' ($duplicateCount already exist)' : ''}'
-        : 'All sample habits already exist';
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: addedCount > 0 ? Colors.green : Colors.orange,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
-
-    await _loadHabits();
   }
 
   /// Toggles the completion status of a habit for today
@@ -356,6 +377,7 @@ class _HabitDashboardState extends State<HabitDashboard> {
           currentThemeMode: widget.themeMode, // Pass current theme
           onThemeChanged: widget.onThemeChanged, // Theme change callback
           onAddSampleHabits: _addSampleHabits, // Sample data callback
+          onRetrieveArchivedHabits: _retrieveArchivedHabits, // Archived habits callback
         ),
       ),
     );
@@ -380,6 +402,214 @@ class _HabitDashboardState extends State<HabitDashboard> {
         existingHabits: _habits, // Pass current habits for duplicate checking
       ),
     );
+  }
+
+  /// Archive a habit (hide from main view)
+  ///
+  /// Marks the habit as archived so it doesn't appear in the main habit list
+  /// but keeps all completion data intact.
+  Future<void> _archiveHabit(Habit habit) async {
+    try {
+      final success = await habitStorage.archiveHabit(habit.id);
+      if (success) {
+        await _loadHabits(); // Refresh the UI
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Habit "${habit.name}" archived'),
+              backgroundColor: Colors.blue,
+              duration: const Duration(seconds: 2),
+              action: SnackBarAction(
+                label: 'Undo',
+                textColor: Colors.white,
+                onPressed: () => _unarchiveHabit(habit),
+              ),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to archive habit'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error archiving habit: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error archiving habit: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Unarchive a habit (restore to main view)
+  Future<void> _unarchiveHabit(Habit habit) async {
+    try {
+      final success = await habitStorage.unarchiveHabit(habit.id);
+      if (success) {
+        await _loadHabits(); // Refresh the UI
+      }
+    } catch (e) {
+      debugPrint('Error unarchiving habit: $e');
+    }
+  }
+
+  /// Show delete confirmation dialog
+  Future<void> _showDeleteConfirmation(Habit habit) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Habit'),
+          content: Text(
+            'Are you sure you want to delete "${habit.name}"? This action cannot be undone and will permanently remove all completion data.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      await _deleteHabit(habit);
+    }
+  }
+
+  /// Delete a habit permanently
+  Future<void> _deleteHabit(Habit habit) async {
+    try {
+      await habitStorage.deleteHabit(habit.id);
+      await _loadHabits(); // Refresh the UI
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Habit "${habit.name}" deleted'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting habit: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting habit: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Update sample habit progress when a habit is deleted
+
+
+  /// Get all sample habit templates
+  List<Habit> _getAllSampleHabits() {
+    return [
+      Habit.create(
+        name: 'Drink Water',
+        description: 'Drink 8 glasses of water daily',
+        colorIndex: 0,
+        iconName: 'local_drink',
+      ),
+      Habit.create(
+        name: 'Exercise',
+        description: '30 minutes of physical activity',
+        colorIndex: 1,
+        iconName: 'fitness_center',
+      ),
+      Habit.create(
+        name: 'Read Book',
+        description: 'Read for at least 20 minutes',
+        colorIndex: 2,
+        iconName: 'book',
+      ),
+      Habit.create(
+        name: 'Sleep Early',
+        description: 'Go to bed by 10 PM',
+        colorIndex: 3,
+        iconName: 'bed',
+      ),
+    ];
+  }
+
+  /// Retrieve all archived habits and bring them back to main view
+  Future<void> _retrieveArchivedHabits() async {
+    try {
+      final archivedHabits = await habitStorage.getArchivedHabits();
+
+      if (archivedHabits.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No habits are currently archived'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Unarchive all archived habits
+      int retrievedCount = 0;
+      for (final habit in archivedHabits) {
+        final success = await habitStorage.unarchiveHabit(habit.id);
+        if (success) {
+          retrievedCount++;
+        }
+      }
+
+      // Refresh the UI to show the retrieved habits
+      await _loadHabits();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$retrievedCount archived habit${retrievedCount != 1 ? 's' : ''} retrieved'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error retrieving archived habits: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error retrieving archived habits: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   /// Shows detailed habit information in a modal
@@ -530,6 +760,10 @@ class _HabitDashboardState extends State<HabitDashboard> {
             onTap: () => _showHabitDetails(habit),
             // Tap completion button to toggle status
             onComplete: () => _markHabitComplete(habit),
+            // Long press menu actions
+            onEdit: () => _showHabitDetails(habit), // Reuse the details screen for editing
+            onArchive: () => _archiveHabit(habit),
+            onDelete: () => _showDeleteConfirmation(habit),
           );
         },
       ),

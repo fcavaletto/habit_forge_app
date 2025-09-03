@@ -31,12 +31,24 @@ class HabitCard extends StatelessWidget {
   /// Callback for settings/accessibility actions (currently unused)
   final VoidCallback? onSettings;
 
+  /// Callback when the habit should be archived
+  final VoidCallback? onArchive;
+
+  /// Callback when the habit should be deleted
+  final VoidCallback? onDelete;
+
+  /// Callback when the habit should be edited
+  final VoidCallback? onEdit;
+
   const HabitCard({
     super.key,
     required this.habit,
     this.onTap,
     this.onComplete,
     this.onSettings,
+    this.onArchive,
+    this.onDelete,
+    this.onEdit,
   });
 
   @override
@@ -51,6 +63,8 @@ class HabitCard extends StatelessWidget {
       child: InkWell(
         // Tap handler for opening detailed view
         onTap: onTap,
+        // Long press handler for context menu
+        onLongPress: () => _showContextMenu(context),
         // Rounded corners for modern Material 3 design
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -188,6 +202,113 @@ class HabitCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Show context menu for habit management actions
+  void _showContextMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.habitColor(habit.colorIndex).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _getIconData(habit.iconName),
+                        color: Theme.of(context).colorScheme.habitColor(habit.colorIndex),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            habit.name,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            habit.description,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(
+                        Icons.close,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+
+              // Menu items
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit Habit'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onEdit?.call();
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.archive),
+                title: const Text('Archive Habit'),
+                subtitle: const Text('Hide from main view'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onArchive?.call();
+                },
+              ),
+
+              ListTile(
+                leading: Icon(
+                  Icons.delete,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                title: Text(
+                  'Delete Habit',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                subtitle: const Text('Permanently remove'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onDelete?.call();
+                },
+              ),
+
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 

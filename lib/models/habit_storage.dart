@@ -58,12 +58,13 @@ class HabitStorage {
   /// deserialize (due to corruption or format changes), it logs the error
   /// and skips that habit rather than failing the entire operation.
   ///
+  /// @param includeArchived Whether to include archived habits in the result
   /// @return List of successfully loaded Habit objects
-  Future<List<Habit>> getHabits() async {
+  Future<List<Habit>> getHabits({bool includeArchived = false}) async {
     final prefs = await SharedPreferences.getInstance();
     final habitsJson = prefs.getStringList(_habitsKey) ?? []; // Default to empty list
 
-    return habitsJson.map((json) {
+    final habits = habitsJson.map((json) {
       try {
         final map = jsonDecode(json) as Map<String, dynamic>;
         return Habit.fromJson(map); // Deserialize each habit
@@ -72,6 +73,9 @@ class HabitStorage {
         return null; // Skip corrupted habits
       }
     }).whereType<Habit>().toList(); // Filter out null values from failed parsing
+
+    // Filter out archived habits unless specifically requested
+    return includeArchived ? habits : habits.where((habit) => habit.isActive).toList();
   }
 
   /// Check if a habit with the same name and icon already exists
@@ -140,9 +144,66 @@ class HabitStorage {
   ///
   /// @param habitId Unique identifier of the habit to delete
   Future<void> deleteHabit(String habitId) async {
-    final habits = await getHabits();
+    final habits = await getHabits(includeArchived: true); // Include archived for deletion
     habits.removeWhere((habit) => habit.id == habitId); // Remove matching habit
     await _saveHabits(habits); // Persist changes
+  }
+
+  /// Archive a habit (hide from main view but keep data)
+  ///
+  /// Marks the habit as archived so it doesn't appear in the main habit list
+  /// but keeps all completion data intact. Archived habits can be unarchived later.
+  ///
+  /// @param habitId Unique identifier of the habit to archive
+  /// @return true if successful, false otherwise
+  Future<bool> archiveHabit(String habitId) async {
+    try {
+      final habits = await getHabits(includeArchived: true);
+      final habitIndex = habits.indexWhere((habit) => habit.id == habitId);
+
+      if (habitIndex >= 0) {
+        final updatedHabit = habits[habitIndex].copyWith(isArchived: true);
+        habits[habitIndex] = updatedHabit;
+        await _saveHabits(habits);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error archiving habit: $e');
+      return false;
+    }
+  }
+
+  /// Unarchive a habit (restore to main view)
+  ///
+  /// Removes the archived status from a habit so it appears in the main habit list again.
+  ///
+  /// @param habitId Unique identifier of the habit to unarchive
+  /// @return true if successful, false otherwise
+  Future<bool> unarchiveHabit(String habitId) async {
+    try {
+      final habits = await getHabits(includeArchived: true);
+      final habitIndex = habits.indexWhere((habit) => habit.id == habitId);
+
+      if (habitIndex >= 0) {
+        final updatedHabit = habits[habitIndex].copyWith(isArchived: false);
+        habits[habitIndex] = updatedHabit;
+        await _saveHabits(habits);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error unarchiving habit: $e');
+      return false;
+    }
+  }
+
+  /// Get all archived habits
+  ///
+  /// @return List of archived habits
+  Future<List<Habit>> getArchivedHabits() async {
+    final habits = await getHabits(includeArchived: true);
+    return habits.where((habit) => habit.isArchived).toList();
   }
 
   /// Update the completion status of a specific habit on a specific date
