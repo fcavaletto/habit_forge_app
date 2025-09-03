@@ -1,16 +1,3 @@
-/// Habit Forge - A comprehensive habit tracking application
-///
-/// This application provides users with tools to build and maintain healthy habits
-/// through visual progress tracking, reminder notifications, and data persistence.
-///
-/// Key Features:
-/// - Interactive habit cards with completion tracking
-/// - GitHub-style calendar visualization
-/// - Daily reminder notifications
-/// - Local data persistence with SharedPreferences
-/// - Material 3 design with dark/light theme support
-/// - Comprehensive error handling and user feedback
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -37,34 +24,11 @@ Future<void> main() async {
   // Ensure Flutter framework is ready before any async operations
   WidgetsFlutterBinding.ensureInitialized();
 
-  debugPrint('Starting app initialization...');
-
-  // Initialize storage system to load existing habits
-  debugPrint('Initializing storage...');
-  await habitStorage.getHabits(); // Warm up storage and preload data
-  debugPrint('Storage initialized');
-
-  // Initialize notifications with comprehensive error handling
-  // This is wrapped in a try-catch to ensure the app starts even if
-  // notification permissions are denied or services fail
-  try {
-    debugPrint('Initializing notifications...');
-    await notificationService.initialize().timeout(
-      const Duration(seconds: 10), // Prevent hanging on initialization
-      onTimeout: () {
-        debugPrint('Notification initialization timed out - continuing without notifications');
-        return;
-      },
-    );
-    debugPrint('Notifications initialized successfully');
-  } catch (e) {
-    // Log the error but don't crash the app - notifications are not critical
-    debugPrint('Failed to initialize notifications: $e');
-    debugPrint('App will continue without notification features');
-  }
-
-  debugPrint('Starting Flutter app...');
+  debugPrint('🚀 Starting Flutter app...');
+  
+  // Start the Flutter app immediately - no service initialization
   runApp(const HabitForgeApp());
+  debugPrint('✅ Flutter app started');
 }
 
 /// Root application widget with theme management
@@ -183,7 +147,7 @@ class _HabitDashboardState extends State<HabitDashboard> {
 
     try {
       final habits = await habitStorage.getHabits();
-    setState(() {
+      setState(() {
         _habits = habits;
         _isLoading = false;
       });
@@ -191,15 +155,20 @@ class _HabitDashboardState extends State<HabitDashboard> {
       // Check for overdue habits after loading
       _checkOverdueHabits();
 
-      // Reschedule all reminders to ensure they're active after app restart
-      await notificationService.scheduleAllReminders(habits);
+      // Note: Reminders are now scheduled on-demand when user enables them
+      // No need to schedule all reminders here since notification service
+      // will be initialized when user first tries to enable reminders
     } catch (e) {
       debugPrint('Error loading habits: $e');
       setState(() => _isLoading = false);
       // Show error snackbar to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading habits: $e')),
+          SnackBar(
+            content: Text('Failed to load habits: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
         );
       }
     }
@@ -685,7 +654,6 @@ class SettingsBottomSheet extends StatelessWidget {
     );
   }
 }
-
 // DEPRECATED: Old AddHabitDialog class - replaced with AddHabitScreen modal bottom sheet
 // This class is no longer used but kept for reference
 /*

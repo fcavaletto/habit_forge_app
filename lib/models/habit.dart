@@ -16,8 +16,6 @@ import 'package:flutter/material.dart';
 ///
 /// The model uses immutable patterns and provides factory constructors
 /// for flexible object creation and JSON serialization support.
-
-/// Represents a single habit with tracking data
 class Habit {
   /// Unique identifier for this habit (timestamp-based)
   final String id;
@@ -47,6 +45,15 @@ class Habit {
   /// Whether daily reminders are enabled for this habit
   final bool enableReminders;
 
+  /// Maximum number of habit colors available in the theme
+  static const int maxColorIndex = 9;
+
+  /// Default icon name for new habits
+  static const String defaultIconName = 'check_circle';
+
+  /// Default color index for new habits
+  static const int defaultColorIndex = 0;
+
   Habit({
     required this.id,
     required this.name,
@@ -54,10 +61,11 @@ class Habit {
     required this.colorIndex,
     required this.createdAt,
     required this.completions,
-    this.iconName = 'check_circle',
+    this.iconName = defaultIconName,
     this.reminderTime,
     this.enableReminders = false,
-  });
+  }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex, 
+              'Color index must be between 0 and $maxColorIndex');
 
   /// Factory constructor to create a new habit
   ///
@@ -74,8 +82,8 @@ class Habit {
   factory Habit.create({
     required String name,
     required String description,
-    int colorIndex = 0,
-    String iconName = 'check_circle',
+    int colorIndex = defaultColorIndex,
+    String iconName = defaultIconName,
     TimeOfDay? reminderTime,
     bool enableReminders = false,
   }) {
@@ -83,7 +91,7 @@ class Habit {
       id: DateTime.now().millisecondsSinceEpoch.toString(), // Unique timestamp-based ID
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
-      colorIndex: colorIndex,
+      colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
       createdAt: DateTime.now(), // Creation timestamp
       completions: {}, // Start with empty completion history
       iconName: iconName,
@@ -103,7 +111,13 @@ class Habit {
   Habit markCompleted(DateTime date, bool completed) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     final newCompletions = Map<DateTime, bool>.from(completions);
-    newCompletions[normalizedDate] = completed;
+    
+    if (completed) {
+      newCompletions[normalizedDate] = true;
+    } else {
+      newCompletions.remove(normalizedDate);
+    }
+    
     return copyWith(completions: newCompletions);
   }
 
@@ -198,6 +212,39 @@ class Habit {
     });
   }
 
+  /// Get the number of days since the habit was created
+  ///
+  /// @return Number of days since creation
+  int get daysSinceCreation {
+    final now = DateTime.now();
+    return now.difference(createdAt).inDays;
+  }
+
+  /// Check if the habit has been active for at least a minimum period
+  ///
+  /// @param minimumDays Minimum number of days required
+  /// @return true if habit has been active for at least minimumDays
+  bool isActiveForAtLeast(int minimumDays) {
+    return daysSinceCreation >= minimumDays;
+  }
+
+  /// Get the most recent completion date
+  ///
+  /// @return The most recent date when the habit was completed, or null if never completed
+  DateTime? get lastCompletedDate {
+    if (completions.isEmpty) return null;
+    
+    final completedDates = completions.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+    
+    if (completedDates.isEmpty) return null;
+    
+    completedDates.sort((a, b) => b.compareTo(a)); // Sort in descending order
+    return completedDates.first;
+  }
+
   /// Copy with updated fields
   Habit copyWith({
     String? id,
@@ -279,9 +326,9 @@ class Habit {
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String,
-      colorIndex: json['colorIndex'] as int? ?? 0, // Default to first color
+      colorIndex: json['colorIndex'] as int? ?? defaultColorIndex, // Default to first color
       createdAt: DateTime.parse(json['createdAt'] as String),
-      iconName: json['iconName'] as String? ?? 'check_circle', // Default icon
+      iconName: json['iconName'] as String? ?? defaultIconName, // Default icon
       reminderTime: reminderTime,
       enableReminders: json['enableReminders'] as bool? ?? false, // Default disabled
       // Reconstruct completion map with DateTime keys

@@ -87,6 +87,20 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       return;
     }
 
+    // Validate that reminder time is set when reminders are enabled
+    if (_enableReminders && _reminderTime == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a reminder time when reminders are enabled'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -101,18 +115,45 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
 
       await habitStorage.saveHabit(habit);
 
-      // Schedule reminder notification if enabled (with timeout to prevent hanging)
+      // Handle notification permissions and scheduling if reminders are enabled
       if (_enableReminders && _reminderTime != null) {
         try {
-          await notificationService.scheduleHabitReminder(habit).timeout(
-            const Duration(seconds: 5),
-            onTimeout: () {
-              debugPrint('Notification scheduling timed out, but habit was saved');
-            },
-          );
+          // Check and request permissions specifically for reminders
+          final hasPermissions = await notificationService.checkAndRequestPermissionsForReminders();
+          
+          if (hasPermissions) {
+            // Permissions granted, schedule the reminder
+            await notificationService.scheduleHabitReminder(habit).timeout(
+              const Duration(seconds: 5),
+              onTimeout: () {
+                debugPrint('Notification scheduling timed out, but habit was saved');
+              },
+            );
+          } else {
+            // Permissions denied, show warning but still save the habit
+            debugPrint('Notification permissions not granted, cannot schedule reminder');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Reminders saved but notifications are disabled. Enable notifications in system settings for reminders to work.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 5),
+                ),
+              );
+            }
+          }
         } catch (e) {
           debugPrint('Failed to schedule notification: $e');
           // Don't fail the habit creation if notification scheduling fails
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Habit saved but reminder scheduling failed: $e'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         }
       }
 
@@ -368,42 +409,60 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
 
                     // Time Picker (only shown when reminders are enabled)
                     if (_enableReminders)
-                      GestureDetector(
-                        onTap: _selectReminderTime,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _reminderTime != null ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : Colors.grey[300]!,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Reminder Time *',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.access_time,
-                                color: _reminderTime != null ? Theme.of(context).colorScheme.primary : Colors.grey[600],
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _reminderTime != null
-                                      ? 'Reminder at ${_reminderTime!.format(context)}'
-                                      : 'Select reminder time',
-                                  style: TextStyle(
-                                    color: _reminderTime != null ? Colors.black : Colors.grey[600],
-                                    fontWeight: _reminderTime != null ? FontWeight.w500 : FontWeight.w400,
-                                  ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: _selectReminderTime,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _reminderTime != null 
+                                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) 
+                                      : Colors.red.withValues(alpha: 0.3),
+                                  width: _reminderTime == null ? 2 : 1,
                                 ),
                               ),
-                              Icon(
-                                Icons.chevron_right,
-                                color: Colors.grey[400],
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    color: _reminderTime != null 
+                                        ? Theme.of(context).colorScheme.primary 
+                                        : Colors.red[600],
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _reminderTime != null
+                                          ? 'Reminder at ${_reminderTime!.format(context)}'
+                                          : 'Select reminder time (required)',
+                                      style: TextStyle(
+                                        color: _reminderTime != null ? Colors.black : Colors.red[600],
+                                        fontWeight: _reminderTime != null ? FontWeight.w500 : FontWeight.w400,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: _reminderTime != null ? Colors.grey[400] : Colors.red[400],
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
 
                     const SizedBox(height: 32),

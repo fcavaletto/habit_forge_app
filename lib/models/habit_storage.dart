@@ -153,6 +153,46 @@ class HabitStorage {
       'averageCompletionRate': averageCompletionRate,
     };
   }
+
+  /// Get habits that need attention (low completion rate or broken streaks)
+  ///
+  /// Identifies habits that may need user attention based on:
+  /// - Low completion rate in the last 30 days
+  /// - Recently broken streaks
+  /// - Habits that haven't been completed recently
+  ///
+  /// @return List of habits that need attention
+  Future<List<Habit>> getHabitsNeedingAttention() async {
+    try {
+      final habits = await getHabits();
+      final now = DateTime.now();
+
+      return habits.where((habit) {
+        // Check for low completion rate
+        if (habit.completionRate < 0.3) return true;
+
+        // Check for recently broken streaks (completed yesterday but not today)
+        final yesterday = now.subtract(const Duration(days: 1));
+        final wasCompletedYesterday = habit.isCompleted(yesterday);
+        final isCompletedToday = habit.isCompleted(now);
+        
+        if (wasCompletedYesterday && !isCompletedToday) return true;
+
+        // Check for habits not completed in the last week
+        final lastWeek = now.subtract(const Duration(days: 7));
+        final hasRecentCompletion = habit.completions.keys.any((date) => 
+          date.isAfter(lastWeek) || date.isAtSameMomentAs(lastWeek)
+        );
+        
+        if (!hasRecentCompletion) return true;
+
+        return false;
+      }).toList();
+    } catch (e) {
+      debugPrint('❌ Error getting habits needing attention: $e');
+      return [];
+    }
+  }
 }
 
 /// Global singleton instance of HabitStorage
