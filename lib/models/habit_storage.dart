@@ -8,11 +8,13 @@ class HabitSaveResult {
   final bool success;
   final String? errorMessage;
   final Habit? savedHabit;
+  final Habit? conflictingHabit; // For archived duplicate case
 
   const HabitSaveResult._({
     required this.success,
     this.errorMessage,
     this.savedHabit,
+    this.conflictingHabit,
   });
 
   /// Successfully saved the habit
@@ -25,6 +27,15 @@ class HabitSaveResult {
     return HabitSaveResult._(
       success: false,
       errorMessage: 'A habit with the name "$existingHabitName" and the same icon already exists',
+    );
+  }
+
+  /// Failed to save due to archived duplicate habit (requires user confirmation)
+  factory HabitSaveResult.duplicateArchived(Habit conflictingHabit) {
+    return HabitSaveResult._(
+      success: false,
+      errorMessage: 'A habit with the name "${conflictingHabit.name}" and the same icon exists but is archived',
+      conflictingHabit: conflictingHabit,
     );
   }
 
@@ -91,26 +102,77 @@ class HabitStorage {
   /// @return HabitSaveResult indicating success or failure with details
   Future<HabitSaveResult> saveHabit(Habit habit) async {
     try {
-      final habits = await getHabits();
-
-      // Check for duplicates using deterministic ID matching
-      // With deterministic IDs, same name+icon = same ID
-      final existingIndex = habits.indexWhere((h) => h.id == habit.id);
+      // Check all habits (including archived) for duplicates
+      final allHabits = await getHabits(includeArchived: true);
+      final existingIndex = allHabits.indexWhere((h) => h.id == habit.id);
 
       if (existingIndex >= 0) {
-        // Habit with same ID exists - this is a duplicate since we're using
-        // deterministic IDs based on name+icon combination
-        final existingHabit = habits[existingIndex];
-        return HabitSaveResult.duplicate(existingHabit.name);
-      } else {
-        habits.add(habit); // Add new habit
+        final existingHabit = allHabits[existingIndex];
+        if (existingHabit.isArchived) {
+          // Archived duplicate - offer to overwrite
+          return HabitSaveResult.duplicateArchived(existingHabit);
+        } else {
+          // Active duplicate - block creation
+          return HabitSaveResult.duplicate(existingHabit.name);
+        }
       }
 
-      await _saveHabits(habits); // Persist changes
+      // No duplicate found, add as new habit
+      allHabits.add(habit);
+      await _saveHabits(allHabits);
       return HabitSaveResult.success(habit);
     } catch (e) {
       debugPrint('Error saving habit: $e');
       return HabitSaveResult.error('Failed to save habit: $e');
+    }
+  }
+
+  /// Overwrite an archived habit with new properties while preserving completion history
+  ///
+  /// This method is used when a user chooses to overwrite an archived habit during
+  /// the habit creation process. It updates all properties except:
+  /// - Creation timestamp (preserved from original)
+  /// - Completion history (preserved from original)
+  /// - ID (remains the same)
+  ///
+  /// The habit is also unarchived, making it visible in the main list again.
+  ///
+  /// @param archivedHabitId The ID of the archived habit to overwrite
+  /// @param newHabit The new habit with updated properties
+  /// @return HabitSaveResult indicating success or failure
+  Future<HabitSaveResult> overwriteArchivedHabit(String archivedHabitId, Habit newHabit) async {
+    try {
+      final allHabits = await getHabits(includeArchived: true);
+      final existingIndex = allHabits.indexWhere((h) => h.id == archivedHabitId);
+
+      if (existingIndex < 0) {
+        return HabitSaveResult.error('Archived habit not found');
+      }
+
+      final archivedHabit = allHabits[existingIndex];
+
+      // Create updated habit preserving completion history and creation date
+      final updatedHabit = Habit(
+        id: archivedHabit.id, // Keep original ID
+        name: newHabit.name, // Use new name
+        description: newHabit.description, // Use new description
+        colorIndex: newHabit.colorIndex, // Use new color
+        createdAt: archivedHabit.createdAt, // Preserve original creation date
+        completions: archivedHabit.completions, // Preserve completion history
+        iconName: newHabit.iconName, // Use new icon (though it should be same)
+        reminderTime: newHabit.reminderTime, // Use new reminder settings
+        enableReminders: newHabit.enableReminders,
+        isArchived: false, // Unarchive the habit
+      );
+
+      // Update the habit in storage
+      allHabits[existingIndex] = updatedHabit;
+      await _saveHabits(allHabits);
+
+      return HabitSaveResult.success(updatedHabit);
+    } catch (e) {
+      debugPrint('Error overwriting archived habit: $e');
+      return HabitSaveResult.error('Failed to overwrite archived habit: $e');
     }
   }
 

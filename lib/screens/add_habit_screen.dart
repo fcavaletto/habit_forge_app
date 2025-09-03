@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../models/habit_storage.dart';
 import '../services/notification_service.dart';
+import '../widgets/archived_habit_overwrite_dialog.dart';
 
 /// Modal bottom sheet for adding a new habit
 class AddHabitScreen extends StatefulWidget {
@@ -45,6 +46,70 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   void _clearError() {
     if (_errorMessage != null && mounted) {
       setState(() => _errorMessage = null);
+    }
+  }
+
+  /// Shows dialog for overwriting an archived habit
+  Future<void> _showArchivedOverwriteDialog(Habit archivedHabit, Habit newHabit) async {
+    await showDialog(
+      context: context,
+      builder: (context) => ArchivedHabitOverwriteDialog(
+        archivedHabit: archivedHabit,
+        onOverwrite: () => _handleOverwriteArchived(archivedHabit.id, newHabit),
+        onCancel: () => _handleCancelOverwrite(),
+      ),
+    );
+  }
+
+  /// Handles the overwrite action for an archived habit
+  Future<void> _handleOverwriteArchived(String archivedHabitId, Habit newHabit) async {
+    try {
+      final result = await habitStorage.overwriteArchivedHabit(archivedHabitId, newHabit);
+
+      if (result.success && result.savedHabit != null) {
+        // Overwrite successful
+        final savedHabit = result.savedHabit!;
+        widget.onHabitAdded(savedHabit);
+
+        // Close the add habit screen
+        if (mounted) {
+          Navigator.of(context).pop();
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Habit "${savedHabit.name}" has been unarchived and updated'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        // Overwrite failed
+        if (mounted) {
+          setState(() {
+            _errorMessage = result.errorMessage ?? 'Failed to overwrite archived habit';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'An unexpected error occurred: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Handles the cancel action for archived habit overwrite
+  void _handleCancelOverwrite() {
+    if (mounted) {
+      setState(() {
+        _errorMessage = 'A habit with the same name and icon exists but is archived. Choose a different name or icon.';
+        _isLoading = false;
+      });
     }
   }
 
@@ -126,12 +191,20 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       final result = await habitStorage.saveHabit(habit);
 
       if (!result.success) {
-        // Handle save failure (duplicate or error)
-        if (mounted) {
-          setState(() {
-            _errorMessage = result.errorMessage ?? 'Failed to save habit';
-            _isLoading = false;
-          });
+        // Handle different types of save failures
+        if (result.conflictingHabit != null) {
+          // Archived duplicate - show overwrite dialog
+          if (mounted) {
+            await _showArchivedOverwriteDialog(result.conflictingHabit!, habit);
+          }
+        } else {
+          // Regular error (active duplicate or other error)
+          if (mounted) {
+            setState(() {
+              _errorMessage = result.errorMessage ?? 'Failed to save habit';
+              _isLoading = false;
+            });
+          }
         }
         return; // Don't proceed with notification setup if save failed
       }
