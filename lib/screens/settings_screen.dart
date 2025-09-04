@@ -54,9 +54,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _exportData() async {
     try {
+      // Show initial progress message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppConstants.exportingMessage)),
+        );
+      }
+
       final habits = await _habitStorage.getHabits(includeArchived: true);
       final exportData = {
-        'version': '1.0',
+        'version': AppConstants.exportVersion,
         'exportDate': DateTime.now().toIso8601String(),
         'habits': habits.map((habit) => habit.toJson()).toList(),
       };
@@ -67,67 +74,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       await file.writeAsString(jsonEncode(exportData));
 
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Habit Forge Data Export',
-        subject: 'My Habit Data',
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data exported successfully')),
+      // Try to share with improved error handling
+      try {
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: AppConstants.exportText,
+          subject: AppConstants.exportSubject,
         );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
-      }
-    }
-  }
 
-  Future<void> _importData() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
-
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final content = await file.readAsString();
-        final data = jsonDecode(content) as Map<String, dynamic>;
-
-        if (data['habits'] == null) {
-          throw 'Invalid file format';
-        }
-
-        final habitsData = data['habits'] as List<dynamic>;
-        int importedCount = 0;
-        int skippedCount = 0;
-
-        for (final habitData in habitsData) {
-          try {
-            final habit = Habit.fromJson(habitData as Map<String, dynamic>);
-            final result = await _habitStorage.saveHabit(habit);
-
-            if (result.success) {
-              importedCount++;
-            } else if (result.errorMessage?.contains('already exists') == true) {
-              skippedCount++;
-            }
-          } catch (e) {
-            // Skip invalid habits
-            continue;
-          }
-        }
-
+        // Since shareXFiles doesn't provide completion feedback,
+        // we'll show an informative message instead of claiming success
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Import complete: $importedCount imported, $skippedCount skipped (already exist)'),
-              duration: const Duration(seconds: 4),
+              content: const Text(
+                'Export file prepared. Please select "Save to Files" or your preferred app to complete the export.'
+              ),
+              duration: AppConstants.snackbarDuration,
+              action: SnackBarAction(
+                label: 'OK',
+                onPressed: () {
+                  // User acknowledged the message
+                },
+              ),
+            ),
+          );
+        }
+      } catch (shareError) {
+        // If sharing fails, inform user about alternative
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Share failed: ${shareError.toString()}. File saved to app storage.'
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: AppConstants.snackbarDuration,
             ),
           );
         }
@@ -135,7 +117,108 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e')),
+          SnackBar(
+            content: Text('Export failed: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Imports habits from a JSON file with conflict resolution
+  ///
+  /// This method:
+  /// 1. Opens a file picker for JSON files
+  /// 2. Validates the file format
+  /// 3. Imports habits while skipping duplicates
+  /// 4. Provides detailed feedback about import results
+  Future<void> _importData() async {
+    try {
+      // Show initial progress message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppConstants.importingMessage)),
+        );
+      }
+
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: [AppConstants.exportFileExtension],
+      );
+
+      if (result == null || result.files.isEmpty || result.files.single.path == null) {
+        // User cancelled the file picker
+        return;
+      }
+
+      final file = File(result.files.single.path!);
+
+      if (!await file.exists()) {
+        throw AppConstants.fileNotFoundError;
+      }
+
+      final content = await file.readAsString();
+      final data = jsonDecode(content) as Map<String, dynamic>;
+
+      // Validate file format
+      if (data['habits'] == null || data['habits'] is! List) {
+        throw AppConstants.invalidFileFormatError;
+      }
+
+      final habitsData = data['habits'] as List<dynamic>;
+      int importedCount = 0;
+      int skippedCount = 0;
+      int errorCount = 0;
+
+      // Process each habit with error handling
+      for (final habitData in habitsData) {
+        try {
+          final habit = Habit.fromJson(habitData as Map<String, dynamic>);
+          final saveResult = await _habitStorage.saveHabit(habit);
+
+          if (saveResult.success) {
+            importedCount++;
+          } else if (saveResult.errorMessage?.contains('already exists') == true ||
+                     saveResult.conflictingHabit != null) {
+            skippedCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (e) {
+          // Skip invalid habits but count them
+          errorCount++;
+          continue;
+        }
+      }
+
+      // Show detailed results
+      if (mounted) {
+        final message = StringBuffer();
+        message.write('$importedCount imported');
+
+        if (skippedCount > 0) {
+          message.write(', $skippedCount skipped (already exist)');
+        }
+
+        if (errorCount > 0) {
+          message.write(', $errorCount errors');
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import complete: $message'),
+            duration: AppConstants.snackbarDuration,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import failed: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
       }
     }
@@ -177,9 +260,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
+          Row(
+            children: [
+              Expanded(
                       child: Text(
                         'Theme Mode',
                         style: Theme.of(context).textTheme.titleMedium,
@@ -203,14 +286,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         DropdownMenuItem(
                           value: ThemeMode.light,
                           child: Text(
-                            'Light',
+                  'Light',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
                         DropdownMenuItem(
                           value: ThemeMode.dark,
                           child: Text(
-                            'Dark',
+                  'Dark',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
