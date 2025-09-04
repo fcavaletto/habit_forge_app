@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../models/habit.dart';
 import '../models/habit_storage.dart';
 import '../screens/add_habit_screen.dart';
+import '../widgets/stats/completion_chart.dart';
+import '../widgets/stats/streak_display.dart';
+import '../widgets/stats/weekly_overview.dart';
+import '../widgets/stats/monthly_calendar.dart';
+import '../utils/constants.dart';
 
 /// Stats Screen - Displays analytics and charts for habit tracking
 ///
 /// Shows comprehensive statistics including:
-/// - Completion streaks
-/// - Completion rates over time
-/// - Habit performance metrics
+/// - Completion streaks with motivational messages
+/// - 30-day completion rate chart with interactive tooltips
+/// - Weekly overview with visual completion indicators
+/// - Monthly calendar with horizontal scrolling navigation
+/// - Today highlighting and completion status visualization
 class StatsScreen extends StatefulWidget {
   final Habit habit;
 
@@ -34,6 +40,8 @@ class _StatsScreenState extends State<StatsScreen> {
     _loadHabitData();
   }
 
+  /// Loads habit data including completion history
+  /// Handles loading states and error scenarios
   Future<void> _loadHabitData() async {
     setState(() => _isLoading = true);
     try {
@@ -50,7 +58,10 @@ class _StatsScreenState extends State<StatsScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load habit data: $e')),
+          SnackBar(
+            content: Text(AppConstants.genericError),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -70,7 +81,7 @@ class _StatsScreenState extends State<StatsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppConstants.defaultPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -79,45 +90,49 @@ class _StatsScreenState extends State<StatsScreen> {
                   const SizedBox(height: 24),
 
                   // Current Streak
-                  _buildCurrentStreak(),
+                  StreakDisplay(
+                    currentStreak: _calculateCurrentStreak(),
+                    longestStreak: _calculateLongestStreak(),
+                  ),
                   const SizedBox(height: 24),
 
                   // Completion Rate Chart
-                  _buildCompletionRateChart(),
+                  CompletionChart(completionData: _getLast30DaysData()),
                   const SizedBox(height: 24),
 
                   // Weekly Overview
-                  _buildWeeklyOverview(),
+                  WeeklyOverview(weeklyData: _getWeeklyData()),
                   const SizedBox(height: 24),
 
                   // Monthly Calendar
-                  _buildMonthlyCalendar(),
+                  MonthlyCalendar(completions: _completions),
                 ],
               ),
             ),
     );
   }
 
+  /// Builds the habit header card with icon and basic information
   Widget _buildHabitHeader() {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppConstants.defaultPadding),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: AppConstants.iconSizeLarge,
+              height: AppConstants.iconSizeLarge,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
               ),
               child: Icon(
                 widget.habit.iconName.toIconData,
                 color: Theme.of(context).colorScheme.primary,
-                size: 24,
+                size: AppConstants.iconSizeMedium,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppConstants.defaultPadding),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,378 +159,48 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildCurrentStreak() {
-    final currentStreak = _calculateCurrentStreak();
-    final longestStreak = _calculateLongestStreak();
+  /// Calculates completion rate data points for the last 30 days
+  ///
+  /// Returns a list of double values representing daily completion rates.
+  /// Each value is either 0.0 (not completed) or 1.0 (completed).
+  /// The chart shows daily completion status rather than weekly averages
+  /// to provide accurate day-by-day habit tracking visualization.
+  List<double> _getLast30DaysData() {
+    final data = <double>[];
+    final now = DateTime.now();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Streaks',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        currentStreak.toString(),
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Current Streak',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        longestStreak.toString(),
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.secondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Longest Streak',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    for (int i = AppConstants.chartDaysCount - 1; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
+      final rate = isCompleted ? 1.0 : 0.0;
+      data.add(rate);
+    }
+
+    return data;
   }
 
-  Widget _buildCompletionRateChart() {
-    final last30Days = _getLast30DaysData();
+  /// Calculates weekly completion data for the current week
+  ///
+  /// Returns a list of boolean values representing completion status
+  /// for each day of the current week (Monday to Sunday).
+  List<bool> _getWeeklyData() {
+    final data = <bool>[];
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Completion Rate (Last 30 Days)',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 30,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            '${(value * 100).toInt()}%',
-                            style: const TextStyle(fontSize: 12),
-                          );
-                        },
-                      ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          final date = DateTime.now().subtract(Duration(days: 29 - value.toInt()));
-                          return Text(
-                            '${date.month}/${date.day}',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                    ),
-                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: last30Days.asMap().entries.map((entry) {
-                        return FlSpot(entry.key.toDouble(), entry.value);
-                      }).toList(),
-                      isCurved: true,
-                      color: Theme.of(context).colorScheme.primary,
-                      barWidth: 3,
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    for (int i = 0; i < AppConstants.weeklyOverviewDays; i++) {
+      final date = weekStart.add(Duration(days: i));
+      final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
+      data.add(isCompleted);
+    }
+
+    return data;
   }
 
-  Widget _buildWeeklyOverview() {
-    final weeklyData = _getWeeklyData();
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'This Week',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                  .asMap()
-                  .entries
-                  .map((entry) {
-                final dayName = entry.value;
-                final completed = weeklyData[entry.key];
-                return Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: completed
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        completed ? Icons.check : Icons.close,
-                        color: completed
-                            ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      dayName,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMonthlyCalendar() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Monthly Calendar',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 300, // Fixed height for the calendar with indicators
-              child: Column(
-                children: [
-                  // Page indicators
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.chevron_left,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Swipe to navigate months',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.chevron_right,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Calendar with past/future scrolling
-                  Expanded(
-                    child: PageView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: 24, // Show 12 months before + 12 months after
-                      controller: PageController(initialPage: 12), // Start at current month (index 12)
-                      itemBuilder: (context, pageIndex) {
-                        final currentDate = DateTime.now();
-                        final monthOffset = pageIndex - 12; // 12 = current month
-                        final targetMonth = DateTime(currentDate.year, currentDate.month + monthOffset, 1);
-                        return _buildMonthGrid(targetMonth);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMonthGrid(DateTime monthDate) {
-    final firstDayOfMonth = DateTime(monthDate.year, monthDate.month, 1);
-    final lastDayOfMonth = DateTime(monthDate.year, monthDate.month + 1, 0);
-
-    // Calculate the weekday offset (0 = Sunday, 1 = Monday, etc.)
-    final firstWeekday = firstDayOfMonth.weekday;
-    final offset = (firstWeekday - 1) % 7; // Adjust so Monday is 0
-
-    return Column(
-      children: [
-        // Month and year header
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            '${_getMonthName(monthDate.month)} ${monthDate.year}',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-
-        // Day labels
-        Row(
-          children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-              .map((day) => Expanded(
-                    child: Text(
-                      day,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ))
-              .toList(),
-        ),
-
-        const SizedBox(height: 8),
-
-        // Calendar grid
-        Expanded(
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              crossAxisSpacing: 2,
-              mainAxisSpacing: 2,
-            ),
-            itemCount: 42, // 6 weeks × 7 days
-            itemBuilder: (context, index) {
-              final dayNumber = index - offset + 1;
-
-              if (dayNumber < 1 || dayNumber > lastDayOfMonth.day) {
-                // Empty cell
-                return Container();
-              }
-
-              final date = DateTime(monthDate.year, monthDate.month, dayNumber);
-              final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
-              final isToday = date.year == DateTime.now().year &&
-                             date.month == DateTime.now().month &&
-                             date.day == DateTime.now().day;
-
-              return Container(
-                decoration: BoxDecoration(
-                  color: isCompleted
-                      ? Theme.of(context).colorScheme.primary
-                      : isToday
-                          ? Theme.of(context).colorScheme.secondaryContainer
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(6),
-                  border: isToday && !isCompleted
-                      ? Border.all(
-                          color: Theme.of(context).colorScheme.secondary,
-                          width: 2,
-                        )
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  dayNumber.toString(),
-                  style: TextStyle(
-                    color: isCompleted
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
+  /// Calculates the current streak of consecutive completed days
+  ///
+  /// A streak continues as long as the habit is completed each day.
+  /// The streak breaks when a day is missed, but can resume the next day.
   int _calculateCurrentStreak() {
     final now = DateTime.now();
     int streak = 0;
@@ -537,6 +222,9 @@ class _StatsScreenState extends State<StatsScreen> {
     return streak;
   }
 
+  /// Calculates the longest streak of consecutive completed days
+  ///
+  /// This represents the personal best achievement for this habit.
   int _calculateLongestStreak() {
     int longestStreak = 0;
     int currentStreak = 0;
@@ -555,34 +243,9 @@ class _StatsScreenState extends State<StatsScreen> {
     return longestStreak;
   }
 
-  List<double> _getLast30DaysData() {
-    final data = <double>[];
-    final now = DateTime.now();
-
-    for (int i = 29; i >= 0; i--) {
-      final date = now.subtract(Duration(days: i));
-      final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
-      final rate = isCompleted ? 1.0 : 0.0;
-      data.add(rate);
-    }
-
-    return data;
-  }
-
-  List<bool> _getWeeklyData() {
-    final data = <bool>[];
-    final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
-
-    for (int i = 0; i < 7; i++) {
-      final date = weekStart.add(Duration(days: i));
-      final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
-      data.add(isCompleted);
-    }
-
-    return data;
-  }
-
+  /// Converts month number to month name
+  ///
+  /// Used for displaying month names in calendar views.
   String _getMonthName(int month) {
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
