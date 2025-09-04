@@ -135,7 +135,7 @@ class HabitCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(2), // Rounded corners
                               ),
                               child: completed
-                                  ? Icon( // Check mark for completed days
+                                  ? const Icon( // Check mark for completed days
                                       Icons.check,
                                       size: 12,
                                       color: Colors.white,
@@ -469,7 +469,7 @@ class DetailedHabitCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: completed
-                        ? Icon(
+                        ? const Icon(
                             Icons.check,
                             size: 14,
                             color: Colors.white,

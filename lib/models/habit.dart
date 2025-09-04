@@ -48,6 +48,9 @@ class Habit {
   /// Whether this habit is archived (hidden from main view but not deleted)
   final bool isArchived;
 
+  /// Frequency data for when the habit should be active
+  final Map<String, int> frequencyDays;
+
   /// Maximum number of habit colors available in the theme
   static const int maxColorIndex = 9;
 
@@ -56,6 +59,11 @@ class Habit {
 
   /// Default color index for new habits
   static const int defaultColorIndex = 0;
+
+  /// Default frequency days (every day active)
+  static const Map<String, int> defaultFrequencyDays = {
+    'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1
+  };
 
   Habit({
     required this.id,
@@ -68,6 +76,7 @@ class Habit {
     this.reminderTime,
     this.enableReminders = false,
     this.isArchived = false,
+    this.frequencyDays = defaultFrequencyDays,
   }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex,
               'Color index must be between 0 and $maxColorIndex');
 
@@ -99,10 +108,11 @@ class Habit {
     TimeOfDay? reminderTime,
     bool enableReminders = false,
     bool isArchived = false,
+    Map<String, int>? frequencyDays,
   }) {
     // Generate deterministic ID based on normalized name and icon
     final normalizedName = name.toLowerCase().trim();
-    final id = '${normalizedName}_${iconName}';
+    final id = '${normalizedName}_$iconName';
 
     return Habit(
       id: id, // Deterministic ID based on name + icon
@@ -115,6 +125,7 @@ class Habit {
       reminderTime: reminderTime,
       enableReminders: enableReminders,
       isArchived: isArchived,
+      frequencyDays: frequencyDays ?? defaultFrequencyDays,
     );
   }
 
@@ -280,6 +291,7 @@ class Habit {
     TimeOfDay? reminderTime,
     bool? enableReminders,
     bool? isArchived,
+    Map<String, int>? frequencyDays,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -292,6 +304,7 @@ class Habit {
       reminderTime: reminderTime ?? this.reminderTime,
       enableReminders: enableReminders ?? this.enableReminders,
       isArchived: isArchived ?? this.isArchived,
+      frequencyDays: frequencyDays ?? this.frequencyDays,
     );
   }
 
@@ -318,6 +331,7 @@ class Habit {
           : null,
       'enableReminders': enableReminders,
       'isArchived': isArchived,
+      'frequencyDays': frequencyDays,
       // Convert DateTime keys to ISO strings for JSON compatibility
       'completions': completions.map(
         (key, value) => MapEntry(key.toIso8601String(), value),
@@ -358,6 +372,9 @@ class Habit {
       reminderTime: reminderTime,
       enableReminders: json['enableReminders'] as bool? ?? false, // Default disabled
       isArchived: json['isArchived'] as bool? ?? false, // Default to not archived
+      frequencyDays: (json['frequencyDays'] as Map<String, dynamic>?)?.map(
+        (key, value) => MapEntry(key, value as int),
+      ) ?? defaultFrequencyDays, // Default to every day
       // Reconstruct completion map with DateTime keys
       completions: (json['completions'] as Map<String, dynamic>).map(
         (key, value) => MapEntry(DateTime.parse(key), value as bool),

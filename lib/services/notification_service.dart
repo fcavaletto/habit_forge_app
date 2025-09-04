@@ -252,7 +252,7 @@ class NotificationService {
       channelShowBadge: true,
       ticker: 'Habit reminder: ${habit.name}',
       enableLights: true,
-      ledColor: Color(0xFF2196F3),
+      ledColor: const Color(0xFF2196F3),
       ledOnMs: 1000,
       ledOffMs: 1000,
       actions: <AndroidNotificationAction>[

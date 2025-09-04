@@ -223,7 +223,7 @@ class _HabitDashboardState extends State<HabitDashboard> {
         SnackBar(
           content: Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.warning_amber_rounded,
                 color: Colors.white,
                 size: 20,
