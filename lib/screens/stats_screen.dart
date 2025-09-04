@@ -357,15 +357,60 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 280, // Fixed height for the calendar
-              child: PageView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 12, // Show 12 months
-                itemBuilder: (context, monthIndex) {
-                  final currentDate = DateTime.now();
-                  final targetMonth = DateTime(currentDate.year, currentDate.month + monthIndex, 1);
-                  return _buildMonthGrid(targetMonth);
-                },
+              height: 300, // Fixed height for the calendar with indicators
+              child: Column(
+                children: [
+                  // Page indicators
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chevron_left,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Swipe to navigate months',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Calendar with past/future scrolling
+                  Expanded(
+                    child: PageView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: 24, // Show 12 months before + 12 months after
+                      controller: PageController(initialPage: 12), // Start at current month (index 12)
+                      itemBuilder: (context, pageIndex) {
+                        final currentDate = DateTime.now();
+                        final monthOffset = pageIndex - 12; // 12 = current month
+                        final targetMonth = DateTime(currentDate.year, currentDate.month + monthOffset, 1);
+                        return _buildMonthGrid(targetMonth);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
