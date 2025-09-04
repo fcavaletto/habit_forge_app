@@ -7,6 +7,8 @@ import 'widgets/habit_card.dart';
 import 'screens/add_habit_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/settings_screen.dart';
+// PHASE 2: Import for new DashboardScreen implementation
+import 'screens/dashboard_screen.dart';
 import 'services/notification_service.dart';
 
 /// Application entry point
@@ -50,6 +52,10 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
   /// Current theme mode - defaults to system preference
   ThemeMode _themeMode = ThemeMode.system;
 
+  /// PHASE 2: Feature flag to switch between old and new dashboard implementations
+  /// Set to false to use original HabitDashboard, true to use new DashboardScreen
+  static const bool _useNewDashboard = false;
+
   @override
   void initState() {
     super.initState();
@@ -88,10 +94,33 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
       theme: AppTheme.lightTheme, // Light theme configuration
       darkTheme: AppTheme.darkTheme, // Dark theme configuration
       themeMode: _themeMode, // Current theme mode (system/light/dark)
-      home: HabitDashboard(
-        themeMode: _themeMode, // Pass current theme to dashboard
-        onThemeChanged: _saveThemeMode, // Callback for theme changes
-      ),
+      home: _buildDashboard(), // PHASE 2: Use conditional dashboard builder
+    );
+  }
+
+  /// PHASE 2: Conditional dashboard builder to support both implementations
+  ///
+  /// This method allows switching between the original HabitDashboard implementation
+  /// and the new DashboardScreen implementation using the _useNewDashboard flag.
+  /// Both implementations remain available for testing and gradual migration.
+  Widget _buildDashboard() {
+    if (_useNewDashboard) {
+      // PHASE 2: New DashboardScreen implementation (currently commented out)
+      // Uncomment this block when ready to switch to the new implementation
+      /*
+      return DashboardScreen(
+        themeMode: _themeMode,
+        onThemeChanged: _saveThemeMode,
+      );
+      */
+    }
+
+    // PHASE 2: Original HabitDashboard implementation (currently active)
+    // This is the existing, working implementation that will remain active
+    // until the new implementation is fully tested and ready for production
+    return HabitDashboard(
+      themeMode: _themeMode, // Pass current theme to dashboard
+      onThemeChanged: _saveThemeMode, // Callback for theme changes
     );
   }
 }
