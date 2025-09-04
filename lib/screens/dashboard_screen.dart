@@ -222,13 +222,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
+          padding: const EdgeInsets.symmetric(horizontal: 12), // Reduced padding
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.2,
+              crossAxisSpacing: 8, // Reduced spacing
+              mainAxisSpacing: 8, // Reduced spacing
+              childAspectRatio: 1.0, // Adjusted aspect ratio for new layout
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {

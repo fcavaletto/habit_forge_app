@@ -63,8 +63,8 @@ class HabitCard extends StatelessWidget {
     final habitColor = colorScheme.habitColor(habit.colorIndex);
 
     return Card(
-      // Card styling with consistent margins and elevation
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      // Remove card margins to prevent overflow - grid handles spacing
+      margin: EdgeInsets.zero,
       child: InkWell(
         // Tap handler for opening detailed view
         onTap: onTap,
@@ -73,115 +73,29 @@ class HabitCard extends StatelessWidget {
         // Rounded corners for modern Material 3 design
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+          padding: const EdgeInsets.all(12), // Reduced padding
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Habit icon with themed background
-              // Shows Material Icon with habit's assigned color
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  // Semi-transparent background using habit color
-                  color: habitColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  _getIconData(habit.iconName), // Convert string to IconData
-                  color: habitColor, // Use full opacity for icon
-                  size: 24,
-                ),
-              ),
-
-              const SizedBox(width: 16),
-
-              // Habit details and chart
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Habit name
-                    Text(
-                      habit.name,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 18,
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    // Habit description
-                    Text(
-                      habit.description,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Progress chart - Visual representation of recent habit completion
-                    // Uses habit.last7Days computed property for efficient data access
-                    SizedBox(
-                      height: 50, // Fixed height for consistent layout
-                      child: Row(
-                        // Map each day to a visual indicator
-                        children: habit.last7Days.map((completed) {
-                          return Expanded( // Equal width for each day
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 1), // Small gaps between days
-                              decoration: BoxDecoration(
-                                // Completed days: full habit color, incomplete: very light tint
-                                color: completed
-                                    ? habitColor
-                                    : habitColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(2), // Rounded corners
-                              ),
-                              child: completed
-                                  ? const Icon( // Check mark for completed days
-                                      Icons.check,
-                                      size: 12,
-                                      color: Colors.white,
-                                    )
-                                  : null,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 16),
-
-              // Streak counter and complete button
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Top row: Icon and action buttons
+              Row(
                 children: [
-                  // Streak counter
+                  // Habit icon with themed background
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 32, // Smaller icon
+                    height: 32,
                     decoration: BoxDecoration(
                       color: habitColor.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Center(
-                      child: Text(
-                        habit.currentStreak.toString(),
-                        style: TextStyle(
-                          color: habitColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
+                    child: Icon(
+                      _getIconData(habit.iconName),
+                      color: habitColor,
+                      size: 20,
                     ),
                   ),
 
-                  const SizedBox(height: 8),
+                  const Spacer(), // Push buttons to the right
 
                   // Action buttons row
                   Row(
@@ -196,10 +110,10 @@ class HabitCard extends StatelessWidget {
                             ),
                           );
                         },
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          width: 32,
-                          height: 32,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
                             color: colorScheme.surfaceContainerHighest,
                             shape: BoxShape.circle,
@@ -207,18 +121,18 @@ class HabitCard extends StatelessWidget {
                           child: Icon(
                             Icons.bar_chart,
                             color: colorScheme.onSurface.withValues(alpha: 0.7),
-                            size: 18,
+                            size: 16,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       // Complete button
                       InkWell(
                         onTap: onComplete,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          width: 32,
-                          height: 32,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
                             color: colorScheme.secondary,
                             shape: BoxShape.circle,
@@ -226,13 +140,104 @@ class HabitCard extends StatelessWidget {
                           child: Icon(
                             Icons.add,
                             color: colorScheme.onSecondary,
-                            size: 20,
+                            size: 18,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ],
+              ),
+
+              const SizedBox(height: 8),
+
+              // Habit details
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Habit text content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Habit name
+                        Text(
+                          habit.name,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
+                        const SizedBox(height: 2),
+
+                        // Habit description
+                        Text(
+                          habit.description,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 11,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Streak counter
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: habitColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        habit.currentStreak.toString(),
+                        style: TextStyle(
+                          color: habitColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              // Progress chart - Compact version
+              SizedBox(
+                height: 32, // Smaller height
+                child: Row(
+                  children: habit.last7Days.map((completed) {
+                    return Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                        decoration: BoxDecoration(
+                          color: completed
+                              ? habitColor
+                              : habitColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                        child: completed
+                            ? const Icon(
+                                Icons.check,
+                                size: 10,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ],
           ),
