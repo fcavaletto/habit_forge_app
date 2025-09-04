@@ -359,39 +359,77 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-              ),
-              itemCount: lastDayOfMonth.day,
-              itemBuilder: (context, index) {
-                final day = index + 1;
-                final date = DateTime(now.year, now.month, day);
-                final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
-
-                return Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: isCompleted
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(6),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Day labels
+                  Row(
+                    children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                        .map((day) => SizedBox(
+                              width: 40,
+                              child: Text(
+                                day,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ))
+                        .toList(),
                   ),
-                  child: Text(
-                    day.toString(),
-                    style: TextStyle(
-                      color: isCompleted
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
+                  const SizedBox(height: 8),
+                  // Calendar grid
+                  SizedBox(
+                    height: (lastDayOfMonth.day / 7).ceil() * 44.0, // Approximate height
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 7,
+                        crossAxisSpacing: 4,
+                        mainAxisSpacing: 4,
+                        childAspectRatio: 1,
+                      ),
+                      itemCount: 42, // 6 weeks * 7 days to ensure full coverage
+                      itemBuilder: (context, index) {
+                        final firstDayWeekday = DateTime(now.year, now.month, 1).weekday;
+                        final dayOffset = (firstDayWeekday - 1) % 7; // Adjust for Sunday start
+                        final day = index - dayOffset + 1;
+
+                        if (day < 1 || day > lastDayOfMonth.day) {
+                          // Empty cell for days outside current month
+                          return const SizedBox.shrink();
+                        }
+
+                        final date = DateTime(now.year, now.month, day);
+                        final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
+
+                        return Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isCompleted
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            day.toString(),
+                            style: TextStyle(
+                              color: isCompleted
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ],
         ),
