@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/habit.dart';
 import '../models/habit_storage.dart';
+import '../utils/constants.dart';
 import 'archive_screen.dart';
 
 /// Settings Screen - Full-page settings interface
@@ -57,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Show initial progress message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppConstants.exportingMessage)),
+          SnackBar(content: Text(AppConstants.exportingMessage)),
         );
       }
 
@@ -138,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Show initial progress message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppConstants.importingMessage)),
+          SnackBar(content: Text(AppConstants.importingMessage)),
         );
       }
 
