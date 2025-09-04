@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../theme.dart';
+import '../screens/stats_screen.dart';
 
 /// Interactive card widget displaying a habit with progress visualization
 ///
@@ -40,6 +41,9 @@ class HabitCard extends StatelessWidget {
   /// Callback when the habit should be edited
   final VoidCallback? onEdit;
 
+  /// Callback when stats should be viewed
+  final VoidCallback? onStats;
+
   const HabitCard({
     super.key,
     required this.habit,
@@ -49,6 +53,7 @@ class HabitCard extends StatelessWidget {
     this.onArchive,
     this.onDelete,
     this.onEdit,
+    this.onStats,
   });
 
   @override
@@ -178,23 +183,54 @@ class HabitCard extends StatelessWidget {
 
                   const SizedBox(height: 8),
 
-                  // Complete button
-                  InkWell(
-                    onTap: onComplete,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondary,
-                        shape: BoxShape.circle,
+                  // Action buttons row
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Stats button
+                      InkWell(
+                        onTap: onStats ?? () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => StatsScreen(habit: habit),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.bar_chart,
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
+                            size: 18,
+                          ),
+                        ),
                       ),
-                      child: Icon(
-                        Icons.add,
-                        color: colorScheme.onSecondary,
-                        size: 20,
+                      const SizedBox(width: 8),
+                      // Complete button
+                      InkWell(
+                        onTap: onComplete,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.add,
+                            color: colorScheme.onSecondary,
+                            size: 20,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
