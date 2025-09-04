@@ -54,7 +54,7 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
 
   /// PHASE 2: Feature flag to switch between old and new dashboard implementations
   /// Set to false to use original HabitDashboard, true to use new DashboardScreen
-  static const bool _useNewDashboard = false;
+  static const bool _useNewDashboard = true; // PHASE 4: ENABLED - Using new DashboardScreen
 
   @override
   void initState() {
@@ -105,19 +105,16 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
   /// Both implementations remain available for testing and gradual migration.
   Widget _buildDashboard() {
     if (_useNewDashboard) {
-      // PHASE 2: New DashboardScreen implementation (currently commented out)
-      // Uncomment this block when ready to switch to the new implementation
-      /*
+      // PHASE 4: New DashboardScreen implementation (ENABLED)
       return DashboardScreen(
         themeMode: _themeMode,
         onThemeChanged: _saveThemeMode,
       );
-      */
     }
 
-    // PHASE 2: Original HabitDashboard implementation (currently active)
-    // This is the existing, working implementation that will remain active
-    // until the new implementation is fully tested and ready for production
+    // PHASE 2: Original HabitDashboard implementation (available for rollback)
+    // This fallback implementation remains available for emergency rollback
+    // if any issues are discovered with the new DashboardScreen
     return HabitDashboard(
       themeMode: _themeMode, // Pass current theme to dashboard
       onThemeChanged: _saveThemeMode, // Callback for theme changes
