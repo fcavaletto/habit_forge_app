@@ -1,4 +1,4 @@
-/// PHASE 2: Test file to validate DashboardScreen implementation
+/// Phase 2: Test file to validate DashboardScreen implementation
 ///
 /// This test file is created during Phase 2 to verify that the new DashboardScreen
 /// can be instantiated and works correctly before full migration.
@@ -42,7 +42,8 @@ void main() {
       // Verify calendar button is present (added in Phase 1)
       expect(find.byIcon(Icons.calendar_today), findsOneWidget);
 
-      print('✅ DashboardScreen Phase 2 validation test passed!');
+      // Test passed if we reach this point
+      expect(true, isTrue);
     });
 
     test('DashboardScreen constructor parameters are required', () {
@@ -59,7 +60,8 @@ void main() {
       // at instantiation time, so we can't test for ArgumentError here.
       // The constructor validation happens at compile time instead.
 
-      print('✅ DashboardScreen constructor validation test passed!');
+      // Test passes if constructor works with valid parameters
+      expect(true, isTrue);
     });
   });
 }

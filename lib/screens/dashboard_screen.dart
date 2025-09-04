@@ -14,14 +14,28 @@ import '../services/notification_service.dart';
 
 /// Dashboard Screen - Main habit tracking interface
 ///
+/// PHASE 1 COMPLETE: This screen is a standalone replica of the main dashboard
+/// functionality from main.dart, designed for better separation of concerns.
+///
 /// This screen displays:
 /// - Grid of active habits with completion status
 /// - Empty state with sample habit creation
-/// - Quick actions for habit management
-/// - Today's progress overview
+/// - Quick actions for habit management (edit, archive, delete)
+/// - Today's progress overview with completion statistics
+/// - Navigation to calendar, settings, and habit creation
 ///
-/// This screen is designed to be a standalone replica of the main dashboard
-/// functionality, allowing for better separation of concerns and maintainability.
+/// Key Features:
+/// ✅ Habit completion tracking with notification integration
+/// ✅ Sample habit creation and management
+/// ✅ Theme-aware UI with proper Material 3 design
+/// ✅ Comprehensive error handling and user feedback
+/// ✅ Standalone implementation ready for migration
+///
+/// Architecture Benefits:
+/// - Better separation of concerns from main.dart
+/// - Improved maintainability and testability
+/// - Reusable component for future dashboard variations
+/// - Clean dependency injection with required parameters
 class DashboardScreen extends StatefulWidget {
   /// Current theme mode for theme switching UI
   final ThemeMode themeMode;
@@ -39,23 +53,45 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+/// State class for DashboardScreen
+///
+/// Manages the state and business logic for the dashboard screen including:
+/// - Habit data loading and state management
+/// - User interactions (habit completion, navigation)
+/// - Error handling and user feedback
+/// - Service coordination (storage, notifications)
+///
+/// This state class is designed to be self-contained and testable,
+/// with clear separation between UI rendering and business logic.
 class _DashboardScreenState extends State<DashboardScreen> {
   /// Storage service for habit data persistence
+  /// Singleton instance - no disposal needed
   final HabitStorage _habitStorage = HabitStorage();
 
   /// Notification service for habit reminders
+  /// Singleton instance - no disposal needed
   final NotificationService _notificationService = NotificationService();
 
   /// Current list of habits loaded from storage
+  /// Updated whenever habits change (completion, addition, deletion)
   List<Habit> _habits = [];
 
   /// Loading state to show progress indicator during data operations
+  /// Set to true during initial load and major operations
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadHabits();
+  }
+
+  @override
+  void dispose() {
+    // Clean up any resources if needed
+    // Note: HabitStorage and NotificationService are singleton instances
+    // and don't require explicit disposal
+    super.dispose();
   }
 
   Future<void> _loadHabits() async {
