@@ -107,7 +107,7 @@ class CompletionChart extends StatelessWidget {
                           final date = DateTime.now().subtract(Duration(days: daysAgo));
 
                           return LineTooltipItem(
-                            '${date.month}/${date.day}: ${percentage}%',
+                            '${date.month}/${date.day}: $percentage%',
                             TextStyle(
                               color: colorScheme.onSurface,
                               fontWeight: FontWeight.w500,

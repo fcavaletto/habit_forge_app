@@ -144,7 +144,13 @@ class ValidationConstants {
 
 /// Animation and transition constants
 class AnimationConstants {
-  static const Curve defaultCurve = Curves.easeInOut;
-  static const Curve bounceCurve = Curves.elasticOut;
-  static const Curve sharpCurve = Curves.fastOutSlowIn;
+  // Note: Curves cannot be const as they are not compile-time constants
+  static const String defaultCurveName = 'easeInOut';
+  static const String bounceCurveName = 'elasticOut';
+  static const String sharpCurveName = 'fastOutSlowIn';
+
+  // Animation durations
+  static const int quickAnimationMs = 200;
+  static const int normalAnimationMs = 300;
+  static const int slowAnimationMs = 500;
 }

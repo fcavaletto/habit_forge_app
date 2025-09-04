@@ -243,14 +243,4 @@ class _StatsScreenState extends State<StatsScreen> {
     return longestStreak;
   }
 
-  /// Converts month number to month name
-  ///
-  /// Used for displaying month names in calendar views.
-  String _getMonthName(int month) {
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return monthNames[month - 1];
-  }
 }
