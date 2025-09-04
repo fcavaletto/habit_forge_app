@@ -343,9 +343,6 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Widget _buildMonthlyCalendar() {
-    final now = DateTime.now();
-    final lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -353,50 +350,124 @@ class _StatsScreenState extends State<StatsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${_getMonthName(now.month)} ${now.year}',
+              'Monthly Calendar',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 16),
-            // Create a simple list of all days in the month
             SizedBox(
-              height: 200, // Fixed height for horizontal scrolling
-              child: ListView.builder(
+              height: 280, // Fixed height for the calendar
+              child: PageView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: lastDayOfMonth.day,
-                itemBuilder: (context, index) {
-                  final day = index + 1;
-                  final date = DateTime(now.year, now.month, day);
-                  final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
-
-                  return Container(
-                    width: 36,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isCompleted
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      day.toString(),
-                      style: TextStyle(
-                        color: isCompleted
-                            ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  );
+                itemCount: 12, // Show 12 months
+                itemBuilder: (context, monthIndex) {
+                  final currentDate = DateTime.now();
+                  final targetMonth = DateTime(currentDate.year, currentDate.month + monthIndex, 1);
+                  return _buildMonthGrid(targetMonth);
                 },
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMonthGrid(DateTime monthDate) {
+    final firstDayOfMonth = DateTime(monthDate.year, monthDate.month, 1);
+    final lastDayOfMonth = DateTime(monthDate.year, monthDate.month + 1, 0);
+
+    // Calculate the weekday offset (0 = Sunday, 1 = Monday, etc.)
+    final firstWeekday = firstDayOfMonth.weekday;
+    final offset = (firstWeekday - 1) % 7; // Adjust so Monday is 0
+
+    return Column(
+      children: [
+        // Month and year header
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            '${_getMonthName(monthDate.month)} ${monthDate.year}',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+
+        // Day labels
+        Row(
+          children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+              .map((day) => Expanded(
+                    child: Text(
+                      day,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ))
+              .toList(),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Calendar grid
+        Expanded(
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              crossAxisSpacing: 2,
+              mainAxisSpacing: 2,
+            ),
+            itemCount: 42, // 6 weeks × 7 days
+            itemBuilder: (context, index) {
+              final dayNumber = index - offset + 1;
+
+              if (dayNumber < 1 || dayNumber > lastDayOfMonth.day) {
+                // Empty cell
+                return Container();
+              }
+
+              final date = DateTime(monthDate.year, monthDate.month, dayNumber);
+              final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
+              final isToday = date.year == DateTime.now().year &&
+                             date.month == DateTime.now().month &&
+                             date.day == DateTime.now().day;
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: isCompleted
+                      ? Theme.of(context).colorScheme.primary
+                      : isToday
+                          ? Theme.of(context).colorScheme.secondaryContainer
+                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(6),
+                  border: isToday && !isCompleted
+                      ? Border.all(
+                          color: Theme.of(context).colorScheme.secondary,
+                          width: 2,
+                        )
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  dayNumber.toString(),
+                  style: TextStyle(
+                    color: isCompleted
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
