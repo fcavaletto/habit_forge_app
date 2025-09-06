@@ -127,7 +127,7 @@ class NotificationState extends ChangeNotifier {
 
 /// Provider for NotificationState
 class NotificationProvider extends NotificationState {
-  NotificationProvider(NotificationService notificationService) : super(notificationService);
+  NotificationProvider(super.notificationService);
 
   // Factory method for easy creation
   factory NotificationProvider.create() {

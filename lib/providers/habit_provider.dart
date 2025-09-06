@@ -158,7 +158,7 @@ class HabitState extends ChangeNotifier {
 class HabitProvider extends HabitState {
   final HabitRepository _repository;
 
-  HabitProvider(HabitRepository habitRepository) : _repository = habitRepository, super(habitRepository);
+  HabitProvider(super.habitRepository) : _repository = habitRepository;
 
   // Factory method for easy creation with default repository
   factory HabitProvider.create() {

@@ -65,8 +65,7 @@ class AppState extends ChangeNotifier {
 
 /// Provider for AppState
 class AppStateProvider extends AppState {
-  AppStateProvider(HabitProvider habitProvider, NotificationProvider notificationProvider)
-      : super(habitProvider, notificationProvider);
+  AppStateProvider(super.habitProvider, super.notificationProvider);
 
   // Factory method for easy creation
   factory AppStateProvider.create() {
