@@ -196,6 +196,8 @@ class _DashboardViewState extends State<DashboardView> {
       habit: habit,
       onTap: () => _onHabitTap(habit),
       onComplete: () => _onMarkCompleted(habit),
+      onIncrement: () => _onIncrementCompletion(habit),
+      onDecrement: () => _onDecrementCompletion(habit),
       onEdit: () => _showHabitDetails(habit),
       onArchive: () => _onArchiveHabit(habit),
       onDelete: () => _onDeleteHabit(habit),
@@ -300,6 +302,20 @@ class _DashboardViewState extends State<DashboardView> {
 
   Future<void> _onMarkCompleted(Habit habit) async {
     await _controller.onMarkCompleted(habit);
+  }
+
+  Future<void> _onIncrementCompletion(Habit habit) async {
+    final today = DateTime.now();
+    final currentCount = habit.getCompletionCount(today);
+    await _controller.onMarkCompleted(habit, currentCount + 1);
+  }
+
+  Future<void> _onDecrementCompletion(Habit habit) async {
+    final today = DateTime.now();
+    final currentCount = habit.getCompletionCount(today);
+    if (currentCount > 0) {
+      await _controller.onMarkCompleted(habit, currentCount - 1);
+    }
   }
 
   void _showHabitDetails(Habit habit) {

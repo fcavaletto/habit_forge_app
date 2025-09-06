@@ -29,6 +29,12 @@ class HabitCard extends StatelessWidget {
   /// Callback when the completion button is pressed
   final VoidCallback? onComplete;
 
+  /// Callback when completion count should be incremented
+  final VoidCallback? onIncrement;
+
+  /// Callback when completion count should be decremented
+  final VoidCallback? onDecrement;
+
   /// Callback for settings/accessibility actions (currently unused)
   final VoidCallback? onSettings;
 
@@ -49,6 +55,8 @@ class HabitCard extends StatelessWidget {
     required this.habit,
     this.onTap,
     this.onComplete,
+    this.onIncrement,
+    this.onDecrement,
     this.onSettings,
     this.onArchive,
     this.onDelete,
@@ -63,7 +71,8 @@ class HabitCard extends StatelessWidget {
     final habitColor = colorScheme.habitColor(habit.colorIndex);
 
     // Create accessibility labels - memoized for performance
-    final completionStatus = habit.isCompleted(DateTime.now()) ? 'completed' : 'not completed';
+    final todayCount = habit.getCompletionCount(DateTime.now());
+    final completionStatus = todayCount > 0 ? '$todayCount completion${todayCount != 1 ? 's' : ''}' : 'not completed';
     final accessibilityLabel = '${habit.name}. ${habit.description}. Current streak: ${habit.currentStreak} days. Today: $completionStatus.';
 
     return Card(
@@ -144,12 +153,12 @@ class HabitCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      // Complete button
+                      // Completion controls
+                      if (todayCount == 0)
+                        // Simple add button when no completions
                       Semantics(
-                        label: habit.isCompleted(DateTime.now())
-                            ? 'Mark ${habit.name} as incomplete'
-                            : 'Mark ${habit.name} as completed',
-                        hint: 'Toggles completion status for today',
+                          label: 'Increment ${habit.name} completion count',
+                          hint: 'Tap to add first completion for today',
                         button: true,
                         child: InkWell(
                           onTap: onComplete,
@@ -162,12 +171,86 @@ class HabitCard extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              habit.isCompleted(DateTime.now()) ? Icons.check : Icons.add,
+                                Icons.add,
                               color: colorScheme.onSecondary,
                               size: 18,
+                              ),
                             ),
                           ),
-                        ),
+                        )
+                      else
+                        // +/- controls with count when there are completions
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Decrement button
+                            Semantics(
+                              label: 'Decrement ${habit.name} completion count',
+                              hint: 'Tap to reduce completion count',
+                              button: true,
+                              child: InkWell(
+                                onTap: onDecrement ?? onComplete,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: habitColor.withValues(alpha: 0.8),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.remove,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            // Count display
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: habitColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  todayCount.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            // Increment button
+                            Semantics(
+                              label: 'Increment ${habit.name} completion count',
+                              hint: 'Tap to increase completion count',
+                              button: true,
+                              child: InkWell(
+                                onTap: onIncrement ?? onComplete,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: habitColor.withValues(alpha: 0.8),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                       ),
                     ],
                   ),
@@ -238,21 +321,36 @@ class HabitCard extends StatelessWidget {
 
               const SizedBox(height: 8),
 
-              // Progress chart - Compact version
+              // Progress chart - Compact version with completion intensity
               SizedBox(
                 height: 32, // Smaller height
                 child: Row(
-                  children: habit.last7Days.map((completed) {
+                  children: List.generate(7, (index) {
+                    final date = DateTime.now().subtract(Duration(days: 6 - index));
+                    final count = habit.getCompletionCount(date);
+                    final intensity = count > 0 ? (count / 5.0).clamp(0.0, 1.0) : 0.0; // Max 5 for visualization
+
                     return Expanded(
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 0.5),
                         decoration: BoxDecoration(
-                          color: completed
-                              ? habitColor
+                          color: count > 0
+                              ? habitColor.withValues(alpha: intensity)
                               : habitColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(1),
                         ),
-                        child: completed
+                        child: count > 1
+                            ? Center(
+                                child: Text(
+                                  count.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            : count == 1
                             ? const Icon(
                                 Icons.check,
                                 size: 10,
@@ -261,7 +359,7 @@ class HabitCard extends StatelessWidget {
                             : null,
                       ),
                     );
-                  }).toList(),
+                  }),
                 ),
               ),
             ],
