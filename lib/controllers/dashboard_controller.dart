@@ -18,7 +18,9 @@ class DashboardController {
 
   /// Load habits from storage
   Future<void> loadHabits() async {
+    debugPrint('📱 Loading habits from storage...');
     await _appState.habitProvider.loadHabits();
+    debugPrint('📱 Loaded ${habits.length} habits');
   }
 
   /// Handle habit tap - navigate to details

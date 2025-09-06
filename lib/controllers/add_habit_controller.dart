@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
-import '../models/habit_storage.dart';
-import '../services/notification_service.dart';
 import '../widgets/forms/frequency_selector.dart';
+import '../providers/app_state_provider.dart';
 
 /// Controller class that handles all business logic for adding/editing habits
 /// This separates UI concerns from business logic for better testability and maintainability
 class AddHabitController {
   final Function(Habit) onHabitAdded;
   final List<Habit> existingHabits;
+  final AppState _appState;
 
   // Form state
   final TextEditingController nameController = TextEditingController();
@@ -26,7 +26,8 @@ class AddHabitController {
   AddHabitController({
     required this.onHabitAdded,
     required this.existingHabits,
-  }) {
+    required AppState appState,
+  }) : _appState = appState {
     // Clear error message when user starts typing
     nameController.addListener(_clearError);
     descriptionController.addListener(_clearError);
@@ -98,10 +99,20 @@ class AddHabitController {
         frequencyDays: frequencyData.days,
       );
 
-      onHabitAdded(habit);
+      debugPrint('🎯 Habit created successfully: ${habit.name}');
+
+      // Actually save the habit to storage
+      final saveResult = await _appState.habitProvider.addHabit(habit);
+      if (!saveResult.success) {
+        errorMessage = saveResult.errorMessage;
+        return;
+      }
+
+      onHabitAdded(habit); // Call callback after successful persistence
 
     } catch (e) {
       errorMessage = 'Failed to create habit: $e';
+      debugPrint('❌ Error in AddHabitController.saveHabit: $e');
     } finally {
       isLoading = false;
     }

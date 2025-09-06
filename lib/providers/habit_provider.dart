@@ -174,7 +174,10 @@ class HabitProvider extends HabitState {
   void notifyListeners() {
     // Only notify if we have actual listeners to prevent unnecessary work
     if (hasListeners) {
+      debugPrint('🔔 HabitProvider notifying listeners');
       super.notifyListeners();
+    } else {
+      debugPrint('🚫 HabitProvider has no listeners, skipping notification');
     }
   }
 }

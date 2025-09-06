@@ -13,8 +13,14 @@ class AppState extends ChangeNotifier {
 
   AppState(this._habitProvider, this._notificationProvider) {
     // Listen to changes in child providers
-    _habitProvider.addListener(notifyListeners);
-    _notificationProvider.addListener(notifyListeners);
+    _habitProvider.addListener(() {
+      debugPrint('🔗 AppState received notification from HabitProvider');
+      notifyListeners();
+    });
+    _notificationProvider.addListener(() {
+      debugPrint('🔗 AppState received notification from NotificationProvider');
+      notifyListeners();
+    });
   }
 
   // Habit provider access

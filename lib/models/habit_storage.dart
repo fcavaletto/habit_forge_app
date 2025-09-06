@@ -72,21 +72,26 @@ class HabitStorage {
   /// @param includeArchived Whether to include archived habits in the result
   /// @return List of successfully loaded Habit objects
   Future<List<Habit>> getHabits({bool includeArchived = false}) async {
+    debugPrint('📖 HabitStorage.getHabits called with includeArchived=$includeArchived');
     final prefs = await SharedPreferences.getInstance();
     final habitsJson = prefs.getStringList(_habitsKey) ?? []; // Default to empty list
+    debugPrint('📖 Found ${habitsJson.length} habit JSON strings');
 
     final habits = habitsJson.map((json) {
       try {
         final map = jsonDecode(json) as Map<String, dynamic>;
         return Habit.fromJson(map); // Deserialize each habit
       } catch (e) {
-        debugPrint('Error parsing habit JSON: $e');
+        debugPrint('❌ Error parsing habit JSON: $e');
         return null; // Skip corrupted habits
       }
     }).whereType<Habit>().toList(); // Filter out null values from failed parsing
 
+    debugPrint('📖 Successfully parsed ${habits.length} habits');
     // Filter out archived habits unless specifically requested
-    return includeArchived ? habits : habits.where((habit) => habit.isActive).toList();
+    final filteredHabits = includeArchived ? habits : habits.where((habit) => habit.isActive).toList();
+    debugPrint('📖 Returning ${filteredHabits.length} habits');
+    return filteredHabits;
   }
 
   /// Save a new habit to storage
@@ -102,27 +107,33 @@ class HabitStorage {
   /// @return HabitSaveResult indicating success or failure with details
   Future<HabitSaveResult> saveHabit(Habit habit) async {
     try {
+      debugPrint('💾 HabitStorage.saveHabit called for: ${habit.name}');
       // Check all habits (including archived) for duplicates
       final allHabits = await getHabits(includeArchived: true);
+      debugPrint('💾 Found ${allHabits.length} existing habits');
       final existingIndex = allHabits.indexWhere((h) => h.id == habit.id);
 
       if (existingIndex >= 0) {
         final existingHabit = allHabits[existingIndex];
         if (existingHabit.isArchived) {
           // Archived duplicate - offer to overwrite
+          debugPrint('💾 Found archived duplicate habit');
           return HabitSaveResult.duplicateArchived(existingHabit);
         } else {
           // Active duplicate - block creation
+          debugPrint('💾 Found active duplicate habit');
           return HabitSaveResult.duplicate(existingHabit.name);
         }
       }
 
       // No duplicate found, add as new habit
+      debugPrint('💾 No duplicate found, saving new habit');
       allHabits.add(habit);
       await _saveHabits(allHabits);
+      debugPrint('💾 Habit saved successfully');
       return HabitSaveResult.success(habit);
     } catch (e) {
-      debugPrint('Error saving habit: $e');
+      debugPrint('❌ Error saving habit: $e');
       return HabitSaveResult.error('Failed to save habit: $e');
     }
   }

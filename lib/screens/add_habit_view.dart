@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../controllers/add_habit_controller.dart';
 import '../widgets/forms/icon_selector.dart';
 import '../widgets/forms/color_selector.dart';
 import '../widgets/forms/frequency_selector.dart';
 import '../utils/constants.dart';
+import '../providers/app_state_provider.dart';
 
 /// Add Habit View - Pure UI component for adding new habits
 ///
@@ -31,9 +33,11 @@ class _AddHabitViewState extends State<AddHabitView> {
   @override
   void initState() {
     super.initState();
+    final appState = context.read<AppState>();
     _controller = AddHabitController(
       onHabitAdded: widget.onHabitAdded,
       existingHabits: widget.existingHabits,
+      appState: appState,
     );
   }
 

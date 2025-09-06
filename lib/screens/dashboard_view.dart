@@ -30,7 +30,10 @@ class _DashboardViewState extends State<DashboardView> {
     super.initState();
     _appState = context.read<AppState>();
     _controller = DashboardController(_appState);
-    _loadInitialData();
+    // Schedule initial data load after the first frame to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
   }
 
   Future<void> _loadInitialData() async {
@@ -41,6 +44,7 @@ class _DashboardViewState extends State<DashboardView> {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
+        debugPrint('🎨 Consumer<AppState> builder called with ${appState.habits.length} habits');
         return Semantics(
           label: 'Habit Forge Dashboard',
           hint: 'Main screen showing your habits and progress',
@@ -90,14 +94,18 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildBody(AppState appState) {
+    debugPrint('🔄 DashboardView building with ${appState.habits.length} habits');
+
     if (appState.isLoadingHabits) {
       return const Center(child: CircularProgressIndicator());
     }
 
     if (appState.habits.isEmpty) {
+      debugPrint('📭 No habits found, showing empty state');
       return _buildEmptyState();
     }
 
+    debugPrint('📊 Building habits grid with ${appState.habits.length} habits');
     return _buildHabitsGrid(appState.habits);
   }
 
@@ -276,13 +284,15 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   void _showAddHabitDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddHabitScreen(
-        onHabitAdded: (habit) => _controller.loadHabits(),
-        existingHabits: _controller.habits,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AddHabitScreen(
+          onHabitAdded: (habit) {
+            debugPrint('📱 Dashboard received new habit: ${habit.name}');
+            _controller.loadHabits();
+          },
+          existingHabits: _controller.habits,
+        ),
       ),
     );
   }
