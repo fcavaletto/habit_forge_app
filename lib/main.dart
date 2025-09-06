@@ -86,17 +86,6 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
     });
   }
 
-  /// Saves the user's theme preference to persistent storage
-  ///
-  /// Persists the theme mode selection so it survives app restarts.
-  /// Updates both the persistent storage and the widget state.
-  Future<void> _saveThemeMode(ThemeMode mode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('theme_mode', mode.index);
-    setState(() {
-      _themeMode = mode;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {

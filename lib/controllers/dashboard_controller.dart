@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
-import '../models/habit_storage.dart';
-import '../services/notification_service.dart';
 import '../providers/app_state_provider.dart';
 
 /// Controller class that handles all business logic for the dashboard

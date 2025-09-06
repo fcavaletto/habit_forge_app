@@ -10,7 +10,7 @@ import 'dashboard_view.dart';
 /// - Clean separation of concerns
 ///
 /// The screen displays:
-/// - Grid of active habits with completion status
+/// - List of active habits with completion status
 /// - Empty state with sample habit creation
 /// - Quick actions for habit management (edit, archive, delete)
 /// - Today's progress overview with completion statistics

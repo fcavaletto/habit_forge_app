@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../models/habit_storage.dart';
-import '../screens/add_habit_screen.dart';
 import '../utils/icon_utils.dart';
 
 /// Archive Screen - Displays archived habits with restore functionality

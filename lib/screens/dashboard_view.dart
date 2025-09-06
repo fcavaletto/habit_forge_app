@@ -105,8 +105,8 @@ class _DashboardViewState extends State<DashboardView> {
       return _buildEmptyState();
     }
 
-    debugPrint('📊 Building habits grid with ${appState.habits.length} habits');
-    return _buildHabitsGrid(appState.habits);
+    debugPrint('📊 Building habits list with ${appState.habits.length} habits');
+    return _buildHabitsList(appState.habits);
   }
 
   Widget _buildEmptyState() {
@@ -156,7 +156,7 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _buildHabitsGrid(List<Habit> habits) {
+  Widget _buildHabitsList(List<Habit> habits) {
     return CustomScrollView(
       slivers: [
         SliverPadding(
@@ -166,18 +166,15 @@ class _DashboardViewState extends State<DashboardView> {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1.0,
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
+          sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final habit = habits[index];
-                return _buildHabitCard(habit);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: _buildHabitCard(habit),
+                );
               },
               childCount: habits.length,
               // Add performance optimizations
