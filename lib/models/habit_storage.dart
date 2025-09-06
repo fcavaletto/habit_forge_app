@@ -257,20 +257,20 @@ class HabitStorage {
     return habits.where((habit) => habit.isArchived).toList();
   }
 
-  /// Update the completion status of a specific habit on a specific date
+  /// Update the completion count of a specific habit on a specific date
   ///
   /// Modifies the completion record for a habit without changing other properties.
   /// Uses the immutable pattern - creates a new Habit instance with updated completion.
   ///
   /// @param habitId Unique identifier of the habit to update
-  /// @param date The date for which to update completion status
-  /// @param completed Whether the habit was completed on this date
-  Future<void> updateHabitCompletion(String habitId, DateTime date, bool completed) async {
+  /// @param date The date for which to update completion count
+  /// @param count The number of completions for this date (0 to remove)
+  Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     final habits = await getHabits();
     final habitIndex = habits.indexWhere((habit) => habit.id == habitId);
 
     if (habitIndex >= 0) {
-      final updatedHabit = habits[habitIndex].markCompleted(date, completed);
+      final updatedHabit = habits[habitIndex].markCompleted(date, count);
       habits[habitIndex] = updatedHabit; // Replace with updated habit
       await _saveHabits(habits); // Persist changes
     }
@@ -385,7 +385,7 @@ class HabitStorage {
 /// Usage examples:
 /// - `await habitStorage.getHabits()` - Load all habits
 /// - `await habitStorage.saveHabit(newHabit)` - Save a habit
-/// - `await habitStorage.updateHabitCompletion(id, date, true)` - Mark complete
+/// - `await habitStorage.updateHabitCompletion(id, date, 3)` - Set completion count to 3
 /// - `await habitStorage.getStatistics()` - Get aggregated statistics
 ///
 /// All operations are thread-safe and handle errors gracefully.

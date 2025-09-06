@@ -27,24 +27,30 @@ class DashboardController {
     // For now, we'll implement this in the view
   }
 
-  /// Mark habit as completed or incomplete
-  Future<void> onMarkCompleted(Habit habit) async {
+  /// Update habit completion count
+  Future<void> onMarkCompleted(Habit habit, [int? count]) async {
     final today = DateTime.now();
-    final isCompleted = habit.isCompleted(today);
+    final currentCount = habit.getCompletionCount(today);
 
-    // Update completion status
+    // If no count specified, toggle between 0 and 1 for backward compatibility
+    final newCount = count ?? (currentCount > 0 ? 0 : 1);
+
+    // Update completion count
     await _appState.habitProvider.updateHabitCompletion(
       habit.id,
       today,
-      !isCompleted,
+      newCount,
     );
 
-    // Handle notification scheduling
-    if (!isCompleted && habit.enableReminders) {
+    // Handle notification scheduling based on completion status
+    final wasCompleted = currentCount > 0;
+    final isCompleted = newCount > 0;
+
+    if (!wasCompleted && isCompleted && habit.enableReminders) {
       // Habit was just completed - cancel reminder for today, schedule for tomorrow
       await _appState.notificationProvider.cancelHabitReminder(habit.id);
       await _appState.notificationProvider.scheduleHabitReminder(habit);
-    } else if (isCompleted && habit.enableReminders) {
+    } else if (wasCompleted && !isCompleted && habit.enableReminders) {
       // Habit was marked incomplete - schedule reminder for today
       await _appState.notificationProvider.scheduleHabitReminder(habit);
     }

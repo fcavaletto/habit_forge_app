@@ -49,10 +49,10 @@ class HabitState extends ChangeNotifier {
     }
   }
 
-  /// Update habit completion
-  Future<void> updateHabitCompletion(String habitId, DateTime date, bool completed) async {
+  /// Update habit completion count
+  Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
-      await _habitRepository.updateHabitCompletion(habitId, date, completed);
+      await _habitRepository.updateHabitCompletion(habitId, date, count);
       await loadHabits(); // Refresh to get updated data
     } catch (e) {
       _error = 'Failed to update habit completion: $e';

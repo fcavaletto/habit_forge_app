@@ -17,8 +17,8 @@ abstract class HabitRepository {
   /// Save a new habit
   Future<HabitSaveResult> saveHabit(Habit habit);
 
-  /// Update habit completion status
-  Future<void> updateHabitCompletion(String habitId, DateTime date, bool completed);
+  /// Update habit completion count
+  Future<void> updateHabitCompletion(String habitId, DateTime date, int count);
 
   /// Archive a habit
   Future<bool> archiveHabit(String habitId);
@@ -69,8 +69,8 @@ class HabitRepositoryImpl implements HabitRepository {
   }
 
   @override
-  Future<void> updateHabitCompletion(String habitId, DateTime date, bool completed) async {
-    await _habitStorage.updateHabitCompletion(habitId, date, completed);
+  Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
+    await _habitStorage.updateHabitCompletion(habitId, date, count);
   }
 
   @override

@@ -32,9 +32,9 @@ class Habit {
   /// Timestamp when this habit was first created
   final DateTime createdAt;
 
-  /// Map of completion records where key is date and value is completion status
-  /// Only completed days are stored to optimize memory usage
-  final Map<DateTime, bool> completions;
+  /// Map of completion records where key is date and value is completion count
+  /// Zero or missing entries indicate no completions for that day
+  final Map<DateTime, int> completions;
 
   /// Material Icons name for visual representation
   final String iconName;
@@ -120,7 +120,7 @@ class Habit {
       description: description.trim(), // Clean user input
       colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
       createdAt: DateTime.now(), // Creation timestamp
-      completions: {}, // Start with empty completion history
+      completions: <DateTime, int>{}, // Start with empty completion history
       iconName: iconName,
       reminderTime: reminderTime,
       enableReminders: enableReminders,
@@ -129,24 +129,24 @@ class Habit {
     );
   }
 
-  /// Mark habit as completed or incomplete for a specific date
+  /// Mark habit with completion count for a specific date
   ///
-  /// Creates a new Habit instance with updated completion status.
+  /// Creates a new Habit instance with updated completion count.
   /// Uses immutable pattern - returns new instance rather than modifying existing.
   ///
   /// @param date The date to update completion for
-  /// @param completed Whether the habit was completed on this date
+  /// @param count The number of completions for this date (0 to remove)
   /// @return New Habit instance with updated completion map
-  Habit markCompleted(DateTime date, bool completed) {
+  Habit markCompleted(DateTime date, int count) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    final newCompletions = Map<DateTime, bool>.from(completions);
-    
-    if (completed) {
-      newCompletions[normalizedDate] = true;
+    final newCompletions = Map<DateTime, int>.from(completions);
+
+    if (count > 0) {
+      newCompletions[normalizedDate] = count;
     } else {
       newCompletions.remove(normalizedDate);
     }
-    
+
     return copyWith(completions: newCompletions);
   }
 
@@ -156,10 +156,19 @@ class Habit {
   /// checks against the completion history map.
   ///
   /// @param date The date to check completion status for
-  /// @return true if habit was completed on this date, false otherwise
+  /// @return true if habit has at least one completion on this date, false otherwise
   bool isCompleted(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    return completions[normalizedDate] ?? false;
+    return (completions[normalizedDate] ?? 0) > 0;
+  }
+
+  /// Get the completion count for a specific date
+  ///
+  /// @param date The date to get completion count for
+  /// @return The number of completions for this date (0 if none)
+  int getCompletionCount(DateTime date) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return completions[normalizedDate] ?? 0;
   }
 
   /// Calculate current streak of consecutive completed days
@@ -182,19 +191,20 @@ class Habit {
     return streak;
   }
 
-  /// Get total number of completed days for this habit
+  /// Get total number of completions for this habit
   ///
-  /// Counts all entries in the completions map where the value is true.
-  /// Represents the total number of days this habit has been successfully completed.
+  /// Sums all completion counts across all dates.
+  /// Represents the total number of completions this habit has recorded.
   ///
-  /// @return Total count of completed days across all time
+  /// @return Total sum of all completion counts across all time
   int get totalCompletions {
-    return completions.values.where((completed) => completed).length;
+    return completions.values.fold(0, (sum, count) => sum + count);
   }
 
   /// Calculate completion rate for the last 30 days
   ///
   /// Measures habit adherence over the most recent 30-day period.
+  /// A day is considered "completed" if it has at least 1 completion.
   /// Used for progress tracking and habit strength assessment.
   ///
   /// @return Ratio between 0.0 and 1.0 representing completion percentage
@@ -202,7 +212,7 @@ class Habit {
     final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
     final recentCompletions = completions.entries
         .where((entry) => entry.key.isAfter(thirtyDaysAgo) || entry.key.isAtSameMomentAs(thirtyDaysAgo))
-        .where((entry) => entry.value)
+        .where((entry) => entry.value > 0) // At least 1 completion counts as completed
         .length;
     return recentCompletions / 30.0; // Return as fraction for percentage calculation
   }
@@ -286,7 +296,7 @@ class Habit {
     String? description,
     int? colorIndex,
     DateTime? createdAt,
-    Map<DateTime, bool>? completions,
+    Map<DateTime, int>? completions,
     String? iconName,
     TimeOfDay? reminderTime,
     bool? enableReminders,
@@ -376,8 +386,12 @@ class Habit {
         (key, value) => MapEntry(key, value as int),
       ) ?? defaultFrequencyDays, // Default to every day
       // Reconstruct completion map with DateTime keys
+      // Handle backward compatibility: convert boolean values to integers
       completions: (json['completions'] as Map<String, dynamic>).map(
-        (key, value) => MapEntry(DateTime.parse(key), value as bool),
+        (key, value) => MapEntry(
+          DateTime.parse(key),
+          value is bool ? (value ? 1 : 0) : (value as int),
+        ),
       ),
     );
   }
