@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'theme.dart';
 import 'screens/dashboard_screen.dart';
+import 'providers/app_state_provider.dart';
+import 'widgets/error_boundary.dart';
 
 /// Application entry point
 ///
@@ -9,8 +12,9 @@ import 'screens/dashboard_screen.dart';
 /// This includes:
 /// 1. Storage initialization - Loads existing habit data
 /// 2. Notification service setup - Configures push notifications
-/// 3. Error handling - Graceful degradation if services fail
-/// 4. App launch - Starts the main Flutter application
+/// 3. State management setup - Initializes Provider architecture
+/// 4. Error handling - Graceful degradation if services fail
+/// 5. App launch - Starts the main Flutter application
 ///
 /// The initialization is designed to be robust and will continue
 /// even if individual services fail to initialize.
@@ -19,10 +23,29 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   debugPrint('🚀 Starting Flutter app...');
-  
-  // Start the Flutter app immediately - no service initialization
-  runApp(const HabitForgeApp());
-  debugPrint('✅ Flutter app started');
+
+  // Set up global error handling
+  GlobalErrorHandler.setup();
+
+  // Initialize the app state provider
+  final appStateProvider = AppStateProvider.create();
+
+  // Start the Flutter app with provider setup and error boundary
+  runApp(
+    ErrorBoundary(
+      onError: (error) {
+        debugPrint('Global error caught: ${error.exception}');
+      },
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: appStateProvider),
+        ],
+        child: const HabitForgeApp(),
+      ),
+    ),
+  );
+
+  debugPrint('✅ Flutter app started with state management and error handling');
 }
 
 /// Root application widget with theme management
@@ -82,10 +105,7 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
       theme: AppTheme.lightTheme, // Light theme configuration
       darkTheme: AppTheme.darkTheme, // Dark theme configuration
       themeMode: _themeMode, // Current theme mode (system/light/dark)
-      home: DashboardScreen(
-        themeMode: _themeMode,
-        onThemeChanged: _saveThemeMode,
-      ),
+      home: const DashboardScreen(),
     );
   }
 }
