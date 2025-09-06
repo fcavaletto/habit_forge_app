@@ -39,32 +39,46 @@ class IconSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: availableIcons.map((iconName) {
-        final isSelected = iconName == selectedIconName;
-        return GestureDetector(
-          onTap: () => onIconSelected(iconName),
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.blue[50] : Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? Colors.blue : Colors.grey[300]!,
-                width: isSelected ? 2 : 1,
+    return Semantics(
+      label: 'Icon selection',
+      hint: 'Choose an icon for your habit',
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: availableIcons.map((iconName) {
+          final isSelected = iconName == selectedIconName;
+          final iconLabel = iconName.replaceAll('_', ' ');
+          return Semantics(
+            label: '$iconLabel icon${isSelected ? ', selected' : ''}',
+            hint: isSelected ? 'Currently selected icon' : 'Tap to select this icon',
+            button: true,
+            selected: isSelected,
+            child: GestureDetector(
+              onTap: () => onIconSelected(iconName),
+              child: Focus(
+                autofocus: isSelected,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.blue[50] : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? Colors.blue : Colors.grey[300]!,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Icon(
+                    _getIconData(iconName),
+                    color: isSelected ? Colors.blue : Colors.black,
+                    size: 24,
+                  ),
+                ),
               ),
             ),
-            child: Icon(
-              _getIconData(iconName),
-              color: isSelected ? Colors.blue : Colors.black,
-              size: 24,
-            ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 

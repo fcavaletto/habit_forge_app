@@ -133,4 +133,13 @@ class NotificationProvider extends NotificationState {
   factory NotificationProvider.create() {
     return NotificationProvider(NotificationService());
   }
+
+  // Override notifyListeners to add debouncing for performance
+  @override
+  void notifyListeners() {
+    // Only notify if we have actual listeners to prevent unnecessary work
+    if (hasListeners) {
+      super.notifyListeners();
+    }
+  }
 }

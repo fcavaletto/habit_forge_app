@@ -29,45 +29,67 @@ class ColorSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: List.generate(habitColors.length, (index) {
-        final color = habitColors[index];
-        final isSelected = index == selectedColorIndex;
+    return Semantics(
+      label: 'Color selection',
+      hint: 'Choose a color for your habit',
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: List.generate(habitColors.length, (index) {
+          final color = habitColors[index];
+          final isSelected = index == selectedColorIndex;
+          final colorName = _getColorName(index);
 
-        return GestureDetector(
-          onTap: () => onColorSelected(index),
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? Colors.white : Colors.transparent,
-                width: 3,
+          return Semantics(
+            label: '$colorName color${isSelected ? ', selected' : ''}',
+            hint: isSelected ? 'Currently selected color' : 'Tap to select this color',
+            button: true,
+            selected: isSelected,
+            child: GestureDetector(
+              onTap: () => onColorSelected(index),
+              child: Focus(
+                autofocus: isSelected,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      width: 3,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.3),
+                              spreadRadius: 2,
+                              blurRadius: 4,
+                            )
+                          ]
+                        : null,
+                  ),
+                  child: isSelected
+                      ? const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 24,
+                        )
+                      : null,
+                ),
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.3),
-                        spreadRadius: 2,
-                        blurRadius: 4,
-                      )
-                    ]
-                  : null,
             ),
-            child: isSelected
-                ? const Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 24,
-                  )
-                : null,
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
+  }
+
+  String _getColorName(int index) {
+    const colorNames = [
+      'Green', 'Blue', 'Orange', 'Red', 'Purple',
+      'Cyan', 'Yellow', 'Brown', 'Pink', 'Blue Grey'
+    ];
+    return colorNames[index % colorNames.length];
   }
 }

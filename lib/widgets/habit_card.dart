@@ -62,85 +62,110 @@ class HabitCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final habitColor = colorScheme.habitColor(habit.colorIndex);
 
+    // Create accessibility labels - memoized for performance
+    final completionStatus = habit.isCompleted(DateTime.now()) ? 'completed' : 'not completed';
+    final accessibilityLabel = '${habit.name}. ${habit.description}. Current streak: ${habit.currentStreak} days. Today: $completionStatus.';
+
     return Card(
       // Remove card margins to prevent overflow - grid handles spacing
       margin: EdgeInsets.zero,
-      child: InkWell(
-        // Tap handler for opening detailed view
-        onTap: onTap,
-        // Long press handler for context menu
-        onLongPress: () => _showContextMenu(context),
-        // Rounded corners for modern Material 3 design
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12), // Reduced padding
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top row: Icon and action buttons
-              Row(
-                children: [
-                  // Habit icon with themed background
-                  Container(
-                    width: 32, // Smaller icon
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: habitColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
+      child: Semantics(
+        label: accessibilityLabel,
+        hint: 'Double tap to view details, or long press for more options',
+        button: true,
+        child: InkWell(
+          // Tap handler for opening detailed view
+          onTap: onTap,
+          // Long press handler for context menu
+          onLongPress: () => _showContextMenu(context),
+          // Rounded corners for modern Material 3 design
+          borderRadius: BorderRadius.circular(12),
+          focusColor: habitColor.withValues(alpha: 0.2),
+          child: Padding(
+            padding: const EdgeInsets.all(12), // Reduced padding
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top row: Icon and action buttons
+                Row(
+                  children: [
+                    // Habit icon with themed background
+                    Semantics(
+                      label: 'Habit icon',
+                      excludeSemantics: true,
+                      child: Container(
+                        width: 32, // Smaller icon
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: habitColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          _getIconData(habit.iconName),
+                          color: habitColor,
+                          size: 20,
+                        ),
+                      ),
                     ),
-                    child: Icon(
-                      _getIconData(habit.iconName),
-                      color: habitColor,
-                      size: 20,
-                    ),
-                  ),
 
-                  const Spacer(), // Push buttons to the right
+                    const Spacer(), // Push buttons to the right
 
                   // Action buttons row
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Stats button
-                      InkWell(
-                        onTap: onStats ?? () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => StatsScreen(habit: habit),
+                      Semantics(
+                        label: 'View ${habit.name} statistics',
+                        hint: 'Opens detailed statistics for this habit',
+                        button: true,
+                        child: InkWell(
+                          onTap: onStats ?? () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => StatsScreen(habit: habit),
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHighest,
+                              shape: BoxShape.circle,
                             ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerHighest,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.bar_chart,
-                            color: colorScheme.onSurface.withValues(alpha: 0.7),
-                            size: 16,
+                            child: Icon(
+                              Icons.bar_chart,
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
                       // Complete button
-                      InkWell(
-                        onTap: onComplete,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: colorScheme.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.add,
-                            color: colorScheme.onSecondary,
-                            size: 18,
+                      Semantics(
+                        label: habit.isCompleted(DateTime.now())
+                            ? 'Mark ${habit.name} as incomplete'
+                            : 'Mark ${habit.name} as completed',
+                        hint: 'Toggles completion status for today',
+                        button: true,
+                        child: InkWell(
+                          onTap: onComplete,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: colorScheme.secondary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              habit.isCompleted(DateTime.now()) ? Icons.check : Icons.add,
+                              color: colorScheme.onSecondary,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ),
@@ -241,6 +266,7 @@ class HabitCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

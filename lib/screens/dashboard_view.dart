@@ -41,10 +41,14 @@ class _DashboardViewState extends State<DashboardView> {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        return Scaffold(
-          appBar: _buildAppBar(),
-          body: _buildBody(appState),
-          floatingActionButton: _buildFloatingActionButton(),
+        return Semantics(
+          label: 'Habit Forge Dashboard',
+          hint: 'Main screen showing your habits and progress',
+          child: Scaffold(
+            appBar: _buildAppBar(),
+            body: _buildBody(appState),
+            floatingActionButton: _buildFloatingActionButton(),
+          ),
         );
       },
     );
@@ -60,16 +64,26 @@ class _DashboardViewState extends State<DashboardView> {
       surfaceTintColor: Colors.transparent,
       actions: [
         // Calendar navigation button
-        IconButton(
-          icon: const Icon(Icons.calendar_today),
-          onPressed: () => _navigateToCalendar(),
-          tooltip: 'View Calendar',
+        Semantics(
+          label: 'Calendar view',
+          hint: 'Navigate to calendar to view habit progress over time',
+          button: true,
+          child: IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: () => _navigateToCalendar(),
+            tooltip: 'View Calendar',
+          ),
         ),
         // Settings button
-        IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () => _showSettings(),
-          tooltip: 'Settings',
+        Semantics(
+          label: 'Settings',
+          hint: 'Open app settings and preferences',
+          button: true,
+          child: IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => _showSettings(),
+            tooltip: 'Settings',
+          ),
         ),
       ],
     );
@@ -155,20 +169,31 @@ class _DashboardViewState extends State<DashboardView> {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final habit = habits[index];
-                return HabitCard(
-                  habit: habit,
-                  onTap: () => _onHabitTap(habit),
-                  onComplete: () => _onMarkCompleted(habit),
-                  onEdit: () => _showHabitDetails(habit),
-                  onArchive: () => _onArchiveHabit(habit),
-                  onDelete: () => _onDeleteHabit(habit),
-                );
+                return _buildHabitCard(habit);
               },
               childCount: habits.length,
+              // Add performance optimizations
+              addAutomaticKeepAlives: true,
+              addRepaintBoundaries: true,
+              addSemanticIndexes: false,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHabitCard(Habit habit) {
+    // Extract to separate method for better performance
+    // This allows Flutter to optimize widget rebuilding
+    return HabitCard(
+      key: ValueKey(habit.id), // Stable key for performance
+      habit: habit,
+      onTap: () => _onHabitTap(habit),
+      onComplete: () => _onMarkCompleted(habit),
+      onEdit: () => _showHabitDetails(habit),
+      onArchive: () => _onArchiveHabit(habit),
+      onDelete: () => _onDeleteHabit(habit),
     );
   }
 
@@ -217,10 +242,15 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildFloatingActionButton() {
-    return FloatingActionButton(
-      onPressed: _showAddHabitDialog,
-      tooltip: 'Add New Habit',
-      child: const Icon(Icons.add),
+    return Semantics(
+      label: 'Add new habit',
+      hint: 'Opens form to create a new habit',
+      button: true,
+      child: FloatingActionButton(
+        onPressed: _showAddHabitDialog,
+        tooltip: 'Add New Habit',
+        child: const Icon(Icons.add),
+      ),
     );
   }
 

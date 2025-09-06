@@ -48,69 +48,85 @@ class _FrequencySelectorState extends State<FrequencySelector> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Frequency type selection
-        ...Frequency.values.map((frequency) {
-          final isSelected = frequency == _currentFrequency.type;
-          return GestureDetector(
-            onTap: () => _onFrequencyTypeChanged(frequency),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.blue[50] : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected ? Colors.blue : Colors.grey[300]!,
-                  width: isSelected ? 2 : 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    return Semantics(
+      label: 'Frequency selection',
+      hint: 'Choose how often you want to perform this habit',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Frequency type selection
+          ...Frequency.values.map((frequency) {
+            final isSelected = frequency == _currentFrequency.type;
+            return Semantics(
+              label: '${frequency.displayName} frequency option${isSelected ? ', selected' : ''}',
+              hint: frequency.description + (isSelected ? '. Currently selected' : '. Tap to select'),
+              button: true,
+              selected: isSelected,
+              child: GestureDetector(
+                onTap: () => _onFrequencyTypeChanged(frequency),
+                child: Focus(
+                  autofocus: isSelected,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.blue[50] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? Colors.blue : Colors.grey[300]!,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          frequency.displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                frequency.displayName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              Text(
+                                frequency.description,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          frequency.description,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.blue,
+                            size: 20,
                           ),
-                        ),
                       ],
                     ),
                   ),
-                  if (isSelected)
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.blue,
-                      size: 20,
-                    ),
-                ],
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
 
         // Custom day selection (only shown when Custom is selected)
         if (_currentFrequency.type == Frequency.custom) ...[
           const SizedBox(height: 16),
-          const Text(
-            'Select days:',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
+          Semantics(
+            label: 'Select specific days for custom frequency',
+            hint: 'Choose which days of the week you want to perform this habit',
+            child: const Text(
+              'Select days:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -120,18 +136,25 @@ class _FrequencySelectorState extends State<FrequencySelector> {
             children: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((day) {
               final dayName = _getDayDisplayName(day);
               final isSelected = _currentFrequency.days[day] == 1;
-              return FilterChip(
-                label: Text(dayName),
+              return Semantics(
+                label: '$dayName${isSelected ? ', selected' : ', not selected'}',
+                hint: isSelected ? 'Tap to remove from selected days' : 'Tap to add to selected days',
+                button: true,
                 selected: isSelected,
-                onSelected: (selected) => _onCustomDayChanged(day, selected),
-                backgroundColor: Colors.grey[100],
-                selectedColor: Colors.blue[100],
-                checkmarkColor: Colors.blue,
+                child: FilterChip(
+                  label: Text(dayName),
+                  selected: isSelected,
+                  onSelected: (selected) => _onCustomDayChanged(day, selected),
+                  backgroundColor: Colors.grey[100],
+                  selectedColor: Colors.blue[100],
+                  checkmarkColor: Colors.blue,
+                ),
               );
             }).toList(),
           ),
         ],
       ],
+      ),
     );
   }
 

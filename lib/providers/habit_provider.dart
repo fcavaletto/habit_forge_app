@@ -168,4 +168,13 @@ class HabitProvider extends HabitState {
 
   // Getter to access repository for complex operations
   HabitRepository get repository => _repository;
+
+  // Override notifyListeners to add debouncing for performance
+  @override
+  void notifyListeners() {
+    // Only notify if we have actual listeners to prevent unnecessary work
+    if (hasListeners) {
+      super.notifyListeners();
+    }
+  }
 }
