@@ -7,6 +7,7 @@ import '../widgets/stats/streak_display.dart';
 import '../widgets/stats/weekly_overview.dart';
 import '../widgets/stats/monthly_calendar.dart';
 import '../utils/constants.dart';
+import '../utils/icon_utils.dart';
 
 /// Stats Screen - Displays analytics and charts for habit tracking
 ///
