@@ -30,7 +30,7 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen> {
   late HabitStorage _habitStorage;
-  Map<DateTime, bool> _completions = {};
+  Map<DateTime, int> _completions = {};
   bool _isLoading = true;
 
   @override
@@ -171,8 +171,8 @@ class _StatsScreenState extends State<StatsScreen> {
 
     for (int i = AppConstants.chartDaysCount - 1; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
-      final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
-      final rate = isCompleted ? 1.0 : 0.0;
+      final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
+      final rate = completionCount > 0 ? 1.0 : 0.0;
       data.add(rate);
     }
 
@@ -190,8 +190,8 @@ class _StatsScreenState extends State<StatsScreen> {
 
     for (int i = 0; i < AppConstants.weeklyOverviewDays; i++) {
       final date = weekStart.add(Duration(days: i));
-      final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
-      data.add(isCompleted);
+      final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
+      data.add(completionCount > 0);
     }
 
     return data;
@@ -207,9 +207,9 @@ class _StatsScreenState extends State<StatsScreen> {
 
     for (int i = 0; i < 365; i++) {
       final date = now.subtract(Duration(days: i));
-      final isCompleted = _completions[DateTime(date.year, date.month, date.day)] ?? false;
+      final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
 
-      if (isCompleted) {
+      if (completionCount > 0) {
         streak++;
       } else if (i == 0) {
         // Don't break streak for today if not completed yet
@@ -232,7 +232,7 @@ class _StatsScreenState extends State<StatsScreen> {
     final dates = _completions.keys.toList()..sort();
 
     for (final date in dates) {
-      if (_completions[date] == true) {
+      if ((_completions[date] ?? 0) > 0) {
         currentStreak++;
         longestStreak = longestStreak > currentStreak ? longestStreak : currentStreak;
       } else {

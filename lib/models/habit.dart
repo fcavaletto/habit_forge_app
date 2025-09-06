@@ -274,7 +274,7 @@ class Habit {
     if (completions.isEmpty) return null;
 
     final completedDates = completions.entries
-        .where((entry) => entry.value)
+        .where((entry) => entry.value > 0) // At least 1 completion
         .map((entry) => entry.key)
         .toList();
 

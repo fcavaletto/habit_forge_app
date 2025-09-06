@@ -6,7 +6,7 @@ import '../../utils/constants.dart';
 /// Displays a scrollable monthly calendar with habit completion data.
 /// Supports navigation through multiple months with visual completion indicators.
 class MonthlyCalendar extends StatefulWidget {
-  final Map<DateTime, bool> completions;
+  final Map<DateTime, int> completions;
   final DateTime? selectedMonth;
 
   const MonthlyCalendar({
@@ -165,7 +165,8 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               }
 
               final date = DateTime(monthDate.year, monthDate.month, dayNumber);
-              final isCompleted = widget.completions[DateTime(date.year, date.month, date.day)] ?? false;
+              final completionCount = widget.completions[DateTime(date.year, date.month, date.day)] ?? 0;
+              final isCompleted = completionCount > 0;
               final isToday = date.year == DateTime.now().year &&
                              date.month == DateTime.now().month &&
                              date.day == DateTime.now().day;

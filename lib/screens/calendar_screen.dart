@@ -68,22 +68,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     await _loadData(); // Refresh the view
   }
 
-  Future<void> _toggleCompletion(DateTime day, String habitId) async {
-    final normalizedDay = DateTime(day.year, day.month, day.day);
-    final habit = _habits.firstWhere((h) => h.id == habitId);
-    final isCompleted = habit.isCompleted(normalizedDay);
-
-    // Update the habit
-    await habitStorage.updateHabitCompletion(habitId, normalizedDay, !isCompleted);
-
-    // Reload data to refresh the calendar
-    await _loadData();
-  }
-
-  List<HabitCompletion> _getCompletionsForDay(DateTime day) {
-    final normalizedDay = DateTime(day.year, day.month, day.day);
-    return _completions[normalizedDay] ?? [];
-  }
 
   @override
   Widget build(BuildContext context) {

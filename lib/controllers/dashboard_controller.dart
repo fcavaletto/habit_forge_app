@@ -317,7 +317,7 @@ class DashboardController {
   int getCompletedTodayCount() {
     final today = DateTime.now();
     final todayKey = DateTime(today.year, today.month, today.day);
-    return habits.where((habit) => habit.completions[todayKey] == true).length;
+    return habits.where((habit) => (habit.completions[todayKey] ?? 0) > 0).length;
   }
 
   /// Get completion rate for today

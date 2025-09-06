@@ -144,7 +144,7 @@ class HabitState extends ChangeNotifier {
   int getCompletedTodayCount() {
     final today = DateTime.now();
     final todayKey = DateTime(today.year, today.month, today.day);
-    return _habits.where((habit) => habit.completions[todayKey] == true).length;
+    return _habits.where((habit) => (habit.completions[todayKey] ?? 0) > 0).length;
   }
 
   /// Get completion rate for today
