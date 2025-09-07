@@ -222,17 +222,24 @@ class Habit {
   /// Calculate completion rate for the last 30 days
   ///
   /// Measures habit adherence over the most recent 30-day period.
-  /// A day is considered "completed" if it has at least 1 completion.
+  /// Each day's completion percentage is calculated based on the target goal.
   /// Used for progress tracking and habit strength assessment.
   ///
-  /// @return Ratio between 0.0 and 1.0 representing completion percentage
+  /// @return Ratio between 0.0 and 1.0 representing average completion percentage
   double get completionRate {
     final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
-    final recentCompletions = completions.entries
-        .where((entry) => entry.key.isAfter(thirtyDaysAgo) || entry.key.isAtSameMomentAs(thirtyDaysAgo))
-        .where((entry) => entry.value > 0) // At least 1 completion counts as completed
-        .length;
-    return recentCompletions / 30.0; // Return as fraction for percentage calculation
+    double totalCompletionPercentage = 0.0;
+    int daysWithData = 0;
+    
+    for (int i = 0; i < 30; i++) {
+      final date = DateTime.now().subtract(Duration(days: i));
+      final count = getCompletionCount(date);
+      final percentage = (count / targetGoal).clamp(0.0, 1.0);
+      totalCompletionPercentage += percentage;
+      daysWithData++;
+    }
+    
+    return daysWithData > 0 ? totalCompletionPercentage / daysWithData : 0.0;
   }
 
   /// Generate completion data for the last 7 days

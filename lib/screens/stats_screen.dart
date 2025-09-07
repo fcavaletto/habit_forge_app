@@ -162,9 +162,8 @@ class _StatsScreenState extends State<StatsScreen> {
   /// Calculates completion rate data points for the last 30 days
   ///
   /// Returns a list of double values representing daily completion rates.
-  /// Each value is either 0.0 (not completed) or 1.0 (completed).
-  /// The chart shows daily completion status rather than weekly averages
-  /// to provide accurate day-by-day habit tracking visualization.
+  /// Each value represents the completion percentage for that day (0.0 to 1.0).
+  /// The chart shows daily completion percentage based on the habit's target goal.
   List<double> _getLast30DaysData() {
     final data = <double>[];
     final now = DateTime.now();
@@ -172,7 +171,7 @@ class _StatsScreenState extends State<StatsScreen> {
     for (int i = AppConstants.chartDaysCount - 1; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
       final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
-      final rate = completionCount > 0 ? 1.0 : 0.0;
+      final rate = (completionCount / widget.habit.targetGoal).clamp(0.0, 1.0);
       data.add(rate);
     }
 
@@ -181,7 +180,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
   /// Calculates weekly completion data for the current week
   ///
-  /// Returns a list of boolean values representing completion status
+  /// Returns a list of boolean values representing goal achievement status
   /// for each day of the current week (Monday to Sunday).
   List<bool> _getWeeklyData() {
     final data = <bool>[];
@@ -191,16 +190,16 @@ class _StatsScreenState extends State<StatsScreen> {
     for (int i = 0; i < AppConstants.weeklyOverviewDays; i++) {
       final date = weekStart.add(Duration(days: i));
       final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
-      data.add(completionCount > 0);
+      data.add(completionCount >= widget.habit.targetGoal);
     }
 
     return data;
   }
 
-  /// Calculates the current streak of consecutive completed days
+  /// Calculates the current streak of consecutive goal-achieved days
   ///
-  /// A streak continues as long as the habit is completed each day.
-  /// The streak breaks when a day is missed, but can resume the next day.
+  /// A streak continues as long as the habit achieves its goal each day.
+  /// The streak breaks when a day's goal is not met, but can resume the next day.
   int _calculateCurrentStreak() {
     final now = DateTime.now();
     int streak = 0;
@@ -209,10 +208,10 @@ class _StatsScreenState extends State<StatsScreen> {
       final date = now.subtract(Duration(days: i));
       final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
 
-      if (completionCount > 0) {
+      if (completionCount >= widget.habit.targetGoal) {
         streak++;
       } else if (i == 0) {
-        // Don't break streak for today if not completed yet
+        // Don't break streak for today if goal not achieved yet
         continue;
       } else {
         break;
@@ -222,7 +221,7 @@ class _StatsScreenState extends State<StatsScreen> {
     return streak;
   }
 
-  /// Calculates the longest streak of consecutive completed days
+  /// Calculates the longest streak of consecutive goal-achieved days
   ///
   /// This represents the personal best achievement for this habit.
   int _calculateLongestStreak() {
@@ -232,7 +231,7 @@ class _StatsScreenState extends State<StatsScreen> {
     final dates = _completions.keys.toList()..sort();
 
     for (final date in dates) {
-      if ((_completions[date] ?? 0) > 0) {
+      if ((_completions[date] ?? 0) >= widget.habit.targetGoal) {
         currentStreak++;
         longestStreak = longestStreak > currentStreak ? longestStreak : currentStreak;
       } else {
