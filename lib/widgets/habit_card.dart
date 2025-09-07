@@ -266,7 +266,7 @@ class HabitCard extends StatelessWidget {
                   children: List.generate(7, (index) {
                     final date = DateTime.now().subtract(Duration(days: 6 - index));
                     final count = habit.getCompletionCount(date);
-                    final intensity = count > 0 ? (count / 5.0).clamp(0.0, 1.0) : 0.0; // Max 5 for visualization
+                    final intensity = count > 0 ? (count / habit.targetGoal).clamp(0.0, 1.0) : 0.0; // Use actual goal for visualization
 
                     return Expanded(
                       child: Container(
@@ -277,7 +277,13 @@ class HabitCard extends StatelessWidget {
                               : habitColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(1),
                         ),
-                        child: count > 1
+                        child: habit.isGoalAchieved(date)
+                            ? const Icon(
+                                Icons.check,
+                                size: 10,
+                                color: Colors.white,
+                              )
+                            : count > 0
                             ? Center(
                                 child: Text(
                                   count.toString(),
@@ -287,12 +293,6 @@ class HabitCard extends StatelessWidget {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              )
-                            : count == 1
-                            ? const Icon(
-                                Icons.check,
-                                size: 10,
-                                color: Colors.white,
                               )
                             : null,
                       ),
