@@ -97,12 +97,12 @@ class _AddHabitViewState extends State<AddHabitView> {
           const SizedBox(height: 24),
 
           // Habit Description
-          _buildSectionTitle('Description'),
+          _buildSectionTitle('Description (Optional)'),
           TextFormField(
             controller: _controller.descriptionController,
             maxLines: 3,
             decoration: const InputDecoration(
-              hintText: 'Describe your habit',
+              hintText: 'Describe your habit (optional)',
               border: OutlineInputBorder(),
             ),
           ),

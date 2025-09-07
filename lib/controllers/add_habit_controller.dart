@@ -64,10 +64,7 @@ class AddHabitController {
       return false;
     }
 
-    if (descriptionController.text.trim().isEmpty) {
-      errorMessage = 'Habit description is required';
-      return false;
-    }
+    // Description is now optional - no validation needed
 
     // Validate target goal
     final goalText = targetGoalController.text.trim();

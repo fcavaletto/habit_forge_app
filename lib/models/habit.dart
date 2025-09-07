@@ -110,7 +110,7 @@ class Habit {
   /// @throws AssertionError if colorIndex is outside valid range
   factory Habit.create({
     required String name,
-    required String description,
+    String description = '',
     int colorIndex = defaultColorIndex,
     String iconName = defaultIconName,
     TimeOfDay? reminderTime,
