@@ -6,13 +6,12 @@ import '../screens/stats_screen.dart';
 /// Interactive card widget displaying a habit with progress visualization
 ///
 /// This is the primary UI component for displaying habits in the main dashboard.
-/// Each card shows the habit's name, description, progress grid, streak counter,
+/// Each card shows the habit's name, description, progress grid,
 /// and provides interactive controls for completion and detailed viewing.
 ///
 /// Key Features:
 /// - Material 3 card design with theme-aware styling
 /// - 7-day progress grid showing recent completion status
-/// - Streak counter with visual prominence
 /// - Quick completion toggle button
 /// - Tap-to-view detailed habit information
 /// - Responsive design for various screen sizes
@@ -73,7 +72,7 @@ class HabitCard extends StatelessWidget {
     // Create accessibility labels - memoized for performance
     final todayCount = habit.getCompletionCount(DateTime.now());
     final completionStatus = todayCount > 0 ? '$todayCount completion${todayCount != 1 ? 's' : ''}' : 'not completed';
-    final accessibilityLabel = '${habit.name}. ${habit.description}. Current streak: ${habit.currentStreak} days. Today: $completionStatus.';
+    final accessibilityLabel = '${habit.name}. ${habit.description}. Today: $completionStatus.';
 
     return Card(
       // Remove card margins to prevent overflow - grid handles spacing
@@ -297,25 +296,6 @@ class HabitCard extends StatelessWidget {
 
                   const SizedBox(width: 8),
 
-                  // Streak counter
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: habitColor.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        habit.currentStreak.toString(),
-                        style: TextStyle(
-                          color: habitColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
 
