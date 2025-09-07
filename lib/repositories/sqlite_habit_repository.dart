@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
 import '../models/habit.dart';
 import '../models/habit_storage.dart';
+import '../repositories/habit_repository.dart';
 import '../services/database_service.dart';
 
 /// SQLite implementation of HabitRepository
