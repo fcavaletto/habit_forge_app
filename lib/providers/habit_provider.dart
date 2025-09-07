@@ -43,8 +43,10 @@ class HabitState extends ChangeNotifier {
   Future<HabitSaveResult> addHabit(Habit habit) async {
     try {
       final result = await _habitRepository.saveHabit(habit);
-      if (result.success) {
-        await loadHabits(); // Refresh the list
+      if (result.success && result.savedHabit != null) {
+        // Add to local state directly
+        _habits.insert(0, result.savedHabit!); // Add at the beginning
+        notifyListeners();
       }
       return result;
     } catch (e) {
@@ -56,7 +58,14 @@ class HabitState extends ChangeNotifier {
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
       await _habitRepository.updateHabitCompletion(habitId, date, count);
-      await loadHabits(); // Refresh to get updated data
+      
+      // Update local state directly instead of reloading all habits
+      final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
+      if (habitIndex >= 0) {
+        final updatedHabit = _habits[habitIndex].markCompleted(date, count);
+        _habits[habitIndex] = updatedHabit;
+        notifyListeners();
+      }
     } catch (e) {
       _error = 'Failed to update habit completion: $e';
       notifyListeners();
@@ -68,7 +77,12 @@ class HabitState extends ChangeNotifier {
     try {
       final success = await _habitRepository.archiveHabit(habitId);
       if (success) {
-        await loadHabits(); // Refresh the list
+        // Update local state directly
+        final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
+        if (habitIndex >= 0) {
+          _habits.removeAt(habitIndex); // Remove from active habits list
+          notifyListeners();
+        }
       }
       return success;
     } catch (e) {
@@ -83,7 +97,8 @@ class HabitState extends ChangeNotifier {
     try {
       final success = await _habitRepository.unarchiveHabit(habitId);
       if (success) {
-        await loadHabits(); // Refresh the list
+        // Reload habits to get the unarchived habit back
+        await loadHabits();
       }
       return success;
     } catch (e) {
@@ -97,7 +112,9 @@ class HabitState extends ChangeNotifier {
   Future<void> deleteHabit(String habitId) async {
     try {
       await _habitRepository.deleteHabit(habitId);
-      await loadHabits(); // Refresh the list
+      // Update local state directly
+      _habits.removeWhere((habit) => habit.id == habitId);
+      notifyListeners();
     } catch (e) {
       _error = 'Failed to delete habit: $e';
       notifyListeners();
@@ -108,8 +125,10 @@ class HabitState extends ChangeNotifier {
   Future<HabitSaveResult> overwriteArchivedHabit(String archivedHabitId, Habit newHabit) async {
     try {
       final result = await _habitRepository.overwriteArchivedHabit(archivedHabitId, newHabit);
-      if (result.success) {
-        await loadHabits(); // Refresh the list
+      if (result.success && result.savedHabit != null) {
+        // Add the unarchived habit to local state
+        _habits.insert(0, result.savedHabit!);
+        notifyListeners();
       }
       return result;
     } catch (e) {
