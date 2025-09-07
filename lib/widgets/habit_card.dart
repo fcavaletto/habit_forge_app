@@ -176,12 +176,14 @@ class HabitCard extends StatelessWidget {
                                     color: habitColor,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: Icon(
-                                    habit.isGoalAchieved(DateTime.now()) 
-                                        ? Icons.check 
-                                        : Icons.remove,
-                                    color: Colors.white,
-                                    size: 27, // 50% bigger (18 * 1.5)
+                                  child: Center(
+                                    child: Icon(
+                                      habit.isGoalAchieved(DateTime.now()) 
+                                          ? Icons.done 
+                                          : Icons.remove,
+                                      color: Colors.white,
+                                      size: 27, // 50% bigger (18 * 1.5)
+                                    ),
                                   ),
                                 ),
                               ),
