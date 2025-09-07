@@ -127,6 +127,20 @@ class _AddHabitViewState extends State<AddHabitView> {
 
           const SizedBox(height: 24),
 
+          // Target Goal
+          _buildSectionTitle('Target Goal'),
+          TextFormField(
+            controller: _controller.targetGoalController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              hintText: 'Enter target completions per day',
+              border: OutlineInputBorder(),
+              helperText: 'How many times do you want to complete this habit daily?',
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           // Frequency Selection
           _buildSectionTitle('Frequency'),
           FrequencySelector(

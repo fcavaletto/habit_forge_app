@@ -13,12 +13,14 @@ class AddHabitController {
   // Form state
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController targetGoalController = TextEditingController(text: '1');
 
   String selectedIconName = 'check_circle';
   int selectedColorIndex = 0;
   FrequencyData frequencyData = FrequencyData.forType(Frequency.everyDay);
   TimeOfDay? reminderTime;
   bool enableReminders = false;
+  int targetGoal = 1;
 
   bool isLoading = false;
   String? errorMessage;
@@ -31,6 +33,7 @@ class AddHabitController {
     // Clear error message when user starts typing
     nameController.addListener(_clearError);
     descriptionController.addListener(_clearError);
+    targetGoalController.addListener(_clearError);
   }
 
   void _clearError() {
@@ -66,6 +69,30 @@ class AddHabitController {
       return false;
     }
 
+    // Validate target goal
+    final goalText = targetGoalController.text.trim();
+    if (goalText.isEmpty) {
+      errorMessage = 'Target goal is required';
+      return false;
+    }
+
+    final goalValue = int.tryParse(goalText);
+    if (goalValue == null) {
+      errorMessage = 'Target goal must be a valid number';
+      return false;
+    }
+
+    if (goalValue <= 0) {
+      errorMessage = 'Target goal must be greater than 0';
+      return false;
+    }
+
+    if (goalValue > 1000) {
+      errorMessage = 'Target goal cannot exceed 1000';
+      return false;
+    }
+
+    targetGoal = goalValue;
     return true;
   }
 
@@ -97,6 +124,7 @@ class AddHabitController {
         reminderTime: enableReminders ? reminderTime : null,
         enableReminders: enableReminders,
         frequencyDays: frequencyData.days,
+        targetGoal: targetGoal,
       );
 
       debugPrint('🎯 Habit created successfully: ${habit.name}');

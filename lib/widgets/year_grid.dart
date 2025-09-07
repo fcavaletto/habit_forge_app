@@ -156,11 +156,12 @@ class _YearGridState extends State<YearGrid> {
 
   Widget _buildDaySquare(DateTime date, int count) {
     final isToday = _isSameDay(date, DateTime.now());
-    final maxOpacity = 1.0; // Could be configurable based on habit target
+    final isGoalAchieved = count >= widget.habit.targetGoal;
+    final maxOpacity = widget.habit.targetGoal.toDouble();
     final opacity = count > 0 ? (count / maxOpacity).clamp(0.0, 1.0) : 0.0;
 
     return Tooltip(
-      message: '${_formatDate(date)}: ${count > 0 ? '$count completion${count != 1 ? 's' : ''}' : 'No completions'}',
+      message: '${_formatDate(date)}: ${count > 0 ? '$count/${widget.habit.targetGoal} completion${count != 1 ? 's' : ''}' : 'No completions'}',
       child: GestureDetector(
         onTap: widget.onCompletionTap != null
             ? () => widget.onCompletionTap!(date, count > 0 ? 0 : 1)
@@ -176,6 +177,9 @@ class _YearGridState extends State<YearGrid> {
             border: isToday ? Border.all(
               color: Theme.of(context).colorScheme.primary,
               width: 1,
+            ) : isGoalAchieved ? Border.all(
+              color: Colors.green.shade600,
+              width: 1,
             ) : null,
           ),
           child: count > 1 ? Center(
@@ -184,9 +188,13 @@ class _YearGridState extends State<YearGrid> {
               style: TextStyle(
                 fontSize: 6,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: isGoalAchieved ? Colors.green.shade800 : Colors.white,
               ),
             ),
+          ) : isGoalAchieved ? const Icon(
+            Icons.check,
+            size: 8,
+            color: Colors.white,
           ) : null,
         ),
       ),

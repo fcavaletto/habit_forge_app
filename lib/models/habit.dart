@@ -51,6 +51,9 @@ class Habit {
   /// Frequency data for when the habit should be active
   final Map<String, int> frequencyDays;
 
+  /// Target number of completions per day for this habit
+  final int targetGoal;
+
   /// Maximum number of habit colors available in the theme
   static const int maxColorIndex = 9;
 
@@ -65,6 +68,9 @@ class Habit {
     'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1
   };
 
+  /// Default target goal for new habits
+  static const int defaultTargetGoal = 1;
+
   Habit({
     required this.id,
     required this.name,
@@ -77,8 +83,10 @@ class Habit {
     this.enableReminders = false,
     this.isArchived = false,
     this.frequencyDays = defaultFrequencyDays,
+    this.targetGoal = defaultTargetGoal,
   }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex,
-              'Color index must be between 0 and $maxColorIndex');
+              'Color index must be between 0 and $maxColorIndex'),
+       assert(targetGoal > 0, 'Target goal must be greater than 0');
 
   /// Factory constructor to create a new habit with deterministic ID generation.
   ///
@@ -109,6 +117,7 @@ class Habit {
     bool enableReminders = false,
     bool isArchived = false,
     Map<String, int>? frequencyDays,
+    int targetGoal = defaultTargetGoal,
   }) {
     // Generate deterministic ID based on normalized name and icon
     final normalizedName = name.toLowerCase().trim();
@@ -126,6 +135,7 @@ class Habit {
       enableReminders: enableReminders,
       isArchived: isArchived,
       frequencyDays: frequencyDays ?? defaultFrequencyDays,
+      targetGoal: targetGoal,
     );
   }
 
@@ -169,6 +179,14 @@ class Habit {
   int getCompletionCount(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     return completions[normalizedDate] ?? 0;
+  }
+
+  /// Check if the goal is achieved for a specific date
+  ///
+  /// @param date The date to check goal achievement for
+  /// @return true if completion count >= target goal, false otherwise
+  bool isGoalAchieved(DateTime date) {
+    return getCompletionCount(date) >= targetGoal;
   }
 
   /// Calculate current streak of consecutive completed days
@@ -302,6 +320,7 @@ class Habit {
     bool? enableReminders,
     bool? isArchived,
     Map<String, int>? frequencyDays,
+    int? targetGoal,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -315,6 +334,7 @@ class Habit {
       enableReminders: enableReminders ?? this.enableReminders,
       isArchived: isArchived ?? this.isArchived,
       frequencyDays: frequencyDays ?? this.frequencyDays,
+      targetGoal: targetGoal ?? this.targetGoal,
     );
   }
 
@@ -342,6 +362,7 @@ class Habit {
       'enableReminders': enableReminders,
       'isArchived': isArchived,
       'frequencyDays': frequencyDays,
+      'targetGoal': targetGoal,
       // Convert DateTime keys to ISO strings for JSON compatibility
       'completions': completions.map(
         (key, value) => MapEntry(key.toIso8601String(), value),
@@ -385,6 +406,7 @@ class Habit {
       frequencyDays: (json['frequencyDays'] as Map<String, dynamic>?)?.map(
         (key, value) => MapEntry(key, value as int),
       ) ?? defaultFrequencyDays, // Default to every day
+      targetGoal: json['targetGoal'] as int? ?? defaultTargetGoal, // Default to 1
       // Reconstruct completion map with DateTime keys
       // Handle backward compatibility: convert boolean values to integers
       completions: (json['completions'] as Map<String, dynamic>).map(
