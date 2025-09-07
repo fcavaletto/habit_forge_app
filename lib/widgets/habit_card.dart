@@ -152,15 +152,19 @@ class HabitCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      // Completion controls - always show plus button, conditionally show minus button
+                      // Completion controls - conditionally show buttons based on goal achievement
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Conditionally show minus button when there are completions
+                          // Conditionally show minus/check button when there are completions
                           if (todayCount > 0) ...[
                             Semantics(
-                              label: 'Decrement ${habit.name} completion count',
-                              hint: 'Tap to reduce completion count',
+                              label: habit.isGoalAchieved(DateTime.now())
+                                  ? 'Remove completion from ${habit.name}'
+                                  : 'Decrement ${habit.name} completion count',
+                              hint: habit.isGoalAchieved(DateTime.now())
+                                  ? 'Tap to remove one completion'
+                                  : 'Tap to reduce completion count',
                               button: true,
                               child: InkWell(
                                 onTap: onDecrement ?? onComplete,
@@ -172,8 +176,10 @@ class HabitCard extends StatelessWidget {
                                     color: habitColor,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(
-                                    Icons.remove,
+                                  child: Icon(
+                                    habit.isGoalAchieved(DateTime.now()) 
+                                        ? Icons.check 
+                                        : Icons.remove,
                                     color: Colors.white,
                                     size: 27, // 50% bigger (18 * 1.5)
                                   ),
@@ -182,31 +188,33 @@ class HabitCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 6),
                           ],
-                          // Always show plus button
-                          Semantics(
-                            label: 'Increment ${habit.name} completion count',
-                            hint: todayCount == 0 
-                                ? 'Tap to add first completion for today'
-                                : 'Tap to increase completion count',
-                            button: true,
-                            child: InkWell(
-                              onTap: onIncrement ?? onComplete,
-                              borderRadius: BorderRadius.circular(24), // 50% bigger radius
-                              child: Container(
-                                width: 42, // 50% bigger (28 * 1.5)
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: habitColor,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.add,
-                                  color: Colors.white,
-                                  size: 27, // 50% bigger (18 * 1.5)
+                          // Conditionally show plus button when goal is not achieved
+                          if (!habit.isGoalAchieved(DateTime.now())) ...[
+                            Semantics(
+                              label: 'Increment ${habit.name} completion count',
+                              hint: todayCount == 0 
+                                  ? 'Tap to add first completion for today'
+                                  : 'Tap to increase completion count',
+                              button: true,
+                              child: InkWell(
+                                onTap: onIncrement ?? onComplete,
+                                borderRadius: BorderRadius.circular(24), // 50% bigger radius
+                                child: Container(
+                                  width: 42, // 50% bigger (28 * 1.5)
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: habitColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                    size: 27, // 50% bigger (18 * 1.5)
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ],
