@@ -102,16 +102,16 @@ class HabitCard extends StatelessWidget {
                       label: 'Habit icon',
                       excludeSemantics: true,
                       child: Container(
-                        width: 32, // Smaller icon
-                        height: 32,
+                        width: 48, // 50% bigger (32 * 1.5)
+                        height: 48,
                         decoration: BoxDecoration(
                           color: habitColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(9), // Slightly larger radius
                         ),
                         child: Icon(
                           _getIconData(habit.iconName),
                           color: habitColor,
-                          size: 20,
+                          size: 30, // 50% bigger (20 * 1.5)
                         ),
                       ),
                     ),
@@ -135,10 +135,10 @@ class HabitCard extends StatelessWidget {
                               ),
                             );
                           },
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(24), // 50% bigger radius
                           child: Container(
-                            width: 28,
-                            height: 28,
+                            width: 42, // 50% bigger (28 * 1.5)
+                            height: 42,
                             decoration: BoxDecoration(
                               color: colorScheme.surfaceContainerHighest,
                               shape: BoxShape.circle,
@@ -146,110 +146,68 @@ class HabitCard extends StatelessWidget {
                             child: Icon(
                               Icons.bar_chart,
                               color: colorScheme.onSurface.withValues(alpha: 0.7),
-                              size: 16,
+                              size: 24, // 50% bigger (16 * 1.5)
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      // Completion controls
-                      if (todayCount == 0)
-                        // Simple add button when no completions
-                      Semantics(
-                          label: 'Increment ${habit.name} completion count',
-                          hint: 'Tap to add first completion for today',
-                        button: true,
-                        child: InkWell(
-                          onTap: onComplete,
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: colorScheme.secondary,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                                Icons.add,
-                              color: colorScheme.onSecondary,
-                              size: 18,
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        // +/- controls with count when there are completions
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Decrement button
+                      // Completion controls - always show plus button, conditionally show minus button
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Conditionally show minus button when there are completions
+                          if (todayCount > 0) ...[
                             Semantics(
                               label: 'Decrement ${habit.name} completion count',
                               hint: 'Tap to reduce completion count',
                               button: true,
                               child: InkWell(
                                 onTap: onDecrement ?? onComplete,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(24), // 50% bigger radius
                                 child: Container(
-                                  width: 20,
-                                  height: 20,
+                                  width: 42, // 50% bigger (28 * 1.5)
+                                  height: 42,
                                   decoration: BoxDecoration(
-                                    color: habitColor.withValues(alpha: 0.8),
+                                    color: habitColor,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
                                     Icons.remove,
                                     color: Colors.white,
-                                    size: 12,
+                                    size: 27, // 50% bigger (18 * 1.5)
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 2),
-                            // Count display
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: habitColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  todayCount.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            // Increment button
-                            Semantics(
-                              label: 'Increment ${habit.name} completion count',
-                              hint: 'Tap to increase completion count',
-                              button: true,
-                              child: InkWell(
-                                onTap: onIncrement ?? onComplete,
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration: BoxDecoration(
-                                    color: habitColor.withValues(alpha: 0.8),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                    size: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
+                            const SizedBox(width: 6),
                           ],
+                          // Always show plus button
+                          Semantics(
+                            label: 'Increment ${habit.name} completion count',
+                            hint: todayCount == 0 
+                                ? 'Tap to add first completion for today'
+                                : 'Tap to increase completion count',
+                            button: true,
+                            child: InkWell(
+                              onTap: onIncrement ?? onComplete,
+                              borderRadius: BorderRadius.circular(24), // 50% bigger radius
+                              child: Container(
+                                width: 42, // 50% bigger (28 * 1.5)
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: habitColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 27, // 50% bigger (18 * 1.5)
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
