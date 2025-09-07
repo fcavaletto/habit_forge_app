@@ -1,0 +1,197 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+
+/// Service class for managing SQLite database operations
+///
+/// Handles database initialization, schema creation, and provides
+/// a centralized interface for all database operations.
+///
+/// Features:
+/// - Database initialization with proper schema
+/// - Migration support for future schema changes
+/// - Connection management and error handling
+/// - Transaction support for data consistency
+class DatabaseService {
+  static const String _databaseName = 'habit_forge.db';
+  static const int _databaseVersion = 1;
+  
+  static Database? _database;
+  static final DatabaseService _instance = DatabaseService._internal();
+  
+  factory DatabaseService() => _instance;
+  
+  DatabaseService._internal();
+  
+  /// Get the database instance, initializing if necessary
+  Future<Database> get database async {
+    _database ??= await _initDatabase();
+    return _database!;
+  }
+  
+  /// Initialize the database with proper schema
+  Future<Database> _initDatabase() async {
+    try {
+      final databasesPath = await getDatabasesPath();
+      final path = join(databasesPath, _databaseName);
+      
+      debugPrint('🗄️ Initializing database at: $path');
+      
+      return await openDatabase(
+        path,
+        version: _databaseVersion,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+        onOpen: _onOpen,
+      );
+    } catch (e) {
+      debugPrint('❌ Error initializing database: $e');
+      rethrow;
+    }
+  }
+  
+  /// Create database schema on first run
+  Future<void> _onCreate(Database db, int version) async {
+    debugPrint('🗄️ Creating database schema (version $version)');
+    
+    await db.transaction((txn) async {
+      // Create habits table
+      await txn.execute('''
+        CREATE TABLE habits (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          color_index INTEGER NOT NULL,
+          icon_name TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          is_archived INTEGER NOT NULL DEFAULT 0,
+          frequency_days TEXT NOT NULL,
+          target_goal INTEGER NOT NULL DEFAULT 1
+        )
+      ''');
+      
+      // Create habit_completions table
+      await txn.execute('''
+        CREATE TABLE habit_completions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          habit_id TEXT NOT NULL,
+          completion_date INTEGER NOT NULL,
+          completion_count INTEGER NOT NULL DEFAULT 1,
+          completion_goal INTEGER NOT NULL DEFAULT 1,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE,
+          UNIQUE(habit_id, completion_date)
+        )
+      ''');
+      
+      // Create habit_reminders table
+      await txn.execute('''
+        CREATE TABLE habit_reminders (
+          habit_id TEXT PRIMARY KEY,
+          reminder_time_hour INTEGER,
+          reminder_time_minute INTEGER,
+          enable_reminders INTEGER NOT NULL DEFAULT 0,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        )
+      ''');
+      
+      // Create indexes for better performance
+      await txn.execute('''
+        CREATE INDEX idx_habit_completions_date 
+        ON habit_completions(completion_date)
+      ''');
+      
+      await txn.execute('''
+        CREATE INDEX idx_habit_completions_habit_id 
+        ON habit_completions(habit_id)
+      ''');
+      
+      await txn.execute('''
+        CREATE INDEX idx_habits_archived 
+        ON habits(is_archived)
+      ''');
+    });
+    
+    debugPrint('✅ Database schema created successfully');
+  }
+  
+  /// Handle database upgrades for future schema changes
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    debugPrint('🗄️ Upgrading database from version $oldVersion to $newVersion');
+    
+    // Future migration logic will go here
+    // For now, we're at version 1, so no migrations needed
+  }
+  
+  /// Called when database is opened
+  Future<void> _onOpen(Database db) async {
+    debugPrint('🗄️ Database opened successfully');
+    
+    // Enable foreign key constraints
+    await db.execute('PRAGMA foreign_keys = ON');
+  }
+  
+  /// Close the database connection
+  Future<void> close() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+      debugPrint('🗄️ Database connection closed');
+    }
+  }
+  
+  /// Delete the database (for testing/debugging)
+  Future<void> deleteDatabase() async {
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, _databaseName);
+    
+    await databaseFactory.deleteDatabase(path);
+    _database = null;
+    debugPrint('🗄️ Database deleted');
+  }
+  
+  /// Execute a transaction with proper error handling
+  Future<T> transaction<T>(Future<T> Function(Transaction txn) action) async {
+    final db = await database;
+    return await db.transaction(action);
+  }
+  
+  /// Execute raw SQL query
+  Future<List<Map<String, dynamic>>> rawQuery(
+    String sql, [
+    List<dynamic>? arguments,
+  ]) async {
+    final db = await database;
+    return await db.rawQuery(sql, arguments);
+  }
+  
+  /// Execute raw SQL command
+  Future<int> rawUpdate(
+    String sql, [
+    List<dynamic>? arguments,
+  ]) async {
+    final db = await database;
+    return await db.rawUpdate(sql, arguments);
+  }
+  
+  /// Execute raw SQL insert
+  Future<int> rawInsert(
+    String sql, [
+    List<dynamic>? arguments,
+  ]) async {
+    final db = await database;
+    return await db.rawInsert(sql, arguments);
+  }
+  
+  /// Execute raw SQL delete
+  Future<int> rawDelete(
+    String sql, [
+    List<dynamic>? arguments,
+  ]) async {
+    final db = await database;
+    return await db.rawDelete(sql, arguments);
+  }
+}
+
+/// Global singleton instance of DatabaseService
+final databaseService = DatabaseService();

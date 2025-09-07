@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../models/habit_storage.dart';
 import '../repositories/habit_repository.dart';
+import '../repositories/sqlite_habit_repository.dart';
+import '../services/database_service.dart';
+import '../services/migration_service.dart';
 
 /// State class to hold habit-related data and operations
 class HabitState extends ChangeNotifier {
@@ -160,10 +163,32 @@ class HabitProvider extends HabitState {
 
   HabitProvider(super.habitRepository) : _repository = habitRepository;
 
-  // Factory method for easy creation with default repository
+  // Factory method for easy creation with SQLite repository
   factory HabitProvider.create() {
-    final habitRepository = HabitRepositoryImpl(habitStorage);
-    return HabitProvider(habitRepository);
+    final databaseService = DatabaseService();
+    final sqliteRepository = SqliteHabitRepository(databaseService);
+    return HabitProvider(sqliteRepository);
+  }
+  
+  // Initialize the provider with migration support
+  Future<void> initialize() async {
+    final databaseService = DatabaseService();
+    final oldStorage = HabitStorage();
+    final migrationService = MigrationService(oldStorage, _repository as SqliteHabitRepository, databaseService);
+    
+    // Perform migration if needed
+    if (!await migrationService.isMigrationCompleted()) {
+      debugPrint('🔄 Starting data migration...');
+      final migrationResult = await migrationService.migrate();
+      if (migrationResult.success) {
+        debugPrint('✅ Migration completed successfully');
+      } else {
+        debugPrint('❌ Migration failed: ${migrationResult.message}');
+        if (migrationResult.errors.isNotEmpty) {
+          debugPrint('❌ Migration errors: ${migrationResult.errors.join(', ')}');
+        }
+      }
+    }
   }
 
   // Getter to access repository for complex operations

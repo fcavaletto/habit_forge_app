@@ -37,6 +37,10 @@ dependencies:
 
   # Local storage for habit persistence
   shared_preferences: ^2.0.0
+  
+  # SQLite database for relational data storage
+  sqflite: ^2.3.0
+  path: ^1.8.3
 
   # Calendar widget
   table_calendar: ^3.0.0

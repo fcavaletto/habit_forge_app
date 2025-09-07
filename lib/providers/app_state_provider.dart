@@ -5,6 +5,8 @@ import '../services/notification_service.dart';
 import 'habit_provider.dart';
 import 'notification_provider.dart';
 import '../repositories/habit_repository.dart';
+import '../repositories/sqlite_habit_repository.dart';
+import '../services/database_service.dart';
 
 /// Combined app state provider that manages all app-wide state
 class AppState extends ChangeNotifier {
@@ -43,6 +45,9 @@ class AppState extends ChangeNotifier {
 
   /// Initialize all services
   Future<void> initialize() async {
+    // Initialize habit provider with migration
+    await (_habitProvider as HabitProvider).initialize();
+    
     await Future.wait([
       _habitProvider.loadHabits(),
       _notificationProvider.initialize(),
@@ -67,11 +72,9 @@ class AppState extends ChangeNotifier {
 class AppStateProvider extends AppState {
   AppStateProvider(super.habitProvider, super.notificationProvider);
 
-  // Factory method for easy creation
+  // Factory method for easy creation with SQLite repository
   factory AppStateProvider.create() {
-    final habitStorage = HabitStorage();
-    final habitRepository = HabitRepositoryImpl(habitStorage);
-    final habitProvider = HabitProvider(habitRepository);
+    final habitProvider = HabitProvider.create();
     final notificationService = NotificationService();
     final notificationProvider = NotificationProvider(notificationService);
 
