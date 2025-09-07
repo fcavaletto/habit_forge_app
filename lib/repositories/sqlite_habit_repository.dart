@@ -345,10 +345,10 @@ class SqliteHabitRepository implements HabitRepository {
         
         // Check for recently broken streaks
         final yesterday = now.subtract(const Duration(days: 1));
-        final wasCompletedYesterday = habit.isCompleted(yesterday);
-        final isCompletedToday = habit.isCompleted(now);
+        final wasGoalAchievedYesterday = habit.isGoalAchieved(yesterday);
+        final isGoalAchievedToday = habit.isGoalAchieved(now);
         
-        if (wasCompletedYesterday && !isCompletedToday) return true;
+        if (wasGoalAchievedYesterday && !isGoalAchievedToday) return true;
         
         // Check for habits not completed in the last week
         final lastWeek = now.subtract(const Duration(days: 7));

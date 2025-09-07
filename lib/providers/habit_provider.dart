@@ -162,17 +162,26 @@ class HabitState extends ChangeNotifier {
     }
   }
 
-  /// Get completed habits count for today
+  /// Get completed habits count for today (habits that achieved their goal)
   int getCompletedTodayCount() {
     final today = DateTime.now();
-    final todayKey = DateTime(today.year, today.month, today.day);
-    return _habits.where((habit) => (habit.completions[todayKey] ?? 0) > 0).length;
+    return _habits.where((habit) => habit.isGoalAchieved(today)).length;
   }
 
-  /// Get completion rate for today
+  /// Get total completion percentage for today across all habits
   double getTodayCompletionRate() {
     if (_habits.isEmpty) return 0.0;
-    return getCompletedTodayCount() / _habits.length;
+    
+    double totalCompletionPercentage = 0.0;
+    final today = DateTime.now();
+    
+    for (final habit in _habits) {
+      final count = habit.getCompletionCount(today);
+      final percentage = (count / habit.targetGoal).clamp(0.0, 1.0);
+      totalCompletionPercentage += percentage;
+    }
+    
+    return totalCompletionPercentage / _habits.length;
   }
 }
 

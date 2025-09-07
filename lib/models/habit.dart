@@ -189,19 +189,19 @@ class Habit {
     return getCompletionCount(date) >= targetGoal;
   }
 
-  /// Calculate current streak of consecutive completed days
+  /// Calculate current streak of consecutive goal-achieved days
   ///
   /// Counts backward from today to find the longest sequence
-  /// of consecutive days where this habit was completed.
+  /// of consecutive days where this habit achieved its goal.
   ///
-  /// @return Number of consecutive days completed (ending today or yesterday)
+  /// @return Number of consecutive days with goal achieved (ending today or yesterday)
   int get currentStreak {
     final today = DateTime.now();
     int streak = 0;
     DateTime checkDate = today;
 
-    // Count consecutive completed days backward from today
-    while (isCompleted(checkDate)) {
+    // Count consecutive goal-achieved days backward from today
+    while (isGoalAchieved(checkDate)) {
       streak++;
       checkDate = checkDate.subtract(const Duration(days: 1));
     }
