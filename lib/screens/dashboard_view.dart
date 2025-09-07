@@ -206,7 +206,7 @@ class _DashboardViewState extends State<DashboardView> {
 
   Widget _buildHeader(List<Habit> habits) {
     final completedToday = _controller.getCompletedTodayCount();
-    final completionRate = habits.isNotEmpty ? completedToday / habits.length : 0.0;
+    final completionRate = _controller.getTodayCompletionRate();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
