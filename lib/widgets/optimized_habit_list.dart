@@ -12,6 +12,8 @@ class OptimizedHabitList extends StatelessWidget {
   final Function(Habit) onArchive;
   final Function(Habit) onDelete;
   final Function(Habit) onStats;
+  final Function(Habit) onIncrement;
+  final Function(Habit) onDecrement;
 
   const OptimizedHabitList({
     super.key,
@@ -22,6 +24,8 @@ class OptimizedHabitList extends StatelessWidget {
     required this.onArchive,
     required this.onDelete,
     required this.onStats,
+    required this.onIncrement,
+    required this.onDecrement,
   });
 
   @override
@@ -46,6 +50,8 @@ class OptimizedHabitList extends StatelessWidget {
             onArchive: () => onArchive(habit),
             onDelete: () => onDelete(habit),
             onStats: () => onStats(habit),
+            onIncrement: () => onIncrement(habit),
+            onDecrement: () => onDecrement(habit),
           ),
         );
       },
@@ -62,6 +68,8 @@ class OptimizedHabitGrid extends StatelessWidget {
   final Function(Habit) onArchive;
   final Function(Habit) onDelete;
   final Function(Habit) onStats;
+  final Function(Habit) onIncrement;
+  final Function(Habit) onDecrement;
 
   const OptimizedHabitGrid({
     super.key,
@@ -72,6 +80,8 @@ class OptimizedHabitGrid extends StatelessWidget {
     required this.onArchive,
     required this.onDelete,
     required this.onStats,
+    required this.onIncrement,
+    required this.onDecrement,
   });
 
   @override
@@ -100,6 +110,8 @@ class OptimizedHabitGrid extends StatelessWidget {
           onArchive: () => onArchive(habit),
           onDelete: () => onDelete(habit),
           onStats: () => onStats(habit),
+          onIncrement: () => onIncrement(habit),
+          onDecrement: () => onDecrement(habit),
         );
       },
     );
@@ -115,6 +127,8 @@ class AdaptiveHabitList extends StatelessWidget {
   final Function(Habit) onArchive;
   final Function(Habit) onDelete;
   final Function(Habit) onStats;
+  final Function(Habit) onIncrement;
+  final Function(Habit) onDecrement;
 
   const AdaptiveHabitList({
     super.key,
@@ -125,6 +139,8 @@ class AdaptiveHabitList extends StatelessWidget {
     required this.onArchive,
     required this.onDelete,
     required this.onStats,
+    required this.onIncrement,
+    required this.onDecrement,
   });
 
   @override
@@ -139,6 +155,8 @@ class AdaptiveHabitList extends StatelessWidget {
         onArchive: onArchive,
         onDelete: onDelete,
         onStats: onStats,
+        onIncrement: onIncrement,
+        onDecrement: onDecrement,
       );
     } else {
       return OptimizedHabitList(
@@ -149,6 +167,8 @@ class AdaptiveHabitList extends StatelessWidget {
         onArchive: onArchive,
         onDelete: onDelete,
         onStats: onStats,
+        onIncrement: onIncrement,
+        onDecrement: onDecrement,
       );
     }
   }
