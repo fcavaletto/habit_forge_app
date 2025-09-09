@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/habit.dart';
-import '../models/habit_storage.dart';
+import '../providers/habit_provider.dart';
 import '../utils/icon_utils.dart';
 
 /// Archive Screen - Displays archived habits with restore functionality
@@ -15,21 +16,20 @@ class ArchiveScreen extends StatefulWidget {
 }
 
 class _ArchiveScreenState extends State<ArchiveScreen> {
-  late HabitStorage _habitStorage;
   List<Habit> _archivedHabits = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _habitStorage = HabitStorage();
     _loadArchivedHabits();
   }
 
   Future<void> _loadArchivedHabits() async {
     setState(() => _isLoading = true);
     try {
-      final archivedHabits = await _habitStorage.getArchivedHabits();
+      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      final archivedHabits = await habitProvider.repository.getArchivedHabits();
       setState(() {
         _archivedHabits = archivedHabits;
         _isLoading = false;
@@ -49,7 +49,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
 
   Future<void> _restoreHabit(Habit habit) async {
     try {
-      await _habitStorage.unarchiveHabit(habit.id);
+      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      await habitProvider.unarchiveHabit(habit.id);
       setState(() {
         _archivedHabits.removeWhere((h) => h.id == habit.id);
       });
@@ -78,7 +79,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
 
   Future<void> _undoRestore(Habit habit) async {
     try {
-      await _habitStorage.archiveHabit(habit.id);
+      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      await habitProvider.archiveHabit(habit.id);
       _loadArchivedHabits(); // Reload to show the restored archived habit
     } catch (e) {
       if (mounted) {
@@ -119,7 +121,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
 
     if (confirmed == true) {
       try {
-        await _habitStorage.deleteHabit(habit.id);
+        final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+        await habitProvider.deleteHabit(habit.id);
         setState(() {
           _archivedHabits.removeWhere((h) => h.id == habit.id);
         });

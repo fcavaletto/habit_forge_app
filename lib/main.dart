@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'theme.dart';
 import 'screens/dashboard_screen.dart';
 import 'providers/app_state_provider.dart';
@@ -73,16 +72,14 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
     _loadThemeMode();
   }
 
-  /// Loads the user's preferred theme mode from persistent storage
+  /// Loads the user's preferred theme mode
   ///
-  /// Retrieves the saved theme preference from SharedPreferences.
-  /// If no preference is saved, defaults to system theme.
-  /// Values: 0 = system, 1 = light, 2 = dark
-  Future<void> _loadThemeMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeIndex = prefs.getInt('theme_mode') ?? 0; // 0: system, 1: light, 2: dark
+  /// For now, defaults to system theme. In the future, this could be
+  /// stored in SQLite database or other persistent storage.
+  void _loadThemeMode() {
+    // Default to system theme for now
     setState(() {
-      _themeMode = ThemeMode.values[themeIndex];
+      _themeMode = ThemeMode.system;
     });
   }
 

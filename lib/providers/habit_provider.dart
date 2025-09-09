@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
-import '../models/habit_storage.dart';
-import '../repositories/habit_repository.dart';
+import '../models/habit_result.dart';
 import '../repositories/sqlite_habit_repository.dart';
 import '../services/database_service.dart';
-import '../services/migration_service.dart';
 
 /// State class to hold habit-related data and operations
 class HabitState extends ChangeNotifier {
-  final HabitRepository _habitRepository;
+  final SqliteHabitRepository _habitRepository;
 
   List<Habit> _habits = [];
   bool _isLoading = false;
@@ -187,7 +185,7 @@ class HabitState extends ChangeNotifier {
 
 /// Provider for HabitState
 class HabitProvider extends HabitState {
-  final HabitRepository _repository;
+  final SqliteHabitRepository _repository;
 
   HabitProvider(super.habitRepository) : _repository = habitRepository;
 
@@ -198,29 +196,16 @@ class HabitProvider extends HabitState {
     return HabitProvider(sqliteRepository);
   }
   
-  // Initialize the provider with migration support
+  // Initialize the provider
   Future<void> initialize() async {
+    // Initialize database
     final databaseService = DatabaseService();
-    final oldStorage = HabitStorage();
-    final migrationService = MigrationService(oldStorage, _repository as SqliteHabitRepository, databaseService);
-    
-    // Perform migration if needed
-    if (!await migrationService.isMigrationCompleted()) {
-      debugPrint('🔄 Starting data migration...');
-      final migrationResult = await migrationService.migrate();
-      if (migrationResult.success) {
-        debugPrint('✅ Migration completed successfully');
-      } else {
-        debugPrint('❌ Migration failed: ${migrationResult.message}');
-        if (migrationResult.errors.isNotEmpty) {
-          debugPrint('❌ Migration errors: ${migrationResult.errors.join(', ')}');
-        }
-      }
-    }
+    await databaseService.database;
+    debugPrint('✅ Database initialized');
   }
 
   // Getter to access repository for complex operations
-  HabitRepository get repository => _repository;
+  SqliteHabitRepository get repository => _repository;
 
   // Override notifyListeners to add debouncing for performance
   @override

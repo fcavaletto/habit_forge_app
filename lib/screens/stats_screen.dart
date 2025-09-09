@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/habit.dart';
-import '../models/habit_storage.dart';
+import '../providers/habit_provider.dart';
 import '../widgets/stats/completion_chart.dart';
 import '../widgets/stats/streak_display.dart';
 import '../widgets/stats/weekly_overview.dart';
@@ -29,14 +30,12 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  late HabitStorage _habitStorage;
   Map<DateTime, int> _completions = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _habitStorage = HabitStorage();
     _loadHabitData();
   }
 
@@ -45,25 +44,16 @@ class _StatsScreenState extends State<StatsScreen> {
   Future<void> _loadHabitData() async {
     setState(() => _isLoading = true);
     try {
-      final habits = await _habitStorage.getHabits(includeArchived: true);
-      final habit = habits.firstWhere(
-        (h) => h.id == widget.habit.id,
-        orElse: () => widget.habit,
-      );
+      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      final habit = habitProvider.getHabitById(widget.habit.id) ?? widget.habit;
       setState(() {
         _completions = habit.completions;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppConstants.genericError),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // Don't show error message in initState to avoid ScaffoldMessenger issues
+      debugPrint('Error loading habit data: $e');
     }
   }
 

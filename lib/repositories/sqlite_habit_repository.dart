@@ -2,21 +2,17 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/habit.dart';
-import '../models/habit_storage.dart';
-import '../repositories/habit_repository.dart';
+import '../models/habit_result.dart';
 import '../services/database_service.dart';
 
-/// SQLite implementation of HabitRepository
+/// SQLite implementation for habit data operations
 ///
 /// Provides all habit data operations using SQLite database.
-/// Implements the same interface as the SharedPreferences version
-/// for seamless migration.
-class SqliteHabitRepository implements HabitRepository {
+class SqliteHabitRepository {
   final DatabaseService _databaseService;
   
   SqliteHabitRepository(this._databaseService);
   
-  @override
   Future<List<Habit>> getActiveHabits() async {
     try {
       final db = await _databaseService.database;
@@ -43,7 +39,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<List<Habit>> getAllHabits() async {
     try {
       final db = await _databaseService.database;
@@ -68,7 +63,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<List<Habit>> getArchivedHabits() async {
     try {
       final db = await _databaseService.database;
@@ -95,7 +89,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<HabitSaveResult> saveHabit(Habit habit) async {
     try {
       debugPrint('💾 Saving habit to SQLite: ${habit.name}');
@@ -149,7 +142,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
       final normalizedDate = DateTime(date.year, date.month, date.day);
@@ -184,7 +176,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<bool> archiveHabit(String habitId) async {
     try {
       final db = await _databaseService.database;
@@ -204,7 +195,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<bool> unarchiveHabit(String habitId) async {
     try {
       final db = await _databaseService.database;
@@ -224,7 +214,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<void> deleteHabit(String habitId) async {
     try {
       final db = await _databaseService.database;
@@ -240,7 +229,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<HabitSaveResult> overwriteArchivedHabit(String archivedHabitId, Habit newHabit) async {
     try {
       await _databaseService.transaction((txn) async {
@@ -297,7 +285,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<Map<String, dynamic>> getStatistics() async {
     try {
       final habits = await getActiveHabits();
@@ -333,7 +320,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<List<Habit>> getHabitsNeedingAttention() async {
     try {
       final habits = await getActiveHabits();
@@ -366,7 +352,6 @@ class SqliteHabitRepository implements HabitRepository {
     }
   }
   
-  @override
   Future<void> clearAllHabits() async {
     try {
       await _databaseService.transaction((txn) async {

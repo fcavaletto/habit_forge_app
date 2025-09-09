@@ -41,7 +41,7 @@ class AppState extends ChangeNotifier {
 
   /// Initialize all services
   Future<void> initialize() async {
-    // Initialize habit provider with migration
+    // Initialize habit provider
     await _habitProvider.initialize();
     
     await Future.wait([

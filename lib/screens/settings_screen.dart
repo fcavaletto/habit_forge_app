@@ -4,8 +4,9 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import '../models/habit.dart';
-import '../models/habit_storage.dart';
+import '../providers/habit_provider.dart';
 import '../utils/constants.dart';
 import 'archive_screen.dart';
 
@@ -45,12 +46,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late HabitStorage _habitStorage;
-
   @override
   void initState() {
     super.initState();
-    _habitStorage = HabitStorage();
   }
 
   Future<void> _exportData() async {
@@ -62,7 +60,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
 
-      final habits = await _habitStorage.getHabits(includeArchived: true);
+      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      final habits = await habitProvider.repository.getAllHabits();
       final exportData = {
         'version': AppConstants.exportVersion,
         'exportDate': DateTime.now().toIso8601String(),
@@ -176,7 +175,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       for (final habitData in habitsData) {
         try {
           final habit = Habit.fromJson(habitData as Map<String, dynamic>);
-          final saveResult = await _habitStorage.saveHabit(habit);
+          final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+          final saveResult = await habitProvider.repository.saveHabit(habit);
 
           if (saveResult.success) {
             importedCount++;
