@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../providers/habit_provider.dart';
+import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
 import 'archive_screen.dart';
 
@@ -242,9 +243,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
+      body: SafeScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
           // Theme Section
           Text(
             'Theme',
@@ -434,7 +437,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

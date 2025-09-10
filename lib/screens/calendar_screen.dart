@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../widgets/year_grid.dart';
+import '../widgets/safe_scrollable_wrapper.dart';
 import '../providers/app_state_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -85,58 +86,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _habits.isEmpty
               ? const Center(child: Text('No habits found'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _habits.length,
-                  itemBuilder: (context, index) {
-                    final habit = _habits[index];
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              Icon(
-                                IconData(
-                                  int.parse(habit.iconName),
-                                  fontFamily: 'MaterialIcons',
+              : SafeScrollView(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _habits.length,
+                    itemBuilder: (context, index) {
+                      final habit = _habits[index];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  IconData(
+                                    int.parse(habit.iconName),
+                                    fontFamily: 'MaterialIcons',
+                                  ),
+                                  color: _getHabitColor(habit.colorIndex),
+                                  size: 20,
                                 ),
-                                color: _getHabitColor(habit.colorIndex),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                habit.name,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                                const SizedBox(width: 8),
+                                Text(
+                                  habit.name,
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          height: 120, // 7 rows * 10px + some padding
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                              ],
                             ),
                           ),
-                          child: YearGrid(
-                            habit: habit,
-                            startDate: _startDate,
-                            endDate: _endDate,
-                            onCompletionTap: (date, count) => _onCompletionTap(date, count, habit),
-                            squareSize: 10,
-                            spacing: 1,
+                          Container(
+                            height: 120, // 7 rows * 10px + some padding
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: YearGrid(
+                              habit: habit,
+                              startDate: _startDate,
+                              endDate: _endDate,
+                              onCompletionTap: (date, count) => _onCompletionTap(date, count, habit),
+                              squareSize: 10,
+                              spacing: 1,
+                            ),
                           ),
-                        ),
-                        if (index < _habits.length - 1) const SizedBox(height: 24),
-                      ],
-                    );
-                  },
+                          if (index < _habits.length - 1) const SizedBox(height: 24),
+                        ],
+                      );
+                    },
+                  ),
                 ),
     );
   }

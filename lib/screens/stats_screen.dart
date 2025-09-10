@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../providers/habit_provider.dart';
+import '../widgets/safe_scrollable_wrapper.dart';
 import '../widgets/stats/completion_chart.dart';
 import '../widgets/stats/streak_display.dart';
 import '../widgets/stats/weekly_overview.dart';
@@ -70,33 +71,35 @@ class _StatsScreenState extends State<StatsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(AppConstants.defaultPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Habit Header
-                  _buildHabitHeader(),
-                  const SizedBox(height: 24),
+          : SafeScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Habit Header
+                    _buildHabitHeader(),
+                    const SizedBox(height: 24),
 
-                  // Current Streak
-                  StreakDisplay(
-                    currentStreak: _calculateCurrentStreak(),
-                    longestStreak: _calculateLongestStreak(),
-                  ),
-                  const SizedBox(height: 24),
+                    // Current Streak
+                    StreakDisplay(
+                      currentStreak: _calculateCurrentStreak(),
+                      longestStreak: _calculateLongestStreak(),
+                    ),
+                    const SizedBox(height: 24),
 
-                  // Completion Rate Chart
-                  CompletionChart(completionData: _getLast30DaysData()),
-                  const SizedBox(height: 24),
+                    // Completion Rate Chart
+                    CompletionChart(completionData: _getLast30DaysData()),
+                    const SizedBox(height: 24),
 
-                  // Weekly Overview
-                  WeeklyOverview(weeklyData: _getWeeklyData()),
-                  const SizedBox(height: 24),
+                    // Weekly Overview
+                    WeeklyOverview(weeklyData: _getWeeklyData()),
+                    const SizedBox(height: 24),
 
-                  // Monthly Calendar
-                  MonthlyCalendar(completions: _completions),
-                ],
+                    // Monthly Calendar
+                    MonthlyCalendar(completions: _completions),
+                  ],
+                ),
               ),
             ),
     );

@@ -5,6 +5,7 @@ import '../controllers/add_habit_controller.dart';
 import '../widgets/forms/icon_selector.dart';
 import '../widgets/forms/color_selector.dart';
 import '../widgets/forms/frequency_selector.dart';
+import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
 
@@ -63,11 +64,12 @@ class _AddHabitViewState extends State<AddHabitView> {
   }
 
   Widget _buildBody() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppConstants.defaultPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return SafeScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.defaultPadding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Error message
           if (_controller.errorMessage != null)
             Container(
@@ -194,7 +196,8 @@ class _AddHabitViewState extends State<AddHabitView> {
           ),
 
           const SizedBox(height: 32),
-        ],
+          ],
+        ),
       ),
     );
   }

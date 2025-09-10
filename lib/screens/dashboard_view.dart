@@ -4,6 +4,7 @@ import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
 import '../controllers/dashboard_controller.dart';
 import '../widgets/habit_card.dart';
+import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
 import '../screens/settings_screen.dart';
 import '../screens/add_habit_screen.dart';
@@ -110,54 +111,56 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.defaultPadding),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.track_changes,
-              size: 80,
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: AppConstants.defaultPadding),
-            Text(
-              'Welcome to Habit Forge!',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
+    return SafeScrollableWrapper(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.defaultPadding),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.track_changes,
+                size: 80,
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Build lasting habits with daily tracking and progress visualization.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              const SizedBox(height: AppConstants.defaultPadding),
+              Text(
+                'Welcome to Habit Forge!',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppConstants.defaultPadding * 2),
-            FilledButton.icon(
-              onPressed: () => _controller.addSampleHabits(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Sample Habits'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.defaultPadding * 2,
-                  vertical: 12,
+              const SizedBox(height: 8),
+              Text(
+                'Build lasting habits with daily tracking and progress visualization.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppConstants.defaultPadding * 2),
+              FilledButton.icon(
+                onPressed: () => _controller.addSampleHabits(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Sample Habits'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.defaultPadding * 2,
+                    vertical: 12,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildHabitsList(List<Habit> habits) {
-    return CustomScrollView(
+    return SafeCustomScrollView(
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(AppConstants.defaultPadding),

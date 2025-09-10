@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../providers/habit_provider.dart';
+import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/icon_utils.dart';
 
 /// Archive Screen - Displays archived habits with restore functionality
@@ -161,8 +162,10 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _archivedHabits.isEmpty
-              ? _buildEmptyState()
-              : _buildHabitsList(),
+              ? SafeScrollableWrapper(child: _buildEmptyState())
+              : SafeScrollView(
+                  child: _buildHabitsList(),
+                ),
     );
   }
 
