@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../services/notification_service.dart';
+import '../services/database_service.dart';
+import '../repositories/settings_repository.dart';
 import 'habit_provider.dart';
 import 'notification_provider.dart';
 import 'theme_provider.dart';
@@ -85,7 +87,8 @@ class AppStateProvider extends AppState {
     final habitProvider = HabitProvider.create();
     final notificationService = NotificationService();
     final notificationProvider = NotificationProvider(notificationService);
-    final themeProvider = ThemeProvider();
+    final settingsRepository = SettingsRepository(databaseService);
+    final themeProvider = ThemeProvider(settingsRepository);
 
     return AppStateProvider(habitProvider, notificationProvider, themeProvider);
   }

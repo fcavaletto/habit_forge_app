@@ -95,6 +95,15 @@ class DatabaseService {
         )
       ''');
       
+      // Create app_settings table
+      await txn.execute('''
+        CREATE TABLE app_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      ''');
+      
       // Create indexes for better performance
       await txn.execute('''
         CREATE INDEX idx_habit_completions_date 
