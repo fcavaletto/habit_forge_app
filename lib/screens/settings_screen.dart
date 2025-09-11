@@ -31,15 +31,12 @@ class SettingsScreen extends StatefulWidget {
   /// Callback for adding sample habits
   final VoidCallback onAddSampleHabits;
 
-  /// Callback for retrieving archived habits
-  final VoidCallback onRetrieveArchivedHabits;
 
   const SettingsScreen({
     super.key,
     required this.currentThemeMode,
     required this.onThemeChanged,
     required this.onAddSampleHabits,
-    required this.onRetrieveArchivedHabits,
   });
 
   @override
@@ -331,18 +328,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
-
-          FilledButton.icon(
-            onPressed: widget.onRetrieveArchivedHabits,
-            icon: const Icon(Icons.unarchive),
-            label: const Text('Retrieve Archived Habits'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-            ),
-          ),
 
           const SizedBox(height: 32),
 

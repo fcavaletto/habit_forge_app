@@ -279,7 +279,6 @@ class _DashboardViewState extends State<DashboardView> {
           currentThemeMode: ThemeMode.system, // TODO: Get from theme provider
           onThemeChanged: (mode) {}, // TODO: Implement theme change
           onAddSampleHabits: () => _controller.addSampleHabits(context),
-          onRetrieveArchivedHabits: () => _controller.retrieveArchivedHabits(context),
         ),
       ),
     );

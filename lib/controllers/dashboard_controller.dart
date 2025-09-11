@@ -260,57 +260,6 @@ class DashboardController {
     ];
   }
 
-  /// Retrieve all archived habits
-  Future<void> retrieveArchivedHabits(BuildContext context) async {
-    try {
-      final archivedHabits = await _appState.habitProvider.repository.getArchivedHabits();
-
-      if (archivedHabits.isEmpty) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No habits are currently archived'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        return;
-      }
-
-      // Unarchive all archived habits
-      int retrievedCount = 0;
-      for (final habit in archivedHabits) {
-        final success = await _appState.habitProvider.unarchiveHabit(habit.id);
-        if (success) {
-          retrievedCount++;
-        }
-      }
-
-      // Refresh the UI
-      await loadHabits();
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$retrievedCount archived habit${retrievedCount != 1 ? 's' : ''} retrieved'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error retrieving archived habits: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
 
   /// Clear error state
   void clearError() {
