@@ -228,7 +228,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _navigateToArchive() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const ArchiveScreen()),
+      MaterialPageRoute(
+        builder: (context) => const ArchiveScreen(),
+        settings: const RouteSettings(name: '/archive'),
+      ),
     );
   }
 

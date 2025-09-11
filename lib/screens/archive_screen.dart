@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../providers/habit_provider.dart';
+import '../providers/app_state_provider.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/icon_utils.dart';
 
@@ -48,8 +49,9 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
     debugPrint('🔄 Archive Screen: Starting to load archived habits...');
     setState(() => _isLoading = true);
     try {
-      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
-      debugPrint('🔄 Archive Screen: HabitProvider obtained, calling repository...');
+      final appState = Provider.of<AppState>(context, listen: false);
+      final habitProvider = appState.habitProvider;
+      debugPrint('🔄 Archive Screen: HabitProvider obtained through AppState, calling repository...');
       final archivedHabits = await habitProvider.repository.getArchivedHabits();
       debugPrint('🔄 Archive Screen: Retrieved ${archivedHabits.length} archived habits');
       
@@ -75,7 +77,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
 
   Future<void> _restoreHabit(Habit habit) async {
     try {
-      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      final appState = Provider.of<AppState>(context, listen: false);
+      final habitProvider = appState.habitProvider;
       await habitProvider.unarchiveHabit(habit.id);
       setState(() {
         _archivedHabits.removeWhere((h) => h.id == habit.id);
@@ -112,7 +115,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
 
   Future<void> _undoRestore(Habit habit) async {
     try {
-      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      final appState = Provider.of<AppState>(context, listen: false);
+      final habitProvider = appState.habitProvider;
       await habitProvider.archiveHabit(habit.id);
       _loadArchivedHabits(); // Reload to show the restored archived habit
     } catch (e) {
@@ -155,39 +159,40 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
       ),
     );
 
-    if (confirmed == true) {
-      try {
-        final habitProvider = Provider.of<HabitProvider>(context, listen: false);
-        await habitProvider.deleteHabit(habit.id);
-        setState(() {
-          _archivedHabits.removeWhere((h) => h.id == habit.id);
-        });
-        
-        // Use post-frame callback to show success message
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('"${habit.name}" has been permanently deleted'),
-                backgroundColor: Colors.red,
-              ),
-            );
+          if (confirmed == true) {
+            try {
+              final appState = Provider.of<AppState>(context, listen: false);
+              final habitProvider = appState.habitProvider;
+              await habitProvider.deleteHabit(habit.id);
+              setState(() {
+                _archivedHabits.removeWhere((h) => h.id == habit.id);
+              });
+              
+              // Use post-frame callback to show success message
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('"${habit.name}" has been permanently deleted'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              });
+            } catch (e) {
+              // Use post-frame callback to show error message
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete habit: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              });
+            }
           }
-        });
-      } catch (e) {
-        // Use post-frame callback to show error message
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to delete habit: $e'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        });
-      }
-    }
   }
 
   @override
