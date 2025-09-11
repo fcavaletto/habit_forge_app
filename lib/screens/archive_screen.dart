@@ -19,11 +19,23 @@ class ArchiveScreen extends StatefulWidget {
 class _ArchiveScreenState extends State<ArchiveScreen> {
   List<Habit> _archivedHabits = [];
   bool _isLoading = true;
+  bool _isManuallyRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     _loadArchivedHabits();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload archived habits when the screen becomes visible
+    // This handles cases where user archives/restores habits and returns to this screen
+    // Skip if we're in the middle of a manual refresh (like undo)
+    if (!_isManuallyRefreshing) {
+      _loadArchivedHabits();
+    }
   }
 
   Future<void> _loadArchivedHabits() async {
@@ -34,9 +46,13 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       setState(() {
         _archivedHabits = archivedHabits;
         _isLoading = false;
+        _isManuallyRefreshing = false; // Reset flag after loading
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _isManuallyRefreshing = false; // Reset flag even on error
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -47,6 +63,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       }
     }
   }
+
 
   Future<void> _restoreHabit(Habit habit) async {
     try {
@@ -82,8 +99,10 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
     try {
       final habitProvider = Provider.of<HabitProvider>(context, listen: false);
       await habitProvider.archiveHabit(habit.id);
+      _isManuallyRefreshing = true; // Set flag to prevent automatic reload conflicts
       _loadArchivedHabits(); // Reload to show the restored archived habit
     } catch (e) {
+      _isManuallyRefreshing = false; // Reset flag on error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -124,10 +143,10 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       try {
         final habitProvider = Provider.of<HabitProvider>(context, listen: false);
         await habitProvider.deleteHabit(habit.id);
-        setState(() {
-          _archivedHabits.removeWhere((h) => h.id == habit.id);
-        });
         if (mounted) {
+          setState(() {
+            _archivedHabits.removeWhere((h) => h.id == habit.id);
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('"${habit.name}" has been permanently deleted'),
