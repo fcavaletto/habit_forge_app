@@ -276,8 +276,11 @@ class _DashboardViewState extends State<DashboardView> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SettingsScreen(
-          currentThemeMode: ThemeMode.system, // TODO: Get from theme provider
-          onThemeChanged: (mode) {}, // TODO: Implement theme change
+          currentThemeMode: _appState.themeMode,
+          onThemeChanged: (mode) {
+            _appState.themeProvider.setThemeMode(mode);
+            _appState.themeProvider.saveThemeMode();
+          },
           onAddSampleHabits: () => _controller.addSampleHabits(context),
         ),
       ),

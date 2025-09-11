@@ -3,13 +3,15 @@ import '../models/habit.dart';
 import '../services/notification_service.dart';
 import 'habit_provider.dart';
 import 'notification_provider.dart';
+import 'theme_provider.dart';
 
 /// Combined app state provider that manages all app-wide state
 class AppState extends ChangeNotifier {
   final HabitProvider _habitProvider;
   final NotificationProvider _notificationProvider;
+  final ThemeProvider _themeProvider;
 
-  AppState(this._habitProvider, this._notificationProvider) {
+  AppState(this._habitProvider, this._notificationProvider, this._themeProvider) {
     // Listen to changes in child providers
     _habitProvider.addListener(() {
       debugPrint('🔗 AppState received notification from HabitProvider');
@@ -17,6 +19,10 @@ class AppState extends ChangeNotifier {
     });
     _notificationProvider.addListener(() {
       debugPrint('🔗 AppState received notification from NotificationProvider');
+      notifyListeners();
+    });
+    _themeProvider.addListener(() {
+      debugPrint('🔗 AppState received notification from ThemeProvider');
       notifyListeners();
     });
   }
@@ -33,6 +39,10 @@ class AppState extends ChangeNotifier {
   bool get notificationsEnabled => _notificationProvider.notificationsEnabled;
   String? get notificationError => _notificationProvider.error;
 
+  // Theme provider access
+  ThemeProvider get themeProvider => _themeProvider;
+  ThemeMode get themeMode => _themeProvider.themeMode;
+
   // Combined loading state
   bool get isLoading => _habitProvider.isLoading || _notificationProvider.isLoading;
 
@@ -47,6 +57,7 @@ class AppState extends ChangeNotifier {
     await Future.wait([
       _habitProvider.loadHabits(),
       _notificationProvider.initialize(),
+      _themeProvider.loadThemeMode(),
     ]);
   }
 
@@ -60,20 +71,22 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _habitProvider.removeListener(notifyListeners);
     _notificationProvider.removeListener(notifyListeners);
+    _themeProvider.removeListener(notifyListeners);
     super.dispose();
   }
 }
 
 /// Provider for AppState
 class AppStateProvider extends AppState {
-  AppStateProvider(super.habitProvider, super.notificationProvider);
+  AppStateProvider(super.habitProvider, super.notificationProvider, super.themeProvider);
 
   // Factory method for easy creation with SQLite repository
   factory AppStateProvider.create() {
     final habitProvider = HabitProvider.create();
     final notificationService = NotificationService();
     final notificationProvider = NotificationProvider(notificationService);
+    final themeProvider = ThemeProvider();
 
-    return AppStateProvider(habitProvider, notificationProvider);
+    return AppStateProvider(habitProvider, notificationProvider, themeProvider);
   }
 }

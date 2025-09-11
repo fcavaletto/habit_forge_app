@@ -63,35 +63,24 @@ class HabitForgeApp extends StatefulWidget {
 }
 
 class _HabitForgeAppState extends State<HabitForgeApp> {
-  /// Current theme mode - defaults to system preference
-  ThemeMode _themeMode = ThemeMode.system;
-
   @override
   void initState() {
     super.initState();
-    _loadThemeMode();
-  }
-
-  /// Loads the user's preferred theme mode
-  ///
-  /// For now, defaults to system theme. In the future, this could be
-  /// stored in SQLite database or other persistent storage.
-  void _loadThemeMode() {
-    // Default to system theme for now
-    setState(() {
-      _themeMode = ThemeMode.system;
-    });
   }
 
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Habit Forge', // App title shown in task switcher
-      theme: AppTheme.lightTheme, // Light theme configuration
-      darkTheme: AppTheme.darkTheme, // Dark theme configuration
-      themeMode: _themeMode, // Current theme mode (system/light/dark)
-      home: const DashboardScreen(),
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        return MaterialApp(
+          title: 'Habit Forge', // App title shown in task switcher
+          theme: AppTheme.lightTheme, // Light theme configuration
+          darkTheme: AppTheme.darkTheme, // Dark theme configuration
+          themeMode: appState.themeMode, // Current theme mode from provider
+          home: const DashboardScreen(),
+        );
+      },
     );
   }
 }
