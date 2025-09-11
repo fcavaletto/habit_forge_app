@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../providers/habit_provider.dart';
@@ -16,25 +17,29 @@ class ArchiveScreen extends StatefulWidget {
   State<ArchiveScreen> createState() => _ArchiveScreenState();
 }
 
-class _ArchiveScreenState extends State<ArchiveScreen> {
+class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserver {
   List<Habit> _archivedHabits = [];
   bool _isLoading = true;
-  bool _isManuallyRefreshing = false;
-  bool _isInitialLoad = true; // Flag to distinguish initial load from user actions
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadArchivedHabits();
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Reload archived habits when the screen becomes visible
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Reload archived habits when the app resumes
     // This handles cases where user archives/restores habits and returns to this screen
-    // Skip if we're in the middle of a manual refresh (like undo) or initial load
-    if (!_isManuallyRefreshing && !_isInitialLoad) {
+    if (state == AppLifecycleState.resumed) {
       _loadArchivedHabits();
     }
   }
@@ -47,29 +52,11 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       setState(() {
         _archivedHabits = archivedHabits;
         _isLoading = false;
-        _isManuallyRefreshing = false; // Reset flag after loading
-        _isInitialLoad = false; // Mark as no longer initial load
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _isManuallyRefreshing = false; // Reset flag even on error
-        _isInitialLoad = false; // Mark as no longer initial load
-      });
-      
-      // Only show user-facing errors for manual operations, not automatic reloads
-      if (_isInitialLoad) {
-        // For initial load, just log the error to avoid ScaffoldMessenger issues during build
-        debugPrint('Failed to load archived habits (initial load): $e');
-      } else if (mounted) {
-        // For subsequent loads (user actions), show error to user
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load archived habits: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      setState(() => _isLoading = false);
+      // Always use debugPrint for automatic operations to avoid ScaffoldMessenger issues
+      debugPrint('Failed to load archived habits: $e');
     }
   }
 
@@ -81,26 +68,33 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       setState(() {
         _archivedHabits.removeWhere((h) => h.id == habit.id);
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('"${habit.name}" has been restored'),
-            action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () => _undoRestore(habit),
+      
+      // Use post-frame callback to show success message
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('"${habit.name}" has been restored'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () => _undoRestore(habit),
+              ),
             ),
-          ),
-        );
-      }
+          );
+        }
+      });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to restore habit: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // Use post-frame callback to show error message
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to restore habit: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      });
     }
   }
 
@@ -108,18 +102,19 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
     try {
       final habitProvider = Provider.of<HabitProvider>(context, listen: false);
       await habitProvider.archiveHabit(habit.id);
-      _isManuallyRefreshing = true; // Set flag to prevent automatic reload conflicts
       _loadArchivedHabits(); // Reload to show the restored archived habit
     } catch (e) {
-      _isManuallyRefreshing = false; // Reset flag on error
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to undo restore: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // Use post-frame callback to show error message
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to undo restore: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      });
     }
   }
 
@@ -152,26 +147,33 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       try {
         final habitProvider = Provider.of<HabitProvider>(context, listen: false);
         await habitProvider.deleteHabit(habit.id);
-        if (mounted) {
-          setState(() {
-            _archivedHabits.removeWhere((h) => h.id == habit.id);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('"${habit.name}" has been permanently deleted'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        setState(() {
+          _archivedHabits.removeWhere((h) => h.id == habit.id);
+        });
+        
+        // Use post-frame callback to show success message
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('"${habit.name}" has been permanently deleted'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        });
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to delete habit: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        // Use post-frame callback to show error message
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to delete habit: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        });
       }
     }
   }
@@ -186,6 +188,13 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
         elevation: 0,
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+            onPressed: _loadArchivedHabits,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Archived Habits',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
