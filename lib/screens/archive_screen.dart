@@ -20,6 +20,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
   List<Habit> _archivedHabits = [];
   bool _isLoading = true;
   bool _isManuallyRefreshing = false;
+  bool _isInitialLoad = true; // Flag to distinguish initial load from user actions
 
   @override
   void initState() {
@@ -32,8 +33,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
     super.didChangeDependencies();
     // Reload archived habits when the screen becomes visible
     // This handles cases where user archives/restores habits and returns to this screen
-    // Skip if we're in the middle of a manual refresh (like undo)
-    if (!_isManuallyRefreshing) {
+    // Skip if we're in the middle of a manual refresh (like undo) or initial load
+    if (!_isManuallyRefreshing && !_isInitialLoad) {
       _loadArchivedHabits();
     }
   }
@@ -47,13 +48,21 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
         _archivedHabits = archivedHabits;
         _isLoading = false;
         _isManuallyRefreshing = false; // Reset flag after loading
+        _isInitialLoad = false; // Mark as no longer initial load
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
         _isManuallyRefreshing = false; // Reset flag even on error
+        _isInitialLoad = false; // Mark as no longer initial load
       });
-      if (mounted) {
+      
+      // Only show user-facing errors for manual operations, not automatic reloads
+      if (_isInitialLoad) {
+        // For initial load, just log the error to avoid ScaffoldMessenger issues during build
+        debugPrint('Failed to load archived habits (initial load): $e');
+      } else if (mounted) {
+        // For subsequent loads (user actions), show error to user
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load archived habits: $e'),
