@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
 import '../services/database_service.dart';
 
 /// Repository for managing app settings persistence
