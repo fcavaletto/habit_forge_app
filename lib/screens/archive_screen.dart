@@ -205,13 +205,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
         elevation: 0,
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
-        actions: [
-          IconButton(
-            onPressed: _loadArchivedHabits,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Archived Habits',
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
