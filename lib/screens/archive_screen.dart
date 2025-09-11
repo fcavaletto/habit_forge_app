@@ -217,8 +217,98 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
           ? const Center(child: CircularProgressIndicator())
           : _archivedHabits.isEmpty
               ? SafeScrollableWrapper(child: _buildEmptyState())
-              : SafeScrollView(
-                  child: _buildHabitsList(),
+              : SafeCustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final habit = _archivedHabits[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    // Habit Icon
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        habit.iconName.toIconData,
+                                        color: Theme.of(context).colorScheme.primary,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+
+                                    // Habit Details
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            habit.name,
+                                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            habit.description,
+                                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Archived on ${habit.createdAt.toString().split(' ')[0]}',
+                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    // Action Buttons
+                                    Column(
+                                      children: [
+                                        TextButton.icon(
+                                          onPressed: () => _restoreHabit(habit),
+                                          icon: const Icon(Icons.restore, size: 18),
+                                          label: const Text('Restore'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Theme.of(context).colorScheme.primary,
+                                          ),
+                                        ),
+                                        TextButton.icon(
+                                          onPressed: () => _permanentlyDeleteHabit(habit),
+                                          icon: const Icon(Icons.delete_forever, size: 18),
+                                          label: const Text('Delete'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Theme.of(context).colorScheme.error,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          childCount: _archivedHabits.length,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
     );
   }
@@ -253,91 +343,4 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
     );
   }
 
-  Widget _buildHabitsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _archivedHabits.length,
-      itemBuilder: (context, index) {
-        final habit = _archivedHabits[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Habit Icon
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    habit.iconName.toIconData,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-
-                // Habit Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        habit.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        habit.description,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Archived on ${habit.createdAt.toString().split(' ')[0]}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Action Buttons
-                Column(
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _restoreHabit(habit),
-                      icon: const Icon(Icons.restore, size: 18),
-                      label: const Text('Restore'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _permanentlyDeleteHabit(habit),
-                      icon: const Icon(Icons.delete_forever, size: 18),
-                      label: const Text('Delete'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
