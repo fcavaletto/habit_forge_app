@@ -45,18 +45,30 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
   }
 
   Future<void> _loadArchivedHabits() async {
+    debugPrint('🔄 Archive Screen: Starting to load archived habits...');
     setState(() => _isLoading = true);
     try {
       final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      debugPrint('🔄 Archive Screen: HabitProvider obtained, calling repository...');
       final archivedHabits = await habitProvider.repository.getArchivedHabits();
+      debugPrint('🔄 Archive Screen: Retrieved ${archivedHabits.length} archived habits');
+      
+      // Log each habit for debugging
+      for (int i = 0; i < archivedHabits.length; i++) {
+        final habit = archivedHabits[i];
+        debugPrint('📦 Archived Habit $i: ${habit.name} (ID: ${habit.id}, Archived: ${habit.isArchived})');
+      }
+      
       setState(() {
         _archivedHabits = archivedHabits;
         _isLoading = false;
       });
+      debugPrint('✅ Archive Screen: Successfully loaded ${_archivedHabits.length} archived habits');
     } catch (e) {
       setState(() => _isLoading = false);
-      // Always use debugPrint for automatic operations to avoid ScaffoldMessenger issues
-      debugPrint('Failed to load archived habits: $e');
+      debugPrint('❌ Archive Screen: Failed to load archived habits: $e');
+      debugPrint('❌ Archive Screen: Error type: ${e.runtimeType}');
+      debugPrint('❌ Archive Screen: Stack trace: ${StackTrace.current}');
     }
   }
 

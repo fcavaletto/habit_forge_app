@@ -65,7 +65,10 @@ class SqliteHabitRepository {
   
   Future<List<Habit>> getArchivedHabits() async {
     try {
+      debugPrint('🗄️ Repository: Starting getArchivedHabits query...');
       final db = await _databaseService.database;
+      debugPrint('🗄️ Repository: Database connection obtained');
+      
       final results = await db.query(
         'habits',
         where: 'is_archived = ?',
@@ -73,18 +76,31 @@ class SqliteHabitRepository {
         orderBy: 'created_at DESC',
       );
       
+      debugPrint('🗄️ Repository: Raw query returned ${results.length} rows');
+      
+      // Log raw database results
+      for (int i = 0; i < results.length; i++) {
+        final row = results[i];
+        debugPrint('🗄️ Repository: Row $i - ID: ${row['id']}, Name: ${row['name']}, Archived: ${row['is_archived']}');
+      }
+      
       final habits = <Habit>[];
       for (final row in results) {
         final habit = await _rowToHabit(row);
         if (habit != null) {
           habits.add(habit);
+          debugPrint('🗄️ Repository: Successfully converted row to habit: ${habit.name}');
+        } else {
+          debugPrint('🗄️ Repository: Failed to convert row to habit: ${row['id']}');
         }
       }
       
-      debugPrint('📖 Retrieved ${habits.length} archived habits from SQLite');
+      debugPrint('📖 Repository: Retrieved ${habits.length} archived habits from SQLite');
       return habits;
     } catch (e) {
-      debugPrint('❌ Error getting archived habits: $e');
+      debugPrint('❌ Repository: Error getting archived habits: $e');
+      debugPrint('❌ Repository: Error type: ${e.runtimeType}');
+      debugPrint('❌ Repository: Stack trace: ${StackTrace.current}');
       return [];
     }
   }
@@ -178,7 +194,23 @@ class SqliteHabitRepository {
   
   Future<bool> archiveHabit(String habitId) async {
     try {
+      debugPrint('🗄️ Repository: Starting archiveHabit for ID: $habitId');
       final db = await _databaseService.database;
+      
+      // First, check if the habit exists
+      final existingHabit = await db.query(
+        'habits',
+        where: 'id = ?',
+        whereArgs: [habitId],
+      );
+      
+      if (existingHabit.isEmpty) {
+        debugPrint('❌ Repository: Habit with ID $habitId not found in database');
+        return false;
+      }
+      
+      debugPrint('🗄️ Repository: Found habit: ${existingHabit.first['name']}, currently archived: ${existingHabit.first['is_archived']}');
+      
       final result = await db.update(
         'habits',
         {'is_archived': 1},
@@ -187,10 +219,24 @@ class SqliteHabitRepository {
       );
       
       final success = result > 0;
-      debugPrint('💾 Archived habit $habitId: $success');
+      debugPrint('💾 Repository: Archived habit $habitId: $success (affected rows: $result)');
+      
+      // Verify the update
+      final updatedHabit = await db.query(
+        'habits',
+        where: 'id = ?',
+        whereArgs: [habitId],
+      );
+      
+      if (updatedHabit.isNotEmpty) {
+        debugPrint('✅ Repository: Verification - habit ${updatedHabit.first['name']} is now archived: ${updatedHabit.first['is_archived']}');
+      }
+      
       return success;
     } catch (e) {
-      debugPrint('❌ Error archiving habit: $e');
+      debugPrint('❌ Repository: Error archiving habit: $e');
+      debugPrint('❌ Repository: Error type: ${e.runtimeType}');
+      debugPrint('❌ Repository: Stack trace: ${StackTrace.current}');
       return false;
     }
   }
