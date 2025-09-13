@@ -266,18 +266,18 @@ extension HabitColors on ColorScheme {
   /// Colors are ordered to provide natural visual progression
   /// and can be cycled through when more than 12 habits exist.
   List<Color> get habitColors => [
-    const Color(0xFF4CAF50), // Green - Success, growth, nature
-    const Color(0xFF2196F3), // Blue - Trust, calm, productivity
-    const Color(0xFFFF9800), // Orange - Energy, enthusiasm, creativity
-    const Color(0xFFF44336), // Red - Urgency, important habits, health
-    const Color(0xFF9C27B0), // Purple - Luxury, mindfulness, spirituality
-    const Color(0xFF00BCD4), // Cyan - Freshness, clarity, learning
-    const Color(0xFFFFC107), // Yellow - Happiness, optimism, social
-    const Color(0xFF795548), // Brown - Stability, grounding, routine
-    const Color(0xFFE91E63), // Pink - Love, relationships, self-care
-    const Color(0xFF607D8B), // Blue Grey - Balance, professionalism, work
-    const Color(0xFF8BC34A), // Light Green - Environmental, sustainability, nature
-    const Color(0xFFFF5722), // Deep Orange - High energy, intensity, motivation
+    const Color(0xFFE6194B), // Red - Urgency, important habits, health
+    const Color(0xFF3CB44B), // Green - Success, growth, nature
+    const Color(0xFFFFE119), // Yellow - Happiness, optimism, social
+    const Color(0xFF4363D8), // Blue - Trust, calm, productivity
+    const Color(0xFFF58231), // Orange - Energy, enthusiasm, creativity
+    const Color(0xFF911EB4), // Purple - Luxury, mindfulness, spirituality
+    const Color(0xFF46F0F0), // Cyan - Freshness, clarity, learning
+    const Color(0xFFF032E6), // Magenta - Bold, creative, artistic
+    const Color(0xFFBCF60C), // Lime - Fresh, energetic, environmental
+    const Color(0xFFFABEBE), // Pink - Love, relationships, self-care
+    const Color(0xFF008080), // Teal - Balance, professionalism, work
+    const Color(0xFFE6BEFF), // Lavender - Calm, meditation, wellness
   ];
 
   /// Get habit color by index with automatic cycling

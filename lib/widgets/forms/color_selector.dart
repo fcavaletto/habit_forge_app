@@ -15,18 +15,18 @@ class ColorSelector extends StatelessWidget {
   });
 
   static const List<Color> habitColors = [
-    Color(0xFF4CAF50), // Green
-    Color(0xFF2196F3), // Blue
-    Color(0xFFFF9800), // Orange
-    Color(0xFFF44336), // Red
-    Color(0xFF9C27B0), // Purple
-    Color(0xFF00BCD4), // Cyan
-    Color(0xFFFFC107), // Yellow
-    Color(0xFF795548), // Brown
-    Color(0xFFE91E63), // Pink
-    Color(0xFF607D8B), // Blue Grey
-    Color(0xFF8BC34A), // Light Green
-    Color(0xFFFF5722), // Deep Orange
+    Color(0xFFE6194B), // Red - Urgency, important habits, health
+    Color(0xFF3CB44B), // Green - Success, growth, nature
+    Color(0xFFFFE119), // Yellow - Happiness, optimism, social
+    Color(0xFF4363D8), // Blue - Trust, calm, productivity
+    Color(0xFFF58231), // Orange - Energy, enthusiasm, creativity
+    Color(0xFF911EB4), // Purple - Luxury, mindfulness, spirituality
+    Color(0xFF46F0F0), // Cyan - Freshness, clarity, learning
+    Color(0xFFF032E6), // Magenta - Bold, creative, artistic
+    Color(0xFFBCF60C), // Lime - Fresh, energetic, environmental
+    Color(0xFFFABEBE), // Pink - Love, relationships, self-care
+    Color(0xFF008080), // Teal - Balance, professionalism, work
+    Color(0xFFE6BEFF), // Lavender - Calm, meditation, wellness
   ];
 
   @override
@@ -89,9 +89,8 @@ class ColorSelector extends StatelessWidget {
 
   String _getColorName(int index) {
     const colorNames = [
-      'Green', 'Blue', 'Orange', 'Red', 'Purple',
-      'Cyan', 'Yellow', 'Brown', 'Pink', 'Blue Grey',
-      'Light Green', 'Deep Orange'
+      'Red', 'Green', 'Yellow', 'Blue', 'Orange', 'Purple',
+      'Cyan', 'Magenta', 'Lime', 'Pink', 'Teal', 'Lavender'
     ];
     return colorNames[index % colorNames.length];
   }
