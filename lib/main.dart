@@ -29,6 +29,9 @@ Future<void> main() async {
   // Initialize the app state provider
   final appStateProvider = AppStateProvider.create();
 
+  // Initialize all services (including theme loading)
+  await appStateProvider.initialize();
+
   // Start the Flutter app with provider setup and error boundary
   runApp(
     ErrorBoundary(
