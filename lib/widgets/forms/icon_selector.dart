@@ -35,6 +35,10 @@ class IconSelector extends StatelessWidget {
     'lightbulb',
     'nature',
     'pets',
+    'timer',
+    'phone',
+    'home',
+    'volunteer_activism',
   ];
 
   @override
@@ -124,6 +128,14 @@ class IconSelector extends StatelessWidget {
         return Icons.nature;
       case 'pets':
         return Icons.pets;
+      case 'timer':
+        return Icons.timer;
+      case 'phone':
+        return Icons.phone;
+      case 'home':
+        return Icons.home;
+      case 'volunteer_activism':
+        return Icons.volunteer_activism;
       default:
         return Icons.check_circle;
     }

@@ -45,6 +45,14 @@ class IconUtils {
         return Icons.nature;
       case 'pets':
         return Icons.pets;
+      case 'timer':
+        return Icons.timer;
+      case 'phone':
+        return Icons.phone;
+      case 'home':
+        return Icons.home;
+      case 'volunteer_activism':
+        return Icons.volunteer_activism;
       default:
         return Icons.check_circle;
     }
