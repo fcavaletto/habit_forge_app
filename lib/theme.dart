@@ -245,7 +245,7 @@ class AppTheme {
 
 /// Extension to ColorScheme that provides predefined habit colors
 ///
-/// This extension adds a curated palette of 10 vibrant, accessible colors
+/// This extension adds a curated palette of 12 vibrant, accessible colors
 /// specifically designed for habit visualization. Each color is chosen to:
 /// - Provide excellent contrast against both light and dark backgrounds
 /// - Be visually distinct from neighboring colors in the palette
@@ -255,7 +255,7 @@ class AppTheme {
 /// Usage: `Theme.of(context).colorScheme.habitColors[index]`
 ///
 extension HabitColors on ColorScheme {
-  /// Curated palette of 10 vibrant colors for habit visualization
+  /// Curated palette of 12 vibrant colors for habit visualization
   ///
   /// Each color is carefully selected to ensure:
   /// ✅ High contrast ratios for accessibility
@@ -264,7 +264,7 @@ extension HabitColors on ColorScheme {
   /// ✅ Consistent appearance in light and dark themes
   ///
   /// Colors are ordered to provide natural visual progression
-  /// and can be cycled through when more than 10 habits exist.
+  /// and can be cycled through when more than 12 habits exist.
   List<Color> get habitColors => [
     const Color(0xFF4CAF50), // Green - Success, growth, nature
     const Color(0xFF2196F3), // Blue - Trust, calm, productivity
@@ -276,6 +276,8 @@ extension HabitColors on ColorScheme {
     const Color(0xFF795548), // Brown - Stability, grounding, routine
     const Color(0xFFE91E63), // Pink - Love, relationships, self-care
     const Color(0xFF607D8B), // Blue Grey - Balance, professionalism, work
+    const Color(0xFF8BC34A), // Light Green - Environmental, sustainability, nature
+    const Color(0xFFFF5722), // Deep Orange - High energy, intensity, motivation
   ];
 
   /// Get habit color by index with automatic cycling

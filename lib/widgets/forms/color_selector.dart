@@ -25,6 +25,8 @@ class ColorSelector extends StatelessWidget {
     Color(0xFF795548), // Brown
     Color(0xFFE91E63), // Pink
     Color(0xFF607D8B), // Blue Grey
+    Color(0xFF8BC34A), // Light Green
+    Color(0xFFFF5722), // Deep Orange
   ];
 
   @override
@@ -88,7 +90,8 @@ class ColorSelector extends StatelessWidget {
   String _getColorName(int index) {
     const colorNames = [
       'Green', 'Blue', 'Orange', 'Red', 'Purple',
-      'Cyan', 'Yellow', 'Brown', 'Pink', 'Blue Grey'
+      'Cyan', 'Yellow', 'Brown', 'Pink', 'Blue Grey',
+      'Light Green', 'Deep Orange'
     ];
     return colorNames[index % colorNames.length];
   }
