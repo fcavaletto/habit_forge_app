@@ -30,6 +30,7 @@ class AddHabitView extends StatefulWidget {
 
 class _AddHabitViewState extends State<AddHabitView> {
   late AddHabitController _controller;
+  late ScrollController _scrollController;
 
   @override
   void initState() {
@@ -40,11 +41,13 @@ class _AddHabitViewState extends State<AddHabitView> {
       existingHabits: widget.existingHabits,
       appState: appState,
     );
+    _scrollController = ScrollController();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -65,6 +68,7 @@ class _AddHabitViewState extends State<AddHabitView> {
 
   Widget _buildBody() {
     return SafeScrollView(
+      controller: _scrollController,
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.defaultPadding),
         child: Column(
@@ -223,8 +227,17 @@ class _AddHabitViewState extends State<AddHabitView> {
         Navigator.of(context).pop();
       }
     } else {
-      // Error - refresh UI to show error message
+      // Error - refresh UI to show error message and scroll to top
       setState(() {});
+      
+      // Scroll to top to make error message visible
+      if (_scrollController.hasClients) {
+        await _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 }
