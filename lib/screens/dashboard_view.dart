@@ -52,7 +52,6 @@ class _DashboardViewState extends State<DashboardView> {
           child: Scaffold(
             appBar: _buildAppBar(),
             body: _buildBody(appState),
-            floatingActionButton: _buildFloatingActionButton(),
           ),
         );
       },
@@ -67,6 +66,16 @@ class _DashboardViewState extends State<DashboardView> {
       elevation: 0,
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
+      leading: Semantics(
+        label: 'Settings',
+        hint: 'Open app settings and preferences',
+        button: true,
+        child: IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () => _showSettings(),
+          tooltip: 'Settings',
+        ),
+      ),
       actions: [
         // Calendar navigation button
         Semantics(
@@ -79,15 +88,15 @@ class _DashboardViewState extends State<DashboardView> {
             tooltip: 'View Calendar',
           ),
         ),
-        // Settings button
+        // Add habit button
         Semantics(
-          label: 'Settings',
-          hint: 'Open app settings and preferences',
+          label: 'Add new habit',
+          hint: 'Opens form to create a new habit',
           button: true,
           child: IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => _showSettings(),
-            tooltip: 'Settings',
+            icon: const Icon(Icons.add),
+            onPressed: _showAddHabitDialog,
+            tooltip: 'Add New Habit',
           ),
         ),
       ],
@@ -251,18 +260,6 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _buildFloatingActionButton() {
-    return Semantics(
-      label: 'Add new habit',
-      hint: 'Opens form to create a new habit',
-      button: true,
-      child: FloatingActionButton(
-        onPressed: _showAddHabitDialog,
-        tooltip: 'Add New Habit',
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
 
   void _navigateToCalendar() {
     Navigator.of(context).push(
