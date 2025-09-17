@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../providers/habit_provider.dart';
+import '../providers/app_state_provider.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
 import 'archive_screen.dart';
@@ -306,6 +307,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // Display Settings Section
+          Text(
+            'Display Settings',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Consumer<AppState>(
+              builder: (context, appState, child) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Show Completion Count',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Display "X of Y habits completed" text on dashboard',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: appState.showCompletionCount,
+                      onChanged: (value) async {
+                        await appState.completionCountProvider.toggleCompletionCount();
+                      },
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 

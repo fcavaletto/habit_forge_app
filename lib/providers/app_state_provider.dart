@@ -6,14 +6,16 @@ import '../repositories/settings_repository.dart';
 import 'habit_provider.dart';
 import 'notification_provider.dart';
 import 'theme_provider.dart';
+import 'completion_count_provider.dart';
 
 /// Combined app state provider that manages all app-wide state
 class AppState extends ChangeNotifier {
   final HabitProvider _habitProvider;
   final NotificationProvider _notificationProvider;
   final ThemeProvider _themeProvider;
+  final CompletionCountProvider _completionCountProvider;
 
-  AppState(this._habitProvider, this._notificationProvider, this._themeProvider) {
+  AppState(this._habitProvider, this._notificationProvider, this._themeProvider, this._completionCountProvider) {
     // Listen to changes in child providers
     _habitProvider.addListener(() {
       debugPrint('🔗 AppState received notification from HabitProvider');
@@ -25,6 +27,10 @@ class AppState extends ChangeNotifier {
     });
     _themeProvider.addListener(() {
       debugPrint('🔗 AppState received notification from ThemeProvider');
+      notifyListeners();
+    });
+    _completionCountProvider.addListener(() {
+      debugPrint('🔗 AppState received notification from CompletionCountProvider');
       notifyListeners();
     });
   }
@@ -45,6 +51,10 @@ class AppState extends ChangeNotifier {
   ThemeProvider get themeProvider => _themeProvider;
   ThemeMode get themeMode => _themeProvider.themeMode;
 
+  // Completion count provider access
+  CompletionCountProvider get completionCountProvider => _completionCountProvider;
+  bool get showCompletionCount => _completionCountProvider.showCompletionCount;
+
   // Combined loading state
   bool get isLoading => _habitProvider.isLoading || _notificationProvider.isLoading;
 
@@ -60,6 +70,7 @@ class AppState extends ChangeNotifier {
       _habitProvider.loadHabits(),
       _notificationProvider.initialize(),
       _themeProvider.loadThemeMode(),
+      _completionCountProvider.loadCompletionCountSetting(),
     ]);
   }
 
@@ -74,13 +85,14 @@ class AppState extends ChangeNotifier {
     _habitProvider.removeListener(notifyListeners);
     _notificationProvider.removeListener(notifyListeners);
     _themeProvider.removeListener(notifyListeners);
+    _completionCountProvider.removeListener(notifyListeners);
     super.dispose();
   }
 }
 
 /// Provider for AppState
 class AppStateProvider extends AppState {
-  AppStateProvider(super.habitProvider, super.notificationProvider, super.themeProvider);
+  AppStateProvider(super.habitProvider, super.notificationProvider, super.themeProvider, super.completionCountProvider);
 
   // Factory method for easy creation with SQLite repository
   factory AppStateProvider.create() {
@@ -89,7 +101,8 @@ class AppStateProvider extends AppState {
     final notificationProvider = NotificationProvider(notificationService);
     final settingsRepository = SettingsRepository(databaseService);
     final themeProvider = ThemeProvider(settingsRepository);
+    final completionCountProvider = CompletionCountProvider(settingsRepository);
 
-    return AppStateProvider(habitProvider, notificationProvider, themeProvider);
+    return AppStateProvider(habitProvider, notificationProvider, themeProvider, completionCountProvider);
   }
 }

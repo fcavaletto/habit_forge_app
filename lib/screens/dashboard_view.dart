@@ -231,30 +231,41 @@ class _DashboardViewState extends State<DashboardView> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          '$completedToday of ${habits.length} habits completed',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+        // Show completion count text if enabled in settings
+        Consumer<AppState>(
+          builder: (context, appState, child) {
+            if (appState.showCompletionCount) {
+              return Column(
+                children: [
+                  Text(
+                    '$completedToday of ${habits.length} habits completed',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+        // Progress bar is now always visible
+        LinearProgressIndicator(
+          value: completionRate,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          valueColor: AlwaysStoppedAnimation<Color>(
+            Theme.of(context).colorScheme.primary,
           ),
         ),
-        if (completionRate > 0) ...[
-          const SizedBox(height: 4),
-          LinearProgressIndicator(
-            value: completionRate,
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(context).colorScheme.primary,
-            ),
+        const SizedBox(height: 4),
+        Text(
+          '${(completionRate * 100).round()}% complete',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${(completionRate * 100).round()}% complete',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
         const SizedBox(height: AppConstants.defaultPadding),
       ],
     );
