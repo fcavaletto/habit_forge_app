@@ -360,6 +360,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Consumer<AppState>(
+              builder: (context, appState, child) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Extended Color Palette',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Show 36 colors instead of 24 in habit creation',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: appState.isExtendedColorPalette,
+                      onChanged: (value) async {
+                        await appState.extendedColorPaletteProvider.toggleExtendedColorPalette();
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+
           const SizedBox(height: 32),
 
           // Sample Data Section

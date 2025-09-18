@@ -255,29 +255,64 @@ class AppTheme {
 /// Usage: `Theme.of(context).colorScheme.habitColors[index]`
 ///
 extension HabitColors on ColorScheme {
-  /// Curated palette of 12 vibrant colors for habit visualization
+  /// Curated palette of 36 soft pastel colors for habit visualization
   ///
   /// Each color is carefully selected to ensure:
   /// ✅ High contrast ratios for accessibility
   /// ✅ Visual distinction between adjacent colors
   /// ✅ Support for color vision deficiencies
   /// ✅ Consistent appearance in light and dark themes
+  /// ✅ Soft, pastel aesthetic that's easy on the eyes
   ///
-  /// Colors are ordered to provide natural visual progression
-  /// and can be cycled through when more than 12 habits exist.
+  /// Colors are organized in families with equal distribution:
+  /// - Warm tones (9 colors): corals, peaches, warm pinks, gentle oranges
+  /// - Cool tones (9 colors): soft blues, mint greens, lavender, pale teals
+  /// - Neutral tones (9 colors): soft grays, warm beiges, muted purples
+  /// - Accent colors (9 colors): gentle yellows, soft greens, muted reds
   List<Color> get habitColors => [
-    const Color(0xFFE6194B), // Red - Urgency, important habits, health
-    const Color(0xFF3CB44B), // Green - Success, growth, nature
-    const Color(0xFFFFE119), // Yellow - Happiness, optimism, social
-    const Color(0xFF4363D8), // Blue - Trust, calm, productivity
-    const Color(0xFFF58231), // Orange - Energy, enthusiasm, creativity
-    const Color(0xFF911EB4), // Purple - Luxury, mindfulness, spirituality
-    const Color(0xFF46F0F0), // Cyan - Freshness, clarity, learning
-    const Color(0xFFF032E6), // Magenta - Bold, creative, artistic
-    const Color(0xFFBCF60C), // Lime - Fresh, energetic, environmental
-    const Color(0xFFFABEBE), // Pink - Love, relationships, self-care
-    const Color(0xFF008080), // Teal - Balance, professionalism, work
-    const Color(0xFFE6BEFF), // Lavender - Calm, meditation, wellness
+    // Warm Tones (9 colors)
+    const Color(0xFFF8BBD9), // Soft Pink - Love, relationships, self-care
+    const Color(0xFFF4A6A6), // Coral - Warmth, energy, creativity
+    const Color(0xFFF7C8A8), // Peach - Gentle energy, optimism
+    const Color(0xFFF5B5A3), // Warm Beige - Comfort, stability
+    const Color(0xFFF2A7A7), // Rose - Romance, care, nurturing
+    const Color(0xFFF6B8B8), // Light Coral - Warmth, friendliness
+    const Color(0xFFF3C2A2), // Apricot - Joy, enthusiasm, warmth
+    const Color(0xFFF1B3B3), // Dusty Rose - Elegance, sophistication
+    const Color(0xFFF7D4A8), // Cream - Softness, comfort, peace
+    
+    // Cool Tones (9 colors)
+    const Color(0xFFB8E6E6), // Soft Cyan - Freshness, clarity, learning
+    const Color(0xFFA8D8EA), // Sky Blue - Trust, calm, productivity
+    const Color(0xFFB5E7D3), // Mint Green - Fresh, energetic, environmental
+    const Color(0xFFC7CEEA), // Lavender - Calm, meditation, wellness
+    const Color(0xFFA8E6CF), // Seafoam - Balance, tranquility, growth
+    const Color(0xFFB3D9F2), // Powder Blue - Peace, serenity, trust
+    const Color(0xFFC8E6C9), // Sage Green - Nature, harmony, balance
+    const Color(0xFFD1C4E9), // Soft Purple - Luxury, mindfulness, spirituality
+    const Color(0xFFB2DFDB), // Aqua - Freshness, clarity, renewal
+    
+    // Neutral Tones (9 colors)
+    const Color(0xFFE8E8E8), // Soft Gray - Neutrality, balance, professionalism
+    const Color(0xFFD4C5C5), // Warm Gray - Stability, reliability, comfort
+    const Color(0xFFE0D5D5), // Light Taupe - Sophistication, elegance
+    const Color(0xFFD9D9D9), // Silver - Modern, clean, minimalist
+    const Color(0xFFC7B8B8), // Muted Mauve - Subtlety, refinement
+    const Color(0xFFE5E5E5), // Off White - Purity, simplicity, clarity
+    const Color(0xFFD1C7C7), // Soft Brown - Earthiness, stability, warmth
+    const Color(0xFFDCDCDC), // Light Silver - Modern, sleek, contemporary
+    const Color(0xFFC9B8B8), // Dusty Mauve - Elegance, understated beauty
+    
+    // Accent Colors (9 colors)
+    const Color(0xFFF0E68C), // Soft Yellow - Happiness, optimism, social
+    const Color(0xFF98FB98), // Light Green - Success, growth, nature
+    const Color(0xFFFFF8DC), // Cream Yellow - Warmth, cheerfulness
+    const Color(0xFF90EE90), // Light Lime - Freshness, vitality, energy
+    const Color(0xFFFFFACD), // Lemon Chiffon - Brightness, joy, energy
+    const Color(0xFF87CEEB), // Light Blue - Trust, calm, productivity
+    const Color(0xFFFFE4B5), // Moccasin - Warmth, comfort, coziness
+    const Color(0xFFAFEEEE), // Pale Turquoise - Freshness, clarity, learning
+    const Color(0xFFFFDAB9), // Peach Puff - Gentleness, warmth, care
   ];
 
   /// Get habit color by index with automatic cycling

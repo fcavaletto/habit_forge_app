@@ -3,6 +3,7 @@ import '../models/habit.dart';
 import '../widgets/year_grid.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../providers/app_state_provider.dart';
+import '../theme.dart';
 import 'package:provider/provider.dart';
 
 /// Calendar Screen - GitHub-style habit tracking calendar
@@ -145,18 +146,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Color _getHabitColor(int colorIndex) {
-    final colors = [
-      Colors.green,
-      Colors.blue,
-      Colors.red,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.indigo,
-      Colors.cyan,
-    ];
-    return colors[colorIndex % colors.length];
+    return Theme.of(context).colorScheme.habitColor(colorIndex);
   }
 
 }

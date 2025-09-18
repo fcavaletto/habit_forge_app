@@ -7,6 +7,7 @@ import 'habit_provider.dart';
 import 'notification_provider.dart';
 import 'theme_provider.dart';
 import 'completion_count_provider.dart';
+import 'extended_color_palette_provider.dart';
 
 /// Combined app state provider that manages all app-wide state
 class AppState extends ChangeNotifier {
@@ -14,8 +15,9 @@ class AppState extends ChangeNotifier {
   final NotificationProvider _notificationProvider;
   final ThemeProvider _themeProvider;
   final CompletionCountProvider _completionCountProvider;
+  final ExtendedColorPaletteProvider _extendedColorPaletteProvider;
 
-  AppState(this._habitProvider, this._notificationProvider, this._themeProvider, this._completionCountProvider) {
+  AppState(this._habitProvider, this._notificationProvider, this._themeProvider, this._completionCountProvider, this._extendedColorPaletteProvider) {
     // Listen to changes in child providers
     _habitProvider.addListener(() {
       debugPrint('🔗 AppState received notification from HabitProvider');
@@ -31,6 +33,10 @@ class AppState extends ChangeNotifier {
     });
     _completionCountProvider.addListener(() {
       debugPrint('🔗 AppState received notification from CompletionCountProvider');
+      notifyListeners();
+    });
+    _extendedColorPaletteProvider.addListener(() {
+      debugPrint('🔗 AppState received notification from ExtendedColorPaletteProvider');
       notifyListeners();
     });
   }
@@ -55,6 +61,10 @@ class AppState extends ChangeNotifier {
   CompletionCountProvider get completionCountProvider => _completionCountProvider;
   bool get showCompletionCount => _completionCountProvider.showCompletionCount;
 
+  // Extended color palette provider access
+  ExtendedColorPaletteProvider get extendedColorPaletteProvider => _extendedColorPaletteProvider;
+  bool get isExtendedColorPalette => _extendedColorPaletteProvider.isExtendedMode;
+
   // Combined loading state
   bool get isLoading => _habitProvider.isLoading || _notificationProvider.isLoading;
 
@@ -71,6 +81,7 @@ class AppState extends ChangeNotifier {
       _notificationProvider.initialize(),
       _themeProvider.loadThemeMode(),
       _completionCountProvider.loadCompletionCountSetting(),
+      _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
     ]);
   }
 
@@ -86,13 +97,14 @@ class AppState extends ChangeNotifier {
     _notificationProvider.removeListener(notifyListeners);
     _themeProvider.removeListener(notifyListeners);
     _completionCountProvider.removeListener(notifyListeners);
+    _extendedColorPaletteProvider.removeListener(notifyListeners);
     super.dispose();
   }
 }
 
 /// Provider for AppState
 class AppStateProvider extends AppState {
-  AppStateProvider(super.habitProvider, super.notificationProvider, super.themeProvider, super.completionCountProvider);
+  AppStateProvider(super.habitProvider, super.notificationProvider, super.themeProvider, super.completionCountProvider, super.extendedColorPaletteProvider);
 
   // Factory method for easy creation with SQLite repository
   factory AppStateProvider.create() {
@@ -102,7 +114,8 @@ class AppStateProvider extends AppState {
     final settingsRepository = SettingsRepository(databaseService);
     final themeProvider = ThemeProvider(settingsRepository);
     final completionCountProvider = CompletionCountProvider(settingsRepository);
+    final extendedColorPaletteProvider = ExtendedColorPaletteProvider(settingsRepository);
 
-    return AppStateProvider(habitProvider, notificationProvider, themeProvider, completionCountProvider);
+    return AppStateProvider(habitProvider, notificationProvider, themeProvider, completionCountProvider, extendedColorPaletteProvider);
   }
 }

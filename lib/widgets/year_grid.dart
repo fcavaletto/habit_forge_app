@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
+import '../theme.dart';
 
 /// YearGrid widget - GitHub-style habit tracking grid
 ///
@@ -202,19 +203,8 @@ class _YearGridState extends State<YearGrid> {
   }
 
   Color _getHabitColor() {
-    // Get color based on habit's color index
-    final colors = [
-      Colors.green,
-      Colors.blue,
-      Colors.red,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.indigo,
-      Colors.cyan,
-    ];
-    return colors[widget.habit.colorIndex % colors.length];
+    // Get color based on habit's color index using theme colors
+    return Theme.of(context).colorScheme.habitColor(widget.habit.colorIndex);
   }
 
   String _getDayAbbrev(int dayIndex) {
