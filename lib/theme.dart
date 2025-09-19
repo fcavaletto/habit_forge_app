@@ -255,64 +255,76 @@ class AppTheme {
 /// Usage: `Theme.of(context).colorScheme.habitColors[index]`
 ///
 extension HabitColors on ColorScheme {
-  /// Curated palette of 36 soft pastel colors for habit visualization
+  /// Curated palette of 48 vibrant yet pleasant colors for habit visualization
   ///
   /// Each color is carefully selected to ensure:
   /// ✅ High contrast ratios for accessibility
   /// ✅ Visual distinction between adjacent colors
   /// ✅ Support for color vision deficiencies
   /// ✅ Consistent appearance in light and dark themes
-  /// ✅ Soft, pastel aesthetic that's easy on the eyes
+  /// ✅ Vibrant but pleasant aesthetic that's easy on the eyes
   ///
-  /// Colors are organized in families with equal distribution:
-  /// - Warm tones (9 colors): corals, peaches, warm pinks, gentle oranges
-  /// - Cool tones (9 colors): soft blues, mint greens, lavender, pale teals
-  /// - Neutral tones (9 colors): soft grays, warm beiges, muted purples
-  /// - Accent colors (9 colors): gentle yellows, soft greens, muted reds
+  /// Layout: 4 rows × 12 columns (48 total colors)
+  /// - Row 1 (0-11): Essential colors - Red, Orange, Yellow, Green, Blue, Purple, Pink, Brown, Gray, Black, White, Teal
+  /// - Row 2 (12-23): Complementary colors - variations and additional hues
+  /// - Row 3 (24-35): Vibrant variations - more saturated versions
+  /// - Row 4 (36-47): Sophisticated tones - elegant and refined colors
   List<Color> get habitColors => [
-    // Warm Tones (9 colors)
-    const Color(0xFFF8BBD9), // Soft Pink - Love, relationships, self-care
-    const Color(0xFFF4A6A6), // Coral - Warmth, energy, creativity
-    const Color(0xFFF7C8A8), // Peach - Gentle energy, optimism
-    const Color(0xFFF5B5A3), // Warm Beige - Comfort, stability
-    const Color(0xFFF2A7A7), // Rose - Romance, care, nurturing
-    const Color(0xFFF6B8B8), // Light Coral - Warmth, friendliness
-    const Color(0xFFF3C2A2), // Apricot - Joy, enthusiasm, warmth
-    const Color(0xFFF1B3B3), // Dusty Rose - Elegance, sophistication
-    const Color(0xFFF7D4A8), // Cream - Softness, comfort, peace
-    
-    // Cool Tones (9 colors)
-    const Color(0xFFB8E6E6), // Soft Cyan - Freshness, clarity, learning
-    const Color(0xFFA8D8EA), // Sky Blue - Trust, calm, productivity
-    const Color(0xFFB5E7D3), // Mint Green - Fresh, energetic, environmental
-    const Color(0xFFC7CEEA), // Lavender - Calm, meditation, wellness
-    const Color(0xFFA8E6CF), // Seafoam - Balance, tranquility, growth
-    const Color(0xFFB3D9F2), // Powder Blue - Peace, serenity, trust
-    const Color(0xFFC8E6C9), // Sage Green - Nature, harmony, balance
-    const Color(0xFFD1C4E9), // Soft Purple - Luxury, mindfulness, spirituality
-    const Color(0xFFB2DFDB), // Aqua - Freshness, clarity, renewal
-    
-    // Neutral Tones (9 colors)
-    const Color(0xFFE8E8E8), // Soft Gray - Neutrality, balance, professionalism
-    const Color(0xFFD4C5C5), // Warm Gray - Stability, reliability, comfort
-    const Color(0xFFE0D5D5), // Light Taupe - Sophistication, elegance
-    const Color(0xFFD9D9D9), // Silver - Modern, clean, minimalist
-    const Color(0xFFC7B8B8), // Muted Mauve - Subtlety, refinement
-    const Color(0xFFE5E5E5), // Off White - Purity, simplicity, clarity
-    const Color(0xFFD1C7C7), // Soft Brown - Earthiness, stability, warmth
-    const Color(0xFFDCDCDC), // Light Silver - Modern, sleek, contemporary
-    const Color(0xFFC9B8B8), // Dusty Mauve - Elegance, understated beauty
-    
-    // Accent Colors (9 colors)
-    const Color(0xFFF0E68C), // Soft Yellow - Happiness, optimism, social
-    const Color(0xFF98FB98), // Light Green - Success, growth, nature
-    const Color(0xFFFFF8DC), // Cream Yellow - Warmth, cheerfulness
-    const Color(0xFF90EE90), // Light Lime - Freshness, vitality, energy
-    const Color(0xFFFFFACD), // Lemon Chiffon - Brightness, joy, energy
-    const Color(0xFF87CEEB), // Light Blue - Trust, calm, productivity
-    const Color(0xFFFFE4B5), // Moccasin - Warmth, comfort, coziness
-    const Color(0xFFAFEEEE), // Pale Turquoise - Freshness, clarity, learning
-    const Color(0xFFFFDAB9), // Peach Puff - Gentleness, warmth, care
+    // Row 1: Mixed Essential Colors (12 colors) - Blues, Greens, Reds, Purples
+    const Color(0xFF2E5BFF), // Vibrant Blue
+    const Color(0xFF00C853), // Vibrant Emerald Green
+    const Color(0xFFF44336), // Bright Red
+    const Color(0xFF9C27B0), // Rich Purple
+    const Color(0xFF00D4FF), // Vibrant Cyan
+    const Color(0xFF8BC34A), // Bright Lime Green
+    const Color(0xFFFF7043), // Vibrant Coral
+    const Color(0xFF673AB7), // Bright Violet
+    const Color(0xFF4FC3F7), // Bright Sky Blue
+    const Color(0xFF2E7D32), // Vivid Forest Green
+    const Color(0xFFE91E63), // Vibrant Rose
+    const Color(0xFF7B1FA2), // Deep Purple
+
+    // Row 2: Warm & Cool Mix (12 colors) - Oranges, Yellows, Teals, Pinks
+    const Color(0xFFFF9800), // Vibrant Orange
+    const Color(0xFF009688), // Vibrant Teal
+    const Color(0xFFFFEB3B), // Bright Yellow
+    const Color(0xFFE91E63), // Bright Pink
+    const Color(0xFFFF5722), // Bright Tangerine
+    const Color(0xFF00BCD4), // Bright Aqua
+    const Color(0xFFFFC107), // Golden Yellow
+    const Color(0xFFF8BBD9), // Vibrant Rose Pink
+    const Color(0xFFFFAB91), // Vibrant Peach
+    const Color(0xFF4DD0E1), // Vivid Turquoise
+    const Color(0xFFFF8F00), // Vivid Amber
+    const Color(0xFFE91E63), // Vibrant Magenta
+
+    // Row 3: Earth & Nature Tones (12 colors) - Browns, Greens, Blues, Purples
+    const Color(0xFF5D4037), // Rich Brown
+    const Color(0xFF1B5E20), // Deep Forest Green
+    const Color(0xFF1565C0), // Deep Navy Blue
+    const Color(0xFF7B1FA2), // Rich Plum Purple
+    const Color(0xFFD7CCC8), // Vibrant Tan
+    const Color(0xFF4CAF50), // Vibrant Mint Green
+    const Color(0xFF1976D2), // Vibrant Cobalt Blue
+    const Color(0xFF9575CD), // Vibrant Lavender
+    const Color(0xFF8D6E63), // Bright Sienna Brown
+    const Color(0xFF827717), // Bright Olive Green
+    const Color(0xFF3F51B5), // Bright Indigo Blue
+    const Color(0xFF9C27B0), // Bright Amethyst Purple
+
+    // Row 4: Sophisticated Vibrant Mix (12 colors) - Mixed sophisticated tones
+    const Color(0xFF4A148C), // Deep Burgundy
+    const Color(0xFFFFD700), // Vibrant Gold
+    const Color(0xFF00695C), // Rich Emerald
+    const Color(0xFFC62828), // Vibrant Ruby Red
+    const Color(0xFFFF7F50), // Bright Coral
+    const Color(0xFF1565C0), // Bright Sapphire Blue
+    const Color(0xFF4527A0), // Deep Violet
+    const Color(0xFF2E7D32), // Vibrant Jade Green
+    const Color(0xFFB71C1C), // Rich Garnet Red
+    const Color(0xFFFF6F00), // Bright Copper Orange
+    const Color(0xFF689F38), // Bright Peridot Green
+    const Color(0xFFFF8F00), // Vibrant Topaz Orange
   ];
 
   /// Get habit color by index with automatic cycling

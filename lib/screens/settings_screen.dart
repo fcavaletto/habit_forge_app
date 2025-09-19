@@ -381,7 +381,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Show 36 colors instead of 24 in habit creation',
+                            'Show 48 colors instead of 24 in habit creation',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),

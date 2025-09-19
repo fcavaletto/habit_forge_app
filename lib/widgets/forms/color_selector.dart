@@ -45,8 +45,8 @@ class ColorSelector extends StatelessWidget {
       builder: (context, appState, child) {
         final isExtendedMode = appState.isExtendedColorPalette;
         final colors = Theme.of(context).colorScheme.habitColors;
-        const totalColors = 36; // Always use full palette, limit display based on mode
-        final rows = isExtendedMode ? 3 : 2;
+        const totalColors = 48; // Always use full palette, limit display based on mode
+        final rows = isExtendedMode ? 4 : 2;
         
     return Semantics(
       label: 'Color selection',
@@ -226,14 +226,14 @@ class ColorSelector extends StatelessWidget {
 
   String _getColorName(int index) {
     const colorNames = [
-      // Warm Tones (9 colors)
-      'Soft Pink', 'Coral', 'Peach', 'Warm Beige', 'Rose', 'Light Coral', 'Apricot', 'Dusty Rose', 'Cream',
-      // Cool Tones (9 colors)
-      'Soft Cyan', 'Sky Blue', 'Mint Green', 'Lavender', 'Seafoam', 'Powder Blue', 'Sage Green', 'Soft Purple', 'Aqua',
-      // Neutral Tones (9 colors)
-      'Soft Gray', 'Warm Gray', 'Light Taupe', 'Silver', 'Muted Mauve', 'Off White', 'Soft Brown', 'Light Silver', 'Dusty Mauve',
-      // Accent Colors (9 colors)
-      'Soft Yellow', 'Light Green', 'Cream Yellow', 'Light Lime', 'Lemon Chiffon', 'Light Blue', 'Moccasin', 'Pale Turquoise', 'Peach Puff',
+      // Row 1: Mixed Essential Colors (12 colors) - Blues, Greens, Reds, Purples
+      'Vibrant Blue', 'Vibrant Emerald Green', 'Bright Red', 'Rich Purple', 'Vibrant Cyan', 'Bright Lime Green', 'Vibrant Coral', 'Bright Violet', 'Bright Sky Blue', 'Vivid Forest Green', 'Vibrant Rose', 'Deep Purple',
+      // Row 2: Warm & Cool Mix (12 colors) - Oranges, Yellows, Teals, Pinks
+      'Vibrant Orange', 'Vibrant Teal', 'Bright Yellow', 'Bright Pink', 'Bright Tangerine', 'Bright Aqua', 'Golden Yellow', 'Vibrant Rose Pink', 'Vibrant Peach', 'Vivid Turquoise', 'Vivid Amber', 'Vibrant Magenta',
+      // Row 3: Earth & Nature Tones (12 colors) - Browns, Greens, Blues, Purples
+      'Rich Brown', 'Deep Forest Green', 'Deep Navy Blue', 'Rich Plum Purple', 'Vibrant Tan', 'Vibrant Mint Green', 'Vibrant Cobalt Blue', 'Vibrant Lavender', 'Bright Sienna Brown', 'Bright Olive Green', 'Bright Indigo Blue', 'Bright Amethyst Purple',
+      // Row 4: Sophisticated Vibrant Mix (12 colors) - Mixed sophisticated tones
+      'Deep Burgundy', 'Vibrant Gold', 'Rich Emerald', 'Vibrant Ruby Red', 'Bright Coral', 'Bright Sapphire Blue', 'Deep Violet', 'Vibrant Jade Green', 'Rich Garnet Red', 'Bright Copper Orange', 'Bright Peridot Green', 'Vibrant Topaz Orange',
     ];
     return colorNames[index % colorNames.length];
   }
