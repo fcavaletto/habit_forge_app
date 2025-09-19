@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
+import '../utils/icon_utils.dart';
 import '../widgets/year_grid.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../providers/app_state_provider.dart';
@@ -101,10 +102,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             child: Row(
                               children: [
                                 Icon(
-                                  IconData(
-                                    int.parse(habit.iconName),
-                                    fontFamily: 'MaterialIcons',
-                                  ),
+                                  habit.iconName.toIconData,
                                   color: _getHabitColor(habit.colorIndex),
                                   size: 20,
                                 ),

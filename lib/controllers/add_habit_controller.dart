@@ -15,7 +15,7 @@ class AddHabitController {
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController targetGoalController = TextEditingController(text: '1');
 
-  String selectedIconName = 'check_circle';
+  String selectedIconName = 'local_fire_department';
   int selectedColorIndex = 0;
   FrequencyData frequencyData = FrequencyData.forType(Frequency.everyDay);
   TimeOfDay? reminderTime;

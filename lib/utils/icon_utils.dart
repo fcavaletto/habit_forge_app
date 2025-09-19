@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
 /// Utility functions for icon handling across the app
+/// This is the SINGLE SOURCE OF TRUTH for all icon mappings
 class IconUtils {
   /// Convert icon name string to IconData
+  /// This method handles all 72 icons used in the app
   static IconData getIconData(String iconName) {
     switch (iconName) {
-      case 'check_circle':
-        return Icons.check_circle;
+      // Row 1: Essential & Core Habits
+      case 'local_fire_department':
+        return Icons.local_fire_department;
       case 'fitness_center':
         return Icons.fitness_center;
       case 'local_drink':
@@ -41,6 +44,8 @@ class IconUtils {
         return Icons.create;
       case 'lightbulb':
         return Icons.lightbulb;
+      
+      // Row 2: Health & Wellness
       case 'nature':
         return Icons.nature;
       case 'pets':
@@ -53,8 +58,113 @@ class IconUtils {
         return Icons.home;
       case 'volunteer_activism':
         return Icons.volunteer_activism;
+      case 'local_hospital':
+        return Icons.local_hospital;
+      case 'medication':
+        return Icons.medication;
+      case 'monitor_heart':
+        return Icons.monitor_heart;
+      case 'psychology':
+        return Icons.psychology;
+      case 'healing':
+        return Icons.healing;
+      case 'masks':
+        return Icons.masks;
+      case 'sanitizer':
+        return Icons.sanitizer;
+      case 'vaccines':
+        return Icons.vaccines;
+      case 'restaurant_menu':
+        return Icons.restaurant_menu;
+      case 'cake':
+        return Icons.cake;
+      case 'local_pizza':
+        return Icons.local_pizza;
+      case 'no_food':
+        return Icons.no_food;
+      
+      // Row 3: Learning & Productivity
+      case 'water_drop':
+        return Icons.water_drop;
+      case 'air':
+        return Icons.air;
+      case 'thermostat':
+        return Icons.thermostat;
+      case 'ac_unit':
+        return Icons.ac_unit;
+      case 'library_books':
+        return Icons.library_books;
+      case 'handyman':
+        return Icons.handyman;
+      case 'account_balance':
+        return Icons.account_balance;
+      case 'language':
+        return Icons.language;
+      case 'translate':
+        return Icons.translate;
+      case 'savings':
+        return Icons.savings;
+      case 'science':
+        return Icons.science;
+      case 'biotech':
+        return Icons.biotech;
+      case 'camera_alt':
+        return Icons.camera_alt;
+      case 'security':
+        return Icons.security;
+      case 'headphones':
+        return Icons.headphones;
+      case 'smartphone':
+        return Icons.smartphone;
+      case 'email':
+        return Icons.email;
+      case 'chat':
+        return Icons.chat;
+      
+      // Row 4: Lifestyle & Activities
+      case 'video_call':
+        return Icons.video_call;
+      case 'wifi':
+        return Icons.wifi;
+      case 'directions_car':
+        return Icons.directions_car;
+      case 'directions_bike':
+        return Icons.directions_bike;
+      case 'hiking':
+        return Icons.hiking;
+      case 'flight':
+        return Icons.flight;
+      case 'eco':
+        return Icons.eco;
+      case 'recycling':
+        return Icons.recycling;
+      case 'solar_power':
+        return Icons.solar_power;
+      case 'wind_power':
+        return Icons.wind_power;
+      case 'movie':
+        return Icons.movie;
+      case 'theater_comedy':
+        return Icons.theater_comedy;
+      case 'games':
+        return Icons.games;
+      case 'sports_tennis':
+        return Icons.sports_tennis;
+      case 'casino':
+        return Icons.casino;
+      case 'celebration':
+        return Icons.celebration;
+      case 'cookie':
+        return Icons.cookie;
+      case 'local_dining':
+        return Icons.local_dining;
+      
+      // Legacy support for old icon names
+      case 'check_circle':
+        return Icons.local_fire_department; // Map old default to fire icon
+      
       default:
-        return Icons.check_circle;
+        return Icons.local_fire_department; // Default to fire icon for HabitForge theme
     }
   }
 }

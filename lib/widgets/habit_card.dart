@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../theme.dart';
+import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
 
 /// Interactive card widget displaying a habit with progress visualization
@@ -109,7 +110,7 @@ class HabitCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(9), // Slightly larger radius
                         ),
                         child: Icon(
-                          _getIconData(habit.iconName),
+                          habit.iconName.toIconData,
                           color: habitColor,
                           size: 30, // 50% bigger (20 * 1.5)
                         ),
@@ -340,7 +341,7 @@ class HabitCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        _getIconData(habit.iconName),
+                        habit.iconName.toIconData,
                         color: Theme.of(context).colorScheme.habitColor(habit.colorIndex),
                         size: 20,
                       ),
@@ -425,33 +426,6 @@ class HabitCard extends StatelessWidget {
     );
   }
 
-  /// Get IconData from icon name string
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'check_circle':
-        return Icons.check_circle;
-      case 'fitness_center':
-        return Icons.fitness_center;
-      case 'local_drink':
-        return Icons.local_drink;
-      case 'book':
-        return Icons.book;
-      case 'bed':
-        return Icons.bed;
-      case 'restaurant':
-        return Icons.restaurant;
-      case 'directions_run':
-        return Icons.directions_run;
-      case 'school':
-        return Icons.school;
-      case 'work':
-        return Icons.work;
-      case 'favorite':
-        return Icons.favorite;
-      default:
-        return Icons.check_circle;
-    }
-  }
 }
 
 /// A more detailed habit card with 4-week grid chart for expanded view
@@ -488,7 +462,7 @@ class DetailedHabitCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    _getIconData(habit.iconName),
+                    habit.iconName.toIconData,
                     color: habitColor,
                     size: 28,
                   ),
@@ -621,30 +595,4 @@ class DetailedHabitCard extends StatelessWidget {
     );
   }
 
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'check_circle':
-        return Icons.check_circle;
-      case 'fitness_center':
-        return Icons.fitness_center;
-      case 'local_drink':
-        return Icons.local_drink;
-      case 'book':
-        return Icons.book;
-      case 'bed':
-        return Icons.bed;
-      case 'restaurant':
-        return Icons.restaurant;
-      case 'directions_run':
-        return Icons.directions_run;
-      case 'school':
-        return Icons.school;
-      case 'work':
-        return Icons.work;
-      case 'favorite':
-        return Icons.favorite;
-      default:
-        return Icons.check_circle;
-    }
-  }
 }
