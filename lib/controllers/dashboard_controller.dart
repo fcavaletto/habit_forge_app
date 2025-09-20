@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
+import '../utils/data_freshness.dart';
 
 /// Controller class that handles all business logic for the dashboard
 /// This separates UI concerns from business logic for better testability and maintainability
 class DashboardController {
   final AppState _appState;
+  DateTime? _lastRefreshTime;
 
   DashboardController(this._appState);
 
@@ -13,12 +15,29 @@ class DashboardController {
   List<Habit> get habits => _appState.habits;
   bool get isLoading => _appState.isLoading;
   String? get error => _appState.error;
+  DateTime? get lastRefreshTime => _lastRefreshTime;
+  bool get needsRefresh => _lastRefreshTime == null ||
+    DataFreshness.shouldRefreshOnResume(_lastRefreshTime!);
 
   /// Load habits from storage
   Future<void> loadHabits() async {
-    debugPrint('📱 Loading habits from storage...');
+    debugPrint('📱 DashboardController: Loading habits from storage...');
     await _appState.habitProvider.loadHabits();
-    debugPrint('📱 Loaded ${habits.length} habits');
+    _lastRefreshTime = DateTime.now();
+    debugPrint('📱 DashboardController: Loaded ${habits.length} habits at $_lastRefreshTime');
+  }
+
+  /// Refresh habits with freshness check
+  Future<void> refreshHabits({bool forceRefresh = false}) async {
+    final shouldRefresh = forceRefresh || needsRefresh;
+    
+    if (!shouldRefresh) {
+      debugPrint('📱 DashboardController: Habits are fresh, skipping refresh');
+      return;
+    }
+    
+    debugPrint('🔄 DashboardController: Refreshing habits...');
+    await loadHabits();
   }
 
   /// Handle habit tap - navigate to details

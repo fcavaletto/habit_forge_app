@@ -9,6 +9,7 @@ import '../utils/constants.dart';
 import '../screens/settings_screen.dart';
 import '../screens/add_habit_screen.dart';
 import '../screens/calendar_screen.dart';
+import '../mixins/lifecycle_mixin.dart';
 
 /// Dashboard View - Pure UI component for the dashboard screen
 ///
@@ -22,7 +23,8 @@ class DashboardView extends StatefulWidget {
   State<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardViewState extends State<DashboardView> {
+class _DashboardViewState extends State<DashboardView> 
+    with LifecycleMixin<DashboardView> {
   late DashboardController _controller;
   late AppState _appState;
 
@@ -39,6 +41,40 @@ class _DashboardViewState extends State<DashboardView> {
 
   Future<void> _loadInitialData() async {
     await _controller.loadHabits();
+  }
+
+  @override
+  void onDataRefreshNeeded() {
+    if (mounted) {
+      _refreshData();
+    }
+  }
+
+  Future<void> _refreshData() async {
+    try {
+      await _controller.refreshHabits();
+      // Show subtle refresh indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data refreshed'),
+            duration: Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Failed to refresh data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to refresh data: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   @override
