@@ -55,7 +55,7 @@ class HabitState extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-      debugPrint('📱 HabitProvider: Loaded ${_habits.length} habits at ${_lastLoadTime}');
+      debugPrint('📱 HabitProvider: Loaded ${_habits.length} habits at $_lastLoadTime');
     } catch (e) {
       _isLoading = false;
       _error = 'Failed to load habits: $e';
