@@ -53,6 +53,7 @@ class HabitState extends ChangeNotifier {
   Timer? _refreshTimer;
   bool _isSortingMode = false;
   int _reorderCount = 0; // Track reorder operations for normalization
+  DateTime _selectedDate = DateTime.now(); // Selected date for filtering
 
   HabitState(this._habitRepository);
 
@@ -66,6 +67,39 @@ class HabitState extends ChangeNotifier {
   bool get needsRefresh => _lastLoadTime == null ||
     DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
   bool get isSortingMode => _isSortingMode;
+  DateTime get selectedDate => _selectedDate;
+  
+  /// Get habits filtered for the currently selected date
+  List<Habit> get filteredHabits => getHabitsForDate(_selectedDate);
+
+  /// Get habits filtered by completion status for a specific date
+  List<Habit> getHabitsForDate(DateTime date) {
+    return _habits.where((habit) => _isHabitActiveOnDate(habit, date)).toList();
+  }
+
+  /// Get habit IDs that should be visible based on current filter
+  List<String> getVisibleHabitIds() {
+    return getHabitsForDate(_selectedDate).map((h) => h.id).toList();
+  }
+
+  /// Update the selected date for filtering
+  void updateSelectedDate(DateTime newDate) {
+    _selectedDate = newDate;
+    debugPrint('📅 Selected date updated to: ${_selectedDate.toIso8601String().split('T')[0]}');
+    notifyListeners();
+  }
+
+  /// Get day abbreviation from DateTime (mon, tue, wed, etc.)
+  String _getDayAbbreviation(DateTime date) {
+    const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    return days[date.weekday - 1]; // Monday = 1, Sunday = 7
+  }
+
+  /// Check if a habit is active on a specific date based on its frequency
+  bool _isHabitActiveOnDate(Habit habit, DateTime date) {
+    final dayAbbr = _getDayAbbreviation(date);
+    return habit.frequencyDays[dayAbbr] == 1;
+  }
 
   /// Load all active habits
   Future<void> loadHabits({bool forceRefresh = false}) async {
@@ -337,6 +371,45 @@ class HabitProvider extends HabitState {
     } catch (e) {
       // Rollback on error - reload habits from database
       debugPrint('❌ Error reordering habits: $e');
+      await loadHabits(forceRefresh: true);
+      _error = 'Failed to reorder habits: $e';
+      notifyListeners();
+    }
+  }
+
+  /// Reorder habits with filtering context - handles filtered views correctly
+  Future<void> reorderHabitsInContext(
+    String draggedId, 
+    int newPosition, 
+    List<String> visibleHabitIds
+  ) async {
+    try {
+      debugPrint('🔄 Reordering habit $draggedId to position $newPosition in filtered context');
+      
+      // Optimistic update - move habit in local list immediately
+      final draggedHabit = _habits.firstWhere((h) => h.id == draggedId);
+      _habits.removeWhere((h) => h.id == draggedId);
+      _habits.insert(newPosition, draggedHabit);
+      
+      debugPrint('🔄 Optimistically reordered habit $draggedId to position $newPosition in context');
+      notifyListeners();
+
+      // Perform actual reordering in database with context
+      await _habitRepository.reorderHabitsInContext(draggedId, newPosition, visibleHabitIds);
+      debugPrint('✅ Successfully reordered habit $draggedId in database with context');
+      
+      // Increment reorder counter and normalize if needed
+      _reorderCount++;
+      if (_reorderCount >= 10) { // Normalize every 10 reorders
+        debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
+        await _habitRepository.normalizeOrderValues();
+        _reorderCount = 0;
+        // Reload habits to get normalized order values
+        await loadHabits(forceRefresh: true);
+      }
+    } catch (e) {
+      // Rollback on error - reload habits from database
+      debugPrint('❌ Error reordering habits in context: $e');
       await loadHabits(forceRefresh: true);
       _error = 'Failed to reorder habits: $e';
       notifyListeners();

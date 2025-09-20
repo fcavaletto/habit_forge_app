@@ -348,25 +348,37 @@ class DashboardController {
     _appState.clearErrors();
   }
 
-  /// Get completed habits count for today (habits that achieved their goal)
-  int getCompletedTodayCount() {
-    final today = DateTime.now();
-    return habits.where((habit) => habit.isGoalAchieved(today)).length;
+  /// Get completed habits count for selected date (habits that achieved their goal)
+  int getCompletedCountForDate(DateTime date) {
+    final filteredHabits = _appState.habitProvider.getHabitsForDate(date);
+    return filteredHabits.where((habit) => habit.isGoalAchieved(date)).length;
   }
 
-  /// Get total completion percentage for today across all habits
-  double getTodayCompletionRate() {
-    if (habits.isEmpty) return 0.0;
+  /// Get total completion percentage for selected date across filtered habits
+  double getCompletionRateForDate(DateTime date) {
+    final filteredHabits = _appState.habitProvider.getHabitsForDate(date);
+    if (filteredHabits.isEmpty) return 0.0;
     
     double totalCompletionPercentage = 0.0;
-    final today = DateTime.now();
     
-    for (final habit in habits) {
-      final count = habit.getCompletionCount(today);
+    for (final habit in filteredHabits) {
+      final count = habit.getCompletionCount(date);
       final percentage = (count / habit.targetGoal).clamp(0.0, 1.0);
       totalCompletionPercentage += percentage;
     }
     
-    return totalCompletionPercentage / habits.length;
+    return totalCompletionPercentage / filteredHabits.length;
+  }
+
+  /// Get completed habits count for today (habits that achieved their goal)
+  /// @deprecated Use getCompletedCountForDate instead
+  int getCompletedTodayCount() {
+    return getCompletedCountForDate(DateTime.now());
+  }
+
+  /// Get total completion percentage for today across all habits
+  /// @deprecated Use getCompletionRateForDate instead
+  double getTodayCompletionRate() {
+    return getCompletionRateForDate(DateTime.now());
   }
 }

@@ -206,8 +206,7 @@ class SqliteHabitRepository {
       debugPrint('🗄️ Repository: Starting archiveHabit for ID: $habitId');
       final db = await _databaseService.database;
       
-      bool success = false;
-      await db.transaction((txn) async {
+      final result = await db.transaction<bool>((txn) async {
         // First, check if the habit exists
         final existingHabit = await txn.query(
           'habits',
@@ -217,20 +216,18 @@ class SqliteHabitRepository {
         
         if (existingHabit.isEmpty) {
           debugPrint('❌ Repository: Habit with ID $habitId not found in database');
-          return;
+          return false;
         }
         
         debugPrint('🗄️ Repository: Found habit: ${existingHabit.first['name']}, currently archived: ${existingHabit.first['is_archived']}');
         
         // Archive the habit
-        final result = await txn.update(
+        final updateResult = await txn.update(
           'habits',
           {'is_archived': 1},
           where: 'id = ?',
           whereArgs: [habitId],
         );
-        
-        success = result > 0;
         
         // Remove from ordering table (archived habits don't need ordering)
         await txn.delete(
@@ -239,8 +236,11 @@ class SqliteHabitRepository {
           whereArgs: [habitId],
         );
         
-        debugPrint('💾 Repository: Archived habit $habitId and removed from ordering (affected rows: $result)');
+        debugPrint('💾 Repository: Archived habit $habitId and removed from ordering (affected rows: $updateResult)');
+        return updateResult > 0;
       });
+      
+      final success = result;
       
       // Verify the update
       final updatedHabit = await db.query(
@@ -565,6 +565,70 @@ class SqliteHabitRepository {
       debugPrint('🔄 Reordered habit $draggedId to position $newPosition with order value $newOrderValue');
     } catch (e) {
       debugPrint('❌ Error reordering habits: $e');
+      rethrow;
+    }
+  }
+
+  /// Reorder habits with filtering context - handles filtered views correctly
+  Future<void> reorderHabitsInContext(
+    String draggedId, 
+    int newPosition, 
+    List<String> visibleHabitIds
+  ) async {
+    try {
+      debugPrint('🔄 Reordering habit $draggedId to position $newPosition in filtered context');
+      debugPrint('📋 Visible habits: ${visibleHabitIds.join(', ')}');
+      
+      // Get all active habits with their order values
+      final allHabits = await getActiveHabits();
+      
+      // Create a map for quick lookup
+      final habitMap = {for (var h in allHabits) h.id: h};
+      
+      // Validate that dragged habit exists and is visible
+      if (!visibleHabitIds.contains(draggedId)) {
+        throw Exception('Dragged habit $draggedId is not in visible list');
+      }
+      
+      // Get visible habits in their current order
+      final visibleHabits = visibleHabitIds
+          .map((id) => habitMap[id])
+          .where((h) => h != null)
+          .cast<Habit>()
+          .toList();
+      
+      if (visibleHabits.length != visibleHabitIds.length) {
+        throw Exception('Some visible habits not found in database');
+      }
+      
+      double newOrderValue;
+      
+      if (newPosition == 0) {
+        // Move to top of visible habits
+        final topVisibleHabit = visibleHabits.first;
+        final topOrder = topVisibleHabit.orderValue ?? 0.0;
+        newOrderValue = topOrder + 1000.0; // Large gap above
+        debugPrint('📍 Moving to top of visible habits (above ${topVisibleHabit.name})');
+      } else if (newPosition >= visibleHabits.length - 1) {
+        // Move to bottom of visible habits
+        final bottomVisibleHabit = visibleHabits.last;
+        final bottomOrder = bottomVisibleHabit.orderValue ?? 0.0;
+        newOrderValue = bottomOrder - 1000.0; // Large gap below
+        debugPrint('📍 Moving to bottom of visible habits (below ${bottomVisibleHabit.name})');
+      } else {
+        // Insert between visible habits
+        final prevHabit = visibleHabits[newPosition - 1];
+        final nextHabit = visibleHabits[newPosition];
+        final prevOrder = prevHabit.orderValue ?? 0.0;
+        final nextOrder = nextHabit.orderValue ?? 0.0;
+        newOrderValue = (prevOrder + nextOrder) / 2.0;
+        debugPrint('📍 Inserting between ${prevHabit.name} and ${nextHabit.name}');
+      }
+      
+      await _updateHabitOrder(draggedId, newOrderValue);
+      debugPrint('✅ Reordered habit $draggedId to position $newPosition with order value $newOrderValue');
+    } catch (e) {
+      debugPrint('❌ Error reordering habits in context: $e');
       rethrow;
     }
   }

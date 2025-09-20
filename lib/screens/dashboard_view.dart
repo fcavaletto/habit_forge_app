@@ -152,7 +152,7 @@ class _DashboardViewState extends State<DashboardView>
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        debugPrint('🎨 Consumer<AppState> builder called with ${appState.habits.length} habits');
+        debugPrint('🎨 Consumer<AppState> builder called with ${appState.habitProvider.filteredHabits.length} filtered habits');
         return Semantics(
           label: 'Habit Forge Dashboard',
           hint: 'Main screen showing your habits and progress',
@@ -211,22 +211,23 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   Widget _buildBody(AppState appState) {
-    debugPrint('🔄 DashboardView building with ${appState.habits.length} habits');
+    final filteredHabits = appState.habitProvider.filteredHabits;
+    debugPrint('🔄 DashboardView building with ${filteredHabits.length} filtered habits');
 
     if (appState.isLoadingHabits) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (appState.habits.isEmpty) {
-      debugPrint('📭 No habits found, showing empty state');
-      return _buildEmptyState();
+    if (filteredHabits.isEmpty) {
+      debugPrint('📭 No habits found for selected date, showing empty state');
+      return _buildEmptyState(isFiltered: true);
     }
 
     debugPrint('📊 Building habits list with drag-and-drop capability');
-    return _buildHabitsList(appState.habits);
+    return _buildHabitsList(filteredHabits);
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({bool isFiltered = false}) {
     return SafeScrollableWrapper(
       child: Center(
         child: Padding(
@@ -235,13 +236,13 @@ class _DashboardViewState extends State<DashboardView>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.track_changes,
+                isFiltered ? Icons.calendar_today : Icons.track_changes,
                 size: 80,
                 color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: AppConstants.defaultPadding),
               Text(
-                'Welcome to Habit Forge!',
+                isFiltered ? 'No habits scheduled for today' : 'Welcome to Habit Forge!',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onSurface,
@@ -250,7 +251,9 @@ class _DashboardViewState extends State<DashboardView>
               ),
               const SizedBox(height: 8),
               Text(
-                'Build lasting habits with daily tracking and progress visualization.',
+                isFiltered 
+                  ? 'No habits are scheduled to be completed on the selected date. Try selecting a different date or create habits for this day.'
+                  : 'Build lasting habits with daily tracking and progress visualization.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
@@ -331,12 +334,21 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   Widget _buildHeader(List<Habit> habits) {
-    final completedToday = _controller.getCompletedTodayCount();
-    final completionRate = _controller.getTodayCompletionRate();
+    // Get the selected date from the provider
+    final selectedDate = Provider.of<AppState>(context, listen: false).habitProvider.selectedDate;
+    final completedCount = _controller.getCompletedCountForDate(selectedDate);
+    final completionRate = _controller.getCompletionRateForDate(selectedDate);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Date selector
+        Consumer<AppState>(
+          builder: (context, appState, child) {
+            return _buildDateSelector(appState);
+          },
+        ),
+        const SizedBox(height: 16),
         Text(
           'Today\'s Progress',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -352,7 +364,7 @@ class _DashboardViewState extends State<DashboardView>
               return Column(
                 children: [
                   Text(
-                    '$completedToday of ${habits.length} habits completed',
+                    '$completedCount of ${habits.length} habits completed',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -473,9 +485,122 @@ class _DashboardViewState extends State<DashboardView>
   }
 
 
-  /// Reorder habits
+  /// Reorder habits with filtering context
   void _reorderHabits(String draggedId, int newPosition) {
     final appState = Provider.of<AppState>(context, listen: false);
-    appState.habitProvider.reorderHabits(draggedId, newPosition);
+    
+    // Get visible habit IDs for filtering context
+    final visibleHabitIds = appState.habitProvider.getVisibleHabitIds();
+    
+    // Use the new filtering-aware reordering method
+    appState.habitProvider.reorderHabitsInContext(draggedId, newPosition, visibleHabitIds);
+  }
+
+  /// Build the date selector widget
+  Widget _buildDateSelector(AppState appState) {
+    final selectedDate = appState.habitProvider.selectedDate;
+    final today = DateTime.now();
+    final isToday = selectedDate.year == today.year && 
+                   selectedDate.month == today.month && 
+                   selectedDate.day == today.day;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.calendar_today,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isToday ? 'Today' : 'Selected Date',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatDate(selectedDate),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _showDatePicker(appState),
+            icon: Icon(
+              Icons.edit_calendar,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Select Date',
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Format date for display
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final tomorrow = today.add(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
+
+    if (dateOnly == today) {
+      return 'Today';
+    } else if (dateOnly == yesterday) {
+      return 'Yesterday';
+    } else if (dateOnly == tomorrow) {
+      return 'Tomorrow';
+    } else {
+      // Format as "Mon, Jan 15" or similar
+      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
+    }
+  }
+
+  /// Show date picker dialog
+  Future<void> _showDatePicker(AppState appState) async {
+    final selectedDate = appState.habitProvider.selectedDate;
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null && pickedDate != selectedDate) {
+      appState.habitProvider.updateSelectedDate(pickedDate);
+      debugPrint('📅 Date changed to: ${_formatDate(pickedDate)}');
+    }
   }
 }
