@@ -6,7 +6,43 @@ import '../repositories/sqlite_habit_repository.dart';
 import '../services/database_service.dart';
 import '../utils/data_freshness.dart';
 
-/// State class to hold habit-related data and operations
+/// State management class for habit-related data and operations
+///
+/// This class implements the Provider pattern for state management, providing
+/// a reactive data layer for habit operations. It manages local state caching,
+/// data persistence, and UI notifications through the ChangeNotifier pattern.
+///
+/// ## Architecture Pattern:
+/// - **Provider Pattern**: Implements reactive state management
+/// - **Repository Pattern**: Delegates data operations to repository layer
+/// - **Observer Pattern**: Notifies UI components of state changes
+/// - **Singleton Pattern**: Ensures single instance per app lifecycle
+///
+/// ## Key Responsibilities:
+/// - **State Management**: Maintains local habit data and loading states
+/// - **Data Persistence**: Handles CRUD operations through repository
+/// - **Performance Optimization**: Implements caching and debouncing
+/// - **Error Handling**: Manages and reports operation errors
+/// - **UI Integration**: Notifies listeners of state changes
+///
+/// ## Data Flow:
+/// 1. **UI Request**: Controller calls provider method
+/// 2. **State Update**: Provider updates loading state
+/// 3. **Repository Call**: Data operation delegated to repository
+/// 4. **State Update**: Provider updates data and loading state
+/// 5. **UI Notification**: Listeners notified of changes
+///
+/// ## Performance Features:
+/// - **Smart Caching**: Avoids unnecessary data reloads
+/// - **Debounced Operations**: Prevents rapid successive calls
+/// - **Timestamp Tracking**: Monitors data freshness
+/// - **Selective Updates**: Only notifies when listeners exist
+///
+/// ## Error Handling Strategy:
+/// - **Graceful Degradation**: Continues operation on non-critical errors
+/// - **User Feedback**: Provides meaningful error messages
+/// - **Logging**: Comprehensive debug logging for troubleshooting
+/// - **Recovery**: Automatic retry mechanisms where appropriate
 class HabitState extends ChangeNotifier {
   final SqliteHabitRepository _habitRepository;
 

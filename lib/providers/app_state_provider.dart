@@ -10,6 +10,45 @@ import 'completion_count_provider.dart';
 import 'extended_color_palette_provider.dart';
 
 /// Combined app state provider that manages all app-wide state
+///
+/// This class serves as the central state management hub for the entire application,
+/// implementing a composite provider pattern that orchestrates multiple specialized
+/// providers. It provides a unified interface for accessing and managing all
+/// application state while maintaining separation of concerns.
+///
+/// ## Architecture Pattern:
+/// - **Composite Provider**: Combines multiple specialized providers
+/// - **Facade Pattern**: Provides simplified interface to complex subsystem
+/// - **Observer Pattern**: Notifies UI of state changes across all providers
+/// - **Dependency Injection**: Manages provider dependencies and lifecycle
+///
+/// ## Provider Composition:
+/// - **HabitProvider**: Manages habit data and operations
+/// - **NotificationProvider**: Handles notification state and scheduling
+/// - **ThemeProvider**: Manages theme preferences and switching
+/// - **CompletionCountProvider**: Tracks completion count display settings
+/// - **ExtendedColorPaletteProvider**: Manages extended color palette settings
+///
+/// ## Key Responsibilities:
+/// - **State Coordination**: Synchronizes state across multiple providers
+/// - **Initialization Management**: Orchestrates provider initialization
+/// - **Error Aggregation**: Collects and reports errors from all providers
+/// - **Global Refresh**: Provides unified data refresh capabilities
+/// - **Lifecycle Management**: Manages provider lifecycle and cleanup
+///
+/// ## Data Flow:
+/// 1. **App Initialization**: All providers initialized in parallel
+/// 2. **State Changes**: Individual providers update their state
+/// 3. **Propagation**: Changes propagated to composite provider
+/// 4. **UI Notification**: All listeners notified of changes
+/// 5. **Global Operations**: Cross-provider operations coordinated
+///
+/// ## Usage Pattern:
+/// ```dart
+/// final appState = context.read<AppState>();
+/// await appState.refreshAllData();
+/// final habits = appState.habits;
+/// ```
 class AppState extends ChangeNotifier {
   final HabitProvider _habitProvider;
   final NotificationProvider _notificationProvider;
@@ -76,7 +115,25 @@ class AppState extends ChangeNotifier {
   bool get isDataFresh => _habitProvider.isDataFresh;
   bool get needsDataRefresh => _habitProvider.needsRefresh;
 
-  /// Initialize all services
+  /// Initialize all services and providers in the correct order
+  ///
+  /// This method orchestrates the initialization of all application services
+  /// and providers, ensuring proper dependency order and error handling.
+  /// It's called during app startup to prepare all systems for operation.
+  ///
+  /// ## Initialization Order:
+  /// 1. **HabitProvider**: Database initialization and habit loading
+  /// 2. **NotificationProvider**: Notification service setup
+  /// 3. **ThemeProvider**: Theme preferences loading
+  /// 4. **CompletionCountProvider**: Display settings loading
+  /// 5. **ExtendedColorPaletteProvider**: Color palette settings loading
+  ///
+  /// ## Parallel Operations:
+  /// Steps 2-5 run in parallel using Future.wait() for optimal performance.
+  ///
+  /// ## Error Handling:
+  /// Individual provider failures don't prevent app startup, ensuring
+  /// graceful degradation and continued operation.
   Future<void> initialize() async {
     // Initialize habit provider
     await _habitProvider.initialize();
@@ -96,7 +153,26 @@ class AppState extends ChangeNotifier {
     _notificationProvider.clearError();
   }
 
-  /// Refresh all data across providers
+  /// Refresh all data across all providers with intelligent coordination
+  ///
+  /// This method provides a unified interface for refreshing data across all
+  /// application providers, ensuring consistency and optimal performance.
+  /// It coordinates refresh operations to avoid conflicts and unnecessary work.
+  ///
+  /// ## Parameters:
+  /// - [forceRefresh]: If true, bypasses freshness checks and forces refresh
+  ///
+  /// ## Refresh Strategy:
+  /// - **Coordinated Refresh**: All providers refreshed in parallel
+  /// - **Smart Refresh**: Respects individual provider freshness logic
+  /// - **Error Isolation**: Individual provider failures don't affect others
+  /// - **Performance Optimization**: Avoids unnecessary operations
+  ///
+  /// ## Use Cases:
+  /// - App lifecycle events (resume, foreground)
+  /// - Manual refresh requests from UI
+  /// - Data synchronization after external changes
+  /// - Recovery from error states
   Future<void> refreshAllData({bool forceRefresh = false}) async {
     debugPrint('🔄 AppState: Refreshing all data, forceRefresh: $forceRefresh');
     
