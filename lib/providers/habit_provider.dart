@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/habit.dart';
 import '../models/habit_result.dart';
 import '../repositories/sqlite_habit_repository.dart';
 import '../services/database_service.dart';
+import '../utils/data_freshness.dart';
 
 /// State class to hold habit-related data and operations
 class HabitState extends ChangeNotifier {
@@ -11,6 +13,8 @@ class HabitState extends ChangeNotifier {
   List<Habit> _habits = [];
   bool _isLoading = false;
   String? _error;
+  DateTime? _lastLoadTime;
+  Timer? _refreshTimer;
 
   HabitState(this._habitRepository);
 
@@ -18,22 +22,45 @@ class HabitState extends ChangeNotifier {
   List<Habit> get habits => _habits;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  DateTime? get lastLoadTime => _lastLoadTime;
+  bool get isDataFresh => _lastLoadTime != null && 
+    !DataFreshness.isDataStale(_lastLoadTime!);
+  bool get needsRefresh => _lastLoadTime == null ||
+    DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
 
   /// Load all active habits
-  Future<void> loadHabits() async {
+  Future<void> loadHabits({bool forceRefresh = false}) async {
+    // Debounce rapid refresh calls
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer(const Duration(milliseconds: 300), () async {
+      await _performLoad(forceRefresh);
+    });
+  }
+
+  /// Internal method to perform the actual load operation
+  Future<void> _performLoad(bool forceRefresh) async {
+    if (!forceRefresh && isDataFresh) {
+      debugPrint('📱 HabitProvider: Data is fresh, skipping reload');
+      return;
+    }
+
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
+      debugPrint('📱 HabitProvider: Loading habits from storage...');
       _habits = await _habitRepository.getActiveHabits();
+      _lastLoadTime = DateTime.now();
 
       _isLoading = false;
       notifyListeners();
+      debugPrint('📱 HabitProvider: Loaded ${_habits.length} habits at ${_lastLoadTime}');
     } catch (e) {
       _isLoading = false;
       _error = 'Failed to load habits: $e';
       notifyListeners();
+      debugPrint('❌ HabitProvider: Failed to load habits: $e');
     }
   }
 
@@ -149,6 +176,13 @@ class HabitState extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Dispose resources
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   /// Get habit by ID

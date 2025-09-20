@@ -71,6 +71,11 @@ class AppState extends ChangeNotifier {
   // Combined error state
   String? get error => _habitProvider.error ?? _notificationProvider.error;
 
+  // Data freshness access
+  DateTime? get lastDataLoadTime => _habitProvider.lastLoadTime;
+  bool get isDataFresh => _habitProvider.isDataFresh;
+  bool get needsDataRefresh => _habitProvider.needsRefresh;
+
   /// Initialize all services
   Future<void> initialize() async {
     // Initialize habit provider
@@ -89,6 +94,19 @@ class AppState extends ChangeNotifier {
   void clearErrors() {
     _habitProvider.clearError();
     _notificationProvider.clearError();
+  }
+
+  /// Refresh all data across providers
+  Future<void> refreshAllData({bool forceRefresh = false}) async {
+    debugPrint('🔄 AppState: Refreshing all data, forceRefresh: $forceRefresh');
+    
+    await Future.wait([
+      _habitProvider.loadHabits(forceRefresh: forceRefresh),
+      // Note: NotificationProvider doesn't have a refresh method yet
+      // This can be added later if needed
+    ]);
+    
+    debugPrint('✅ AppState: All data refreshed');
   }
 
   @override
