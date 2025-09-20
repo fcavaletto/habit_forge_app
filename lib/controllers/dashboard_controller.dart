@@ -90,8 +90,10 @@ class DashboardController {
   /// - Reduces battery usage
   /// - Improves app responsiveness
   Future<void> refreshHabits({bool forceRefresh = false}) async {
+    // Determine if refresh is needed based on data freshness or force flag
     final shouldRefresh = forceRefresh || needsRefresh;
     
+    // Skip refresh if data is still fresh to avoid unnecessary operations
     if (!shouldRefresh) {
       debugPrint('📱 DashboardController: Habits are fresh, skipping refresh');
       return;

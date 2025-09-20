@@ -100,16 +100,19 @@ class _DashboardViewState extends State<DashboardView>
 
   void _onAppResumed() {
     final now = DateTime.now();
+    // Check if data needs refresh based on time elapsed or new day
     final shouldRefresh = _lastResumeTime == null || 
       DataFreshness.shouldRefreshOnResume(_lastResumeTime!);
     
     debugPrint('🔄 Dashboard: App resumed, shouldRefresh: $shouldRefresh');
     
+    // Only refresh if data is stale to avoid unnecessary operations
     if (shouldRefresh) {
       debugPrint('🔄 Dashboard: Triggering data refresh');
       _refreshData();
     }
     
+    // Update resume timestamp for future freshness checks
     _lastResumeTime = now;
   }
 

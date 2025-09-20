@@ -75,6 +75,8 @@ class HabitState extends ChangeNotifier {
 
   /// Internal method to perform the actual load operation
   Future<void> _performLoad(bool forceRefresh) async {
+    // Skip reload if data is fresh and not forcing refresh
+    // This prevents unnecessary database queries and improves performance
     if (!forceRefresh && isDataFresh) {
       debugPrint('📱 HabitProvider: Data is fresh, skipping reload');
       return;
@@ -86,7 +88,9 @@ class HabitState extends ChangeNotifier {
       notifyListeners();
 
       debugPrint('📱 HabitProvider: Loading habits from storage...');
+      // Fetch fresh data from repository layer
       _habits = await _habitRepository.getActiveHabits();
+      // Update timestamp for freshness tracking
       _lastLoadTime = DateTime.now();
 
       _isLoading = false;
