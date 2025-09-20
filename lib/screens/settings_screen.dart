@@ -12,16 +12,43 @@ import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
 import 'archive_screen.dart';
 
-/// Settings Screen - Full-page settings interface
+/// Settings Screen - Comprehensive app configuration interface
 ///
-/// Provides access to app settings and preferences including:
-/// - Theme mode selection (light/dark/system)
-/// - Sample data generation for testing
-/// - Archive management
-/// - Data import/export functionality
+/// This screen provides a centralized interface for managing all application
+/// settings, preferences, and data operations. It implements a clean, organized
+/// layout with grouped settings and clear user feedback for all operations.
 ///
-/// Uses a full-screen layout with proper navigation instead of
-/// a modal bottom sheet, providing more space and better UX.
+/// ## Architecture Pattern:
+/// - **Settings Pattern**: Centralized configuration management
+/// - **Callback Pattern**: Communicates changes to parent components
+/// - **Provider Integration**: Accesses app state for settings persistence
+/// - **File Operations**: Handles data import/export with proper error handling
+///
+/// ## Key Features:
+/// - **Theme Management**: Light/dark/system theme switching with persistence
+/// - **Data Operations**: Import/export functionality with validation
+/// - **Sample Data**: Quick generation of test habits for development
+/// - **Archive Access**: Direct navigation to archived habits management
+/// - **User Feedback**: Comprehensive success/error messaging
+///
+/// ## Settings Categories:
+/// 1. **Appearance**: Theme mode selection and visual preferences
+/// 2. **Data Management**: Import, export, and sample data operations
+/// 3. **Habit Management**: Archive access and habit operations
+/// 4. **Development**: Sample data generation for testing
+///
+/// ## User Journey:
+/// 1. **Navigation**: Access via settings icon in dashboard
+/// 2. **Theme Selection**: Choose preferred theme mode
+/// 3. **Data Operations**: Import existing data or export current data
+/// 4. **Archive Management**: Access archived habits for restoration
+/// 5. **Sample Data**: Generate test habits for evaluation
+///
+/// ## Error Handling:
+/// - **File Operations**: Validates file formats and handles I/O errors
+/// - **Data Validation**: Ensures imported data integrity
+/// - **User Feedback**: Clear error messages with recovery suggestions
+/// - **Graceful Degradation**: Continues operation on non-critical failures
 class SettingsScreen extends StatefulWidget {
   /// Current theme mode for UI state display
   final ThemeMode currentThemeMode;

@@ -11,11 +11,43 @@ import '../screens/add_habit_screen.dart';
 import '../screens/calendar_screen.dart';
 import '../utils/data_freshness.dart';
 
-/// Dashboard View - Pure UI component for the dashboard screen
+/// Dashboard View - Pure UI component for the main habit tracking interface
 ///
-/// This widget contains only the UI rendering logic and delegates all
-/// business logic to the DashboardController. It uses Provider to access
-/// the app state and controller.
+/// This widget implements the View layer of the MVC pattern, containing only
+/// UI rendering logic while delegating all business logic to the DashboardController.
+/// It provides the primary user interface for habit tracking and management.
+///
+/// ## Architecture Pattern:
+/// - **MVC Pattern**: View layer with separated business logic
+/// - **Provider Pattern**: Reactive state management integration
+/// - **Observer Pattern**: Lifecycle-aware UI updates
+/// - **Composition Pattern**: Combines multiple specialized widgets
+///
+/// ## Key Responsibilities:
+/// - **UI Rendering**: Displays habit cards, progress indicators, and controls
+/// - **User Interaction**: Handles taps, gestures, and form interactions
+/// - **State Display**: Shows loading states, errors, and empty states
+/// - **Navigation**: Manages routing to other screens
+/// - **Lifecycle Management**: Handles app lifecycle events for data refresh
+///
+/// ## User Journey:
+/// 1. **Initial Load**: Displays loading indicator while data loads
+/// 2. **Empty State**: Shows sample habit creation for new users
+/// 3. **Habit List**: Displays interactive habit cards with progress
+/// 4. **Quick Actions**: Tap to complete, long-press for options
+/// 5. **Navigation**: Access calendar, settings, and habit creation
+///
+/// ## Lifecycle Integration:
+/// - **App Resume**: Automatically refreshes stale data
+/// - **Smart Refresh**: Only refreshes when data is actually stale
+/// - **User Feedback**: Shows subtle refresh confirmation messages
+/// - **Error Handling**: Displays user-friendly error messages
+///
+/// ## Performance Features:
+/// - **Efficient Rendering**: Uses Consumer pattern for selective rebuilds
+/// - **Memory Management**: Proper disposal of controllers and observers
+/// - **Debounced Operations**: Prevents rapid successive operations
+/// - **Cached Data**: Shows cached data immediately while refreshing
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
 
