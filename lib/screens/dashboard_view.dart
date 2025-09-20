@@ -9,7 +9,7 @@ import '../utils/constants.dart';
 import '../screens/settings_screen.dart';
 import '../screens/add_habit_screen.dart';
 import '../screens/calendar_screen.dart';
-import '../mixins/lifecycle_mixin.dart';
+import '../utils/data_freshness.dart';
 
 /// Dashboard View - Pure UI component for the dashboard screen
 ///
@@ -24,13 +24,15 @@ class DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<DashboardView> 
-    with LifecycleMixin<DashboardView> {
+    with WidgetsBindingObserver {
   late DashboardController _controller;
   late AppState _appState;
+  DateTime? _lastResumeTime;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _appState = context.read<AppState>();
     _controller = DashboardController(_appState);
     // Schedule initial data load after the first frame to avoid setState during build
@@ -39,16 +41,50 @@ class _DashboardViewState extends State<DashboardView>
     });
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _onAppResumed();
+        break;
+      case AppLifecycleState.paused:
+        debugPrint('⏸️ Dashboard: App paused');
+        break;
+      case AppLifecycleState.detached:
+        debugPrint('🔌 Dashboard: App detached');
+        break;
+      default:
+        break;
+    }
+  }
+
+  void _onAppResumed() {
+    final now = DateTime.now();
+    final shouldRefresh = _lastResumeTime == null || 
+      DataFreshness.shouldRefreshOnResume(_lastResumeTime!);
+    
+    debugPrint('🔄 Dashboard: App resumed, shouldRefresh: $shouldRefresh');
+    
+    if (shouldRefresh) {
+      debugPrint('🔄 Dashboard: Triggering data refresh');
+      _refreshData();
+    }
+    
+    _lastResumeTime = now;
+  }
+
   Future<void> _loadInitialData() async {
     await _controller.loadHabits();
   }
 
-  @override
-  void onDataRefreshNeeded() {
-    if (mounted) {
-      _refreshData();
-    }
-  }
 
   Future<void> _refreshData() async {
     try {
