@@ -80,13 +80,11 @@ class HabitCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: Semantics(
         label: accessibilityLabel,
-        hint: 'Double tap to view details, or long press for more options',
+        hint: 'Tap for options, long press to drag and reorder',
         button: true,
         child: InkWell(
-          // Tap handler for opening detailed view
-          onTap: onTap,
-          // Long press handler for context menu
-          onLongPress: () => _showContextMenu(context),
+          // Short tap shows context menu, long press handled by ReorderableListView
+          onTap: () => _showContextMenu(context),
           // Rounded corners for modern Material 3 design
           borderRadius: BorderRadius.circular(12),
           focusColor: habitColor.withValues(alpha: 0.2),
@@ -119,8 +117,8 @@ class HabitCard extends StatelessWidget {
 
                     const Spacer(), // Push buttons to the right
 
-                  // Action buttons row
-                  Row(
+                    // Action buttons row
+                    Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Stats button
@@ -425,6 +423,7 @@ class HabitCard extends StatelessWidget {
       },
     );
   }
+
 
 }
 

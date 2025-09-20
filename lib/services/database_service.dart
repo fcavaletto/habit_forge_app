@@ -15,7 +15,7 @@ import 'package:path/path.dart';
 /// - Transaction support for data consistency
 class DatabaseService {
   static const String _databaseName = 'habit_forge.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
   
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
@@ -104,6 +104,16 @@ class DatabaseService {
         )
       ''');
       
+      // Create habit_display_order table for custom ordering
+      await txn.execute('''
+        CREATE TABLE habit_display_order (
+          habit_id TEXT PRIMARY KEY,
+          order_value REAL NOT NULL,
+          created_at INTEGER NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        )
+      ''');
+      
       // Create indexes for better performance
       await txn.execute('''
         CREATE INDEX idx_habit_completions_date 
@@ -119,6 +129,11 @@ class DatabaseService {
         CREATE INDEX idx_habits_archived 
         ON habits(is_archived)
       ''');
+      
+      await txn.execute('''
+        CREATE INDEX idx_habit_order_value 
+        ON habit_display_order(order_value)
+      ''');
     });
     
     debugPrint('✅ Database schema created successfully');
@@ -128,8 +143,44 @@ class DatabaseService {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     debugPrint('🗄️ Upgrading database from version $oldVersion to $newVersion');
     
-    // Future migration logic will go here
-    // For now, we're at version 1, so no migrations needed
+    if (oldVersion < 2) {
+      await _migrateToVersion2(db);
+    }
+  }
+  
+  /// Migrate database to version 2 - Add habit ordering support
+  Future<void> _migrateToVersion2(Database db) async {
+    debugPrint('🔄 Migrating to version 2: Adding habit ordering support');
+    
+    await db.transaction((txn) async {
+      // Create habit_display_order table
+      await txn.execute('''
+        CREATE TABLE habit_display_order (
+          habit_id TEXT PRIMARY KEY,
+          order_value REAL NOT NULL,
+          created_at INTEGER NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        )
+      ''');
+      
+      // Create index for ordering queries
+      await txn.execute('''
+        CREATE INDEX idx_habit_order_value 
+        ON habit_display_order(order_value)
+      ''');
+      
+      // Migrate existing habits with proper ordering (newest first)
+      // Use rowid * 1000 to create large gaps for future insertions
+      await txn.execute('''
+        INSERT INTO habit_display_order (habit_id, order_value, created_at)
+        SELECT id, CAST(rowid AS REAL) * 1000.0, created_at 
+        FROM habits 
+        WHERE is_archived = 0 
+        ORDER BY created_at DESC
+      ''');
+      
+      debugPrint('✅ Migration to version 2 completed successfully');
+    });
   }
   
   /// Called when database is opened

@@ -256,13 +256,13 @@ class NotificationService {
       ledOnMs: 1000,
       ledOffMs: 1000,
       actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
+        const AndroidNotificationAction(
           'mark_complete',
           'Mark Complete',
           icon: DrawableResourceAndroidBitmap('@drawable/ic_check'),
           showsUserInterface: true,
         ),
-        AndroidNotificationAction(
+        const AndroidNotificationAction(
           'dismiss',
           'Dismiss',
           icon: DrawableResourceAndroidBitmap('@drawable/ic_close'),
@@ -293,7 +293,7 @@ class NotificationService {
         matchDateTimeComponents: DateTimeComponents.time,
         payload: 'habit_reminder_${habit.id}',
       ).timeout(
-        Duration(seconds: _maxTimeoutSeconds),
+        const Duration(seconds: _maxTimeoutSeconds),
         onTimeout: () {
           debugPrint('⏰ Timeout scheduling reminder for ${habit.name}');
           throw TimeoutException('Notification scheduling timed out');
@@ -591,7 +591,7 @@ class NotificationService {
         presentSound: true,
       );
 
-      final NotificationDetails backupDetails = NotificationDetails(
+      const NotificationDetails backupDetails = NotificationDetails(
         android: backupNotificationDetails,
         iOS: backupIosNotificationDetails,
       );
@@ -651,7 +651,7 @@ class NotificationService {
         presentSound: true,
       );
 
-      final NotificationDetails backupDetails = NotificationDetails(
+      const NotificationDetails backupDetails = NotificationDetails(
         android: backupNotificationDetails,
         iOS: backupIosNotificationDetails,
       );

@@ -48,6 +48,9 @@ class Habit {
   /// Whether this habit is archived (hidden from main view but not deleted)
   final bool isArchived;
 
+  /// Display order value for custom ordering (null if not set)
+  final double? orderValue;
+
   /// Frequency data for when the habit should be active
   final Map<String, int> frequencyDays;
 
@@ -82,6 +85,7 @@ class Habit {
     this.reminderTime,
     this.enableReminders = false,
     this.isArchived = false,
+    this.orderValue,
     this.frequencyDays = defaultFrequencyDays,
     this.targetGoal = defaultTargetGoal,
   }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex,
@@ -326,6 +330,7 @@ class Habit {
     TimeOfDay? reminderTime,
     bool? enableReminders,
     bool? isArchived,
+    double? orderValue,
     Map<String, int>? frequencyDays,
     int? targetGoal,
   }) {
@@ -340,6 +345,7 @@ class Habit {
       reminderTime: reminderTime ?? this.reminderTime,
       enableReminders: enableReminders ?? this.enableReminders,
       isArchived: isArchived ?? this.isArchived,
+      orderValue: orderValue ?? this.orderValue,
       frequencyDays: frequencyDays ?? this.frequencyDays,
       targetGoal: targetGoal ?? this.targetGoal,
     );

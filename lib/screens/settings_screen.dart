@@ -82,7 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Show initial progress message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppConstants.exportingMessage)),
+          const SnackBar(content: Text(AppConstants.exportingMessage)),
         );
       }
 
@@ -164,9 +164,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Show initial progress message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppConstants.importingMessage)),
+          const SnackBar(content: Text(AppConstants.importingMessage)),
         );
       }
+
+      // Capture provider before any async operations
+      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
 
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -199,9 +202,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Process each habit with error handling
       for (final habitData in habitsData) {
+        if (!mounted) break; // Check if widget is still mounted
+        
         try {
           final habit = Habit.fromJson(habitData as Map<String, dynamic>);
-          final habitProvider = Provider.of<HabitProvider>(context, listen: false);
           final saveResult = await habitProvider.repository.saveHabit(habit);
 
           if (saveResult.success) {

@@ -16,12 +16,13 @@ class SqliteHabitRepository {
   Future<List<Habit>> getActiveHabits() async {
     try {
       final db = await _databaseService.database;
-      final results = await db.query(
-        'habits',
-        where: 'is_archived = ?',
-        whereArgs: [0],
-        orderBy: 'created_at DESC',
-      );
+      final results = await db.rawQuery('''
+        SELECT h.*, o.order_value
+        FROM habits h
+        INNER JOIN habit_display_order o ON h.id = o.habit_id
+        WHERE h.is_archived = 0
+        ORDER BY o.order_value DESC
+      ''');
       
       final habits = <Habit>[];
       for (final row in results) {
@@ -31,7 +32,7 @@ class SqliteHabitRepository {
         }
       }
       
-      debugPrint('📖 Retrieved ${habits.length} active habits from SQLite');
+      debugPrint('📖 Retrieved ${habits.length} active habits from SQLite (with custom ordering)');
       return habits;
     } catch (e) {
       debugPrint('❌ Error getting active habits: $e');
@@ -129,6 +130,14 @@ class SqliteHabitRepository {
         // Insert habit
         await txn.insert('habits', _habitToRow(habit));
         
+        // Insert ordering record (new habits go to top)
+        final topOrder = await _getNextTopOrderValue(txn);
+        await txn.insert('habit_display_order', {
+          'habit_id': habit.id,
+          'order_value': topOrder,
+          'created_at': DateTime.now().millisecondsSinceEpoch,
+        });
+        
         // Insert reminder if enabled
         if (habit.enableReminders && habit.reminderTime != null) {
           await txn.insert('habit_reminders', {
@@ -197,29 +206,41 @@ class SqliteHabitRepository {
       debugPrint('🗄️ Repository: Starting archiveHabit for ID: $habitId');
       final db = await _databaseService.database;
       
-      // First, check if the habit exists
-      final existingHabit = await db.query(
-        'habits',
-        where: 'id = ?',
-        whereArgs: [habitId],
-      );
-      
-      if (existingHabit.isEmpty) {
-        debugPrint('❌ Repository: Habit with ID $habitId not found in database');
-        return false;
-      }
-      
-      debugPrint('🗄️ Repository: Found habit: ${existingHabit.first['name']}, currently archived: ${existingHabit.first['is_archived']}');
-      
-      final result = await db.update(
-        'habits',
-        {'is_archived': 1},
-        where: 'id = ?',
-        whereArgs: [habitId],
-      );
-      
-      final success = result > 0;
-      debugPrint('💾 Repository: Archived habit $habitId: $success (affected rows: $result)');
+      bool success = false;
+      await db.transaction((txn) async {
+        // First, check if the habit exists
+        final existingHabit = await txn.query(
+          'habits',
+          where: 'id = ?',
+          whereArgs: [habitId],
+        );
+        
+        if (existingHabit.isEmpty) {
+          debugPrint('❌ Repository: Habit with ID $habitId not found in database');
+          return;
+        }
+        
+        debugPrint('🗄️ Repository: Found habit: ${existingHabit.first['name']}, currently archived: ${existingHabit.first['is_archived']}');
+        
+        // Archive the habit
+        final result = await txn.update(
+          'habits',
+          {'is_archived': 1},
+          where: 'id = ?',
+          whereArgs: [habitId],
+        );
+        
+        success = result > 0;
+        
+        // Remove from ordering table (archived habits don't need ordering)
+        await txn.delete(
+          'habit_display_order',
+          where: 'habit_id = ?',
+          whereArgs: [habitId],
+        );
+        
+        debugPrint('💾 Repository: Archived habit $habitId and removed from ordering (affected rows: $result)');
+      });
       
       // Verify the update
       final updatedHabit = await db.query(
@@ -243,17 +264,27 @@ class SqliteHabitRepository {
   
   Future<bool> unarchiveHabit(String habitId) async {
     try {
-      final db = await _databaseService.database;
-      final result = await db.update(
-        'habits',
-        {'is_archived': 0},
-        where: 'id = ?',
-        whereArgs: [habitId],
-      );
+      await _databaseService.transaction((txn) async {
+        // Unarchive habit
+        await txn.update(
+          'habits',
+          {'is_archived': 0},
+          where: 'id = ?',
+          whereArgs: [habitId],
+        );
+        
+        // Position at bottom (unarchived habits go to bottom)
+        final bottomOrder = await _getNextBottomOrderValue(txn);
+        
+        // Use INSERT OR REPLACE to handle both new and existing records
+        await txn.rawInsert('''
+          INSERT OR REPLACE INTO habit_display_order (habit_id, order_value, created_at)
+          VALUES (?, ?, ?)
+        ''', [habitId, bottomOrder, DateTime.now().millisecondsSinceEpoch]);
+      });
       
-      final success = result > 0;
-      debugPrint('💾 Unarchived habit $habitId: $success');
-      return success;
+      debugPrint('💾 Unarchived habit $habitId and positioned at bottom');
+      return true;
     } catch (e) {
       debugPrint('❌ Error unarchiving habit: $e');
       return false;
@@ -466,6 +497,7 @@ class SqliteHabitRepository {
         reminderTime: reminderTime,
         enableReminders: enableReminders,
         isArchived: (row['is_archived'] as int) == 1,
+        orderValue: row['order_value'] as double?,
         frequencyDays: frequencyDays,
         targetGoal: row['target_goal'] as int,
       );
@@ -488,5 +520,83 @@ class SqliteHabitRepository {
       'frequency_days': jsonEncode(habit.frequencyDays),
       'target_goal': habit.targetGoal,
     };
+  }
+  
+  /// Get the next order value for positioning at the top
+  Future<double> _getNextTopOrderValue([Transaction? txn]) async {
+    final db = txn ?? await _databaseService.database;
+    final result = await db.rawQuery(
+      'SELECT MAX(order_value) as max_order FROM habit_display_order'
+    );
+    final maxOrder = result.first['max_order'] as double? ?? 0.0;
+    return maxOrder + 1000.0; // Large gap for future insertions
+  }
+  
+  /// Get the next order value for positioning at the bottom
+  Future<double> _getNextBottomOrderValue([Transaction? txn]) async {
+    final db = txn ?? await _databaseService.database;
+    final result = await db.rawQuery(
+      'SELECT MIN(order_value) as min_order FROM habit_display_order'
+    );
+    final minOrder = result.first['min_order'] as double? ?? 0.0;
+    return minOrder - 1000.0; // Large gap below existing items
+  }
+  
+  /// Reorder habits using fractional positioning
+  Future<void> reorderHabits(String draggedId, int newPosition) async {
+    try {
+      final habits = await getActiveHabits();
+      double newOrderValue;
+      
+      if (newPosition == 0) {
+        // Move to top
+        newOrderValue = await _getNextTopOrderValue();
+      } else if (newPosition >= habits.length - 1) {
+        // Move to bottom
+        newOrderValue = await _getNextBottomOrderValue();
+      } else {
+        // Insert between items using fractional positioning
+        final prevOrder = habits[newPosition - 1].orderValue ?? 0.0;
+        final nextOrder = habits[newPosition].orderValue ?? 0.0;
+        newOrderValue = (prevOrder + nextOrder) / 2.0;
+      }
+      
+      await _updateHabitOrder(draggedId, newOrderValue);
+      debugPrint('🔄 Reordered habit $draggedId to position $newPosition with order value $newOrderValue');
+    } catch (e) {
+      debugPrint('❌ Error reordering habits: $e');
+      rethrow;
+    }
+  }
+  
+  /// Update a habit's order value
+  Future<void> _updateHabitOrder(String habitId, double orderValue) async {
+    final db = await _databaseService.database;
+    await db.update(
+      'habit_display_order',
+      {'order_value': orderValue},
+      where: 'habit_id = ?',
+      whereArgs: [habitId],
+    );
+  }
+  
+  /// Normalize order values to prevent precision issues
+  Future<void> normalizeOrderValues() async {
+    try {
+      final habits = await getActiveHabits();
+      await _databaseService.transaction((txn) async {
+        for (int i = 0; i < habits.length; i++) {
+          await txn.update(
+            'habit_display_order',
+            {'order_value': (i + 1) * 1000.0}, // Clean integer multiples
+            where: 'habit_id = ?',
+            whereArgs: [habits[i].id],
+          );
+        }
+      });
+      debugPrint('🔄 Normalized order values for ${habits.length} habits');
+    } catch (e) {
+      debugPrint('❌ Error normalizing order values: $e');
+    }
   }
 }

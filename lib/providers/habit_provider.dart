@@ -51,6 +51,8 @@ class HabitState extends ChangeNotifier {
   String? _error;
   DateTime? _lastLoadTime;
   Timer? _refreshTimer;
+  bool _isSortingMode = false;
+  int _reorderCount = 0; // Track reorder operations for normalization
 
   HabitState(this._habitRepository);
 
@@ -63,6 +65,7 @@ class HabitState extends ChangeNotifier {
     !DataFreshness.isDataStale(_lastLoadTime!);
   bool get needsRefresh => _lastLoadTime == null ||
     DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
+  bool get isSortingMode => _isSortingMode;
 
   /// Load all active habits
   Future<void> loadHabits({bool forceRefresh = false}) async {
@@ -290,6 +293,72 @@ class HabitProvider extends HabitState {
       super.notifyListeners();
     } else {
       debugPrint('🚫 HabitProvider has no listeners, skipping notification');
+    }
+  }
+
+  /// Enter sorting mode for habit reordering
+  void enterSortingMode() {
+    _isSortingMode = true;
+    debugPrint('🔄 Entered sorting mode');
+    notifyListeners();
+  }
+
+  /// Exit sorting mode
+  void exitSortingMode() {
+    _isSortingMode = false;
+    debugPrint('🔄 Exited sorting mode');
+    notifyListeners();
+  }
+
+  /// Reorder habits with optimistic updates
+  Future<void> reorderHabits(String draggedId, int newPosition) async {
+    try {
+      // Optimistic update - move habit in local list immediately
+      final draggedHabit = _habits.firstWhere((h) => h.id == draggedId);
+      _habits.removeWhere((h) => h.id == draggedId);
+      _habits.insert(newPosition, draggedHabit);
+      
+      debugPrint('🔄 Optimistically reordered habit $draggedId to position $newPosition');
+      notifyListeners();
+
+      // Perform actual reordering in database
+      await _habitRepository.reorderHabits(draggedId, newPosition);
+      debugPrint('✅ Successfully reordered habit $draggedId in database');
+      
+      // Increment reorder counter and normalize if needed
+      _reorderCount++;
+      if (_reorderCount >= 10) { // Normalize every 10 reorders
+        debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
+        await _habitRepository.normalizeOrderValues();
+        _reorderCount = 0;
+        // Reload habits to get normalized order values
+        await loadHabits(forceRefresh: true);
+      }
+    } catch (e) {
+      // Rollback on error - reload habits from database
+      debugPrint('❌ Error reordering habits: $e');
+      await loadHabits(forceRefresh: true);
+      _error = 'Failed to reorder habits: $e';
+      notifyListeners();
+    }
+  }
+
+  /// Enhanced unarchive with bottom positioning
+  @override
+  Future<bool> unarchiveHabit(String habitId) async {
+    try {
+      final success = await _habitRepository.unarchiveHabit(habitId);
+      if (success) {
+        // Reload habits to get unarchived habit at bottom
+        await loadHabits(forceRefresh: true);
+        debugPrint('✅ Unarchived habit $habitId and positioned at bottom');
+      }
+      return success;
+    } catch (e) {
+      _error = 'Failed to unarchive habit: $e';
+      notifyListeners();
+      debugPrint('❌ Error unarchiving habit: $e');
+      return false;
     }
   }
 }

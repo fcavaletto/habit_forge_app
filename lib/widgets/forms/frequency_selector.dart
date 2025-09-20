@@ -101,7 +101,7 @@ class _FrequencySelectorState extends State<FrequencySelector> {
                           ),
                         ),
                         if (isSelected)
-                          Icon(
+                          const Icon(
                             Icons.check_circle,
                             color: Colors.blue,
                             size: 20,

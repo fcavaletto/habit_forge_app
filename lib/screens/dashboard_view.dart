@@ -157,7 +157,7 @@ class _DashboardViewState extends State<DashboardView>
           label: 'Habit Forge Dashboard',
           hint: 'Main screen showing your habits and progress',
           child: Scaffold(
-            appBar: _buildAppBar(),
+            appBar: _buildAppBar(appState),
             body: _buildBody(appState),
           ),
         );
@@ -165,7 +165,7 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(AppState appState) {
     return AppBar(
       title: const Text('Habit Forge'),
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -222,7 +222,7 @@ class _DashboardViewState extends State<DashboardView>
       return _buildEmptyState();
     }
 
-    debugPrint('📊 Building habits list with ${appState.habits.length} habits');
+    debugPrint('📊 Building habits list with drag-and-drop capability');
     return _buildHabitsList(appState.habits);
   }
 
@@ -286,20 +286,27 @@ class _DashboardViewState extends State<DashboardView>
         ),
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
+          sliver: SliverToBoxAdapter(
+            child: ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: habits.length,
+              onReorder: (oldIndex, newIndex) {
+                // Handle the reordering logic
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
+                _reorderHabits(habits[oldIndex].id, newIndex);
+              },
+              itemBuilder: (context, index) {
                 final habit = habits[index];
                 return Container(
+                  key: ValueKey(habit.id),
                   margin: const EdgeInsets.only(bottom: 12),
                   child: _buildHabitCard(habit),
                 );
               },
-              childCount: habits.length,
-              // Add performance optimizations
-              addAutomaticKeepAlives: true,
-              addRepaintBoundaries: true,
-              addSemanticIndexes: false,
             ),
           ),
         ),
@@ -463,5 +470,12 @@ class _DashboardViewState extends State<DashboardView>
 
   Future<void> _onDeleteHabit(Habit habit) async {
     await _controller.deleteHabit(context, habit);
+  }
+
+
+  /// Reorder habits
+  void _reorderHabits(String draggedId, int newPosition) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.habitProvider.reorderHabits(draggedId, newPosition);
   }
 }
