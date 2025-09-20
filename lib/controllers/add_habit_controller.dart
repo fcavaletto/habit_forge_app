@@ -4,7 +4,39 @@ import '../widgets/forms/frequency_selector.dart';
 import '../providers/app_state_provider.dart';
 
 /// Controller class that handles all business logic for adding/editing habits
-/// This separates UI concerns from business logic for better testability and maintainability
+///
+/// This controller implements the MVC pattern by separating UI concerns from business logic,
+/// providing better testability and maintainability. It manages the complete habit creation
+/// workflow including form validation, data processing, and error handling.
+///
+/// ## Responsibilities:
+/// - **Form State Management**: Maintains all form field controllers and state
+/// - **Data Validation**: Validates habit data before creation/update
+/// - **Business Logic**: Handles habit creation, editing, and persistence
+/// - **Error Handling**: Manages validation errors and user feedback
+/// - **UI Integration**: Provides callbacks for UI state updates
+///
+/// ## Form Fields Managed:
+/// - Habit name and description
+/// - Visual customization (icon, color)
+/// - Frequency settings (daily, weekly, custom)
+/// - Reminder configuration
+/// - Target goal settings
+///
+/// ## Validation Rules:
+/// - Name: Required, 1-50 characters
+/// - Description: Optional, max 200 characters
+/// - Target Goal: Must be positive integer
+/// - Icon/Color: Must be valid selections
+///
+/// ## Usage Pattern:
+/// ```dart
+/// final controller = AddHabitController(
+///   onHabitAdded: (habit) => handleNewHabit(habit),
+///   existingHabits: currentHabits,
+///   appState: appState,
+/// );
+/// ```
 class AddHabitController {
   final Function(Habit) onHabitAdded;
   final List<Habit> existingHabits;

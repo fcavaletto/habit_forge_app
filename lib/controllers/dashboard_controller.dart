@@ -4,7 +4,38 @@ import '../providers/app_state_provider.dart';
 import '../utils/data_freshness.dart';
 
 /// Controller class that handles all business logic for the dashboard
-/// This separates UI concerns from business logic for better testability and maintainability
+///
+/// This controller implements the MVC pattern by separating UI concerns from business logic,
+/// providing better testability and maintainability. It manages the complete dashboard
+/// workflow including data loading, habit operations, and lifecycle management.
+///
+/// ## Responsibilities:
+/// - **Data Management**: Handles habit loading, refreshing, and caching
+/// - **Lifecycle Management**: Manages app lifecycle events and data freshness
+/// - **Habit Operations**: Processes habit completion, archiving, and deletion
+/// - **Business Logic**: Implements habit statistics and progress calculations
+/// - **Error Handling**: Manages errors and provides user feedback
+/// - **Sample Data**: Handles sample habit creation and management
+///
+/// ## Key Features:
+/// - **Smart Refresh**: Automatically refreshes data when stale or on new day
+/// - **Performance Optimization**: Debounced refresh calls and caching
+/// - **Statistics Calculation**: Computes completion rates and streaks
+/// - **Notification Integration**: Manages reminder scheduling
+/// - **User Feedback**: Provides contextual success/error messages
+///
+/// ## Data Flow:
+/// 1. **Initialization**: Loads habits from storage
+/// 2. **User Interaction**: Processes habit completion/management
+/// 3. **Lifecycle Events**: Refreshes data on app resume
+/// 4. **State Updates**: Notifies UI of changes via callbacks
+///
+/// ## Usage Pattern:
+/// ```dart
+/// final controller = DashboardController(appState);
+/// await controller.loadHabits();
+/// await controller.refreshHabits();
+/// ```
 class DashboardController {
   final AppState _appState;
   DateTime? _lastRefreshTime;
@@ -19,7 +50,19 @@ class DashboardController {
   bool get needsRefresh => _lastRefreshTime == null ||
     DataFreshness.shouldRefreshOnResume(_lastRefreshTime!);
 
-  /// Load habits from storage
+  /// Load habits from storage and update refresh timestamp
+  ///
+  /// This method fetches all active habits from the data layer and updates
+  /// the internal refresh timestamp. It's called during initialization and
+  /// when manual refresh is requested.
+  ///
+  /// ## Process:
+  /// 1. Calls the habit provider to load data from storage
+  /// 2. Updates the last refresh timestamp
+  /// 3. Logs the operation for debugging
+  ///
+  /// ## Error Handling:
+  /// Errors are handled by the underlying provider and logged appropriately.
   Future<void> loadHabits() async {
     debugPrint('📱 DashboardController: Loading habits from storage...');
     await _appState.habitProvider.loadHabits();
@@ -27,7 +70,25 @@ class DashboardController {
     debugPrint('📱 DashboardController: Loaded ${habits.length} habits at $_lastRefreshTime');
   }
 
-  /// Refresh habits with freshness check
+  /// Refresh habits with intelligent freshness checking
+  ///
+  /// This method implements smart refresh logic that only reloads data when necessary,
+  /// improving performance and user experience. It checks data freshness and only
+  /// performs expensive operations when required.
+  ///
+  /// ## Parameters:
+  /// - [forceRefresh]: If true, bypasses freshness check and always refreshes
+  ///
+  /// ## Refresh Conditions:
+  /// - Data has never been loaded (first time)
+  /// - Data is older than 1 hour
+  /// - A new day has passed since last load
+  /// - Force refresh is explicitly requested
+  ///
+  /// ## Performance Benefits:
+  /// - Avoids unnecessary network/storage calls
+  /// - Reduces battery usage
+  /// - Improves app responsiveness
   Future<void> refreshHabits({bool forceRefresh = false}) async {
     final shouldRefresh = forceRefresh || needsRefresh;
     
