@@ -3,6 +3,7 @@ import 'dart:async';
 import '../models/habit.dart';
 import '../models/habit_result.dart';
 import '../repositories/sqlite_habit_repository.dart';
+import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import '../utils/data_freshness.dart';
 
@@ -45,6 +46,7 @@ import '../utils/data_freshness.dart';
 /// - **Recovery**: Automatic retry mechanisms where appropriate
 class HabitState extends ChangeNotifier {
   final SqliteHabitRepository _habitRepository;
+  final SettingsRepository _settingsRepository;
 
   List<Habit> _habits = [];
   bool _isLoading = false;
@@ -56,7 +58,7 @@ class HabitState extends ChangeNotifier {
   DateTime _selectedDate = DateTime.now(); // Selected date for filtering
   bool _showAllHabits = false; // Whether to show all habits or just today's habits
 
-  HabitState(this._habitRepository);
+  HabitState(this._habitRepository, this._settingsRepository);
 
   // Getters
   List<Habit> get habits => _habits;
@@ -300,13 +302,14 @@ class HabitState extends ChangeNotifier {
 class HabitProvider extends HabitState {
   final SqliteHabitRepository _repository;
 
-  HabitProvider(super.habitRepository) : _repository = habitRepository;
+  HabitProvider(super.habitRepository, super.settingsRepository) : _repository = habitRepository;
 
   // Factory method for easy creation with SQLite repository
   factory HabitProvider.create() {
     final databaseService = DatabaseService();
     final sqliteRepository = SqliteHabitRepository(databaseService);
-    return HabitProvider(sqliteRepository);
+    final settingsRepository = SettingsRepository(databaseService);
+    return HabitProvider(sqliteRepository, settingsRepository);
   }
   
   // Initialize the provider
@@ -315,6 +318,9 @@ class HabitProvider extends HabitState {
     final databaseService = DatabaseService();
     await databaseService.database;
     debugPrint('✅ Database initialized');
+    
+    // Load habit filter setting
+    await loadHabitFilterSetting();
   }
 
   // Getter to access repository for complex operations
@@ -453,6 +459,43 @@ class HabitProvider extends HabitState {
       _showAllHabits = showAll;
       notifyListeners();
       debugPrint('🔄 Habit filter changed to: ${showAll ? 'All Habits' : 'Today\'s Habits'}');
+      // Save the filter preference
+      saveHabitFilterSetting();
+    }
+  }
+
+  /// Load habit filter setting from storage
+  Future<void> loadHabitFilterSetting() async {
+    try {
+      debugPrint('📊 Loading habit filter setting from storage...');
+      final settingValue = await _settingsRepository.getSettingWithDefault(
+        'habit_filter_mode',
+        'today', // Default to Today's Habits
+      );
+
+      _showAllHabits = settingValue == 'all';
+      debugPrint('📊 Habit filter setting loaded: ${_showAllHabits ? 'All Habits' : 'Today\'s Habits'}');
+    } catch (e) {
+      debugPrint('❌ Error loading habit filter setting: $e');
+      // Fallback to default (Today's Habits)
+      _showAllHabits = false;
+    }
+  }
+
+  /// Save habit filter setting to storage
+  Future<void> saveHabitFilterSetting() async {
+    try {
+      debugPrint('📊 Saving habit filter setting to storage...');
+      final settingValue = _showAllHabits ? 'all' : 'today';
+      final success = await _settingsRepository.saveSetting('habit_filter_mode', settingValue);
+
+      if (success) {
+        debugPrint('📊 Habit filter setting saved: $settingValue');
+      } else {
+        debugPrint('❌ Failed to save habit filter setting: $settingValue');
+      }
+    } catch (e) {
+      debugPrint('❌ Error saving habit filter setting: $e');
     }
   }
 
