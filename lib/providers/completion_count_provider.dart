@@ -10,7 +10,7 @@ class CompletionCountProvider extends ChangeNotifier {
   static const String _settingKey = 'show_completion_count';
 
   /// Whether to show completion count text
-  bool _showCompletionCount = false; // Default to hidden
+  bool _showCompletionCount = true; // Default to visible
 
   CompletionCountProvider(this._settingsRepository);
 
@@ -33,15 +33,15 @@ class CompletionCountProvider extends ChangeNotifier {
       debugPrint('📊 Loading completion count setting from storage...');
       final settingValue = await _settingsRepository.getSettingWithDefault(
         _settingKey,
-        'false', // Default to hidden
+        'true', // Default to visible
       );
 
       _showCompletionCount = settingValue.toLowerCase() == 'true';
       debugPrint('📊 Completion count setting loaded: $_showCompletionCount');
     } catch (e) {
       debugPrint('❌ Error loading completion count setting: $e');
-      // Fallback to default (hidden)
-      _showCompletionCount = false;
+      // Fallback to default (visible)
+      _showCompletionCount = true;
     }
   }
 

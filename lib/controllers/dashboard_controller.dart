@@ -381,4 +381,26 @@ class DashboardController {
   double getTodayCompletionRate() {
     return getCompletionRateForDate(DateTime.now());
   }
+
+  /// Get completed habits count for all habits (habits that achieved their goal)
+  int getCompletedCountForAllHabits() {
+    final allHabits = _appState.habits;
+    return allHabits.where((habit) => habit.isGoalAchieved(DateTime.now())).length;
+  }
+
+  /// Get total completion percentage for all habits
+  double getCompletionRateForAllHabits() {
+    final allHabits = _appState.habits;
+    if (allHabits.isEmpty) return 0.0;
+    
+    double totalCompletionPercentage = 0.0;
+    
+    for (final habit in allHabits) {
+      final count = habit.getCompletionCount(DateTime.now());
+      final percentage = (count / habit.targetGoal).clamp(0.0, 1.0);
+      totalCompletionPercentage += percentage;
+    }
+    
+    return totalCompletionPercentage / allHabits.length;
+  }
 }

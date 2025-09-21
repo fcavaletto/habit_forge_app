@@ -334,10 +334,26 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   Widget _buildHeader(List<Habit> habits) {
-    // Get the selected date from the provider
-    final selectedDate = Provider.of<AppState>(context, listen: false).habitProvider.selectedDate;
-    final completedCount = _controller.getCompletedCountForDate(selectedDate);
-    final completionRate = _controller.getCompletionRateForDate(selectedDate);
+    // Get the provider state
+    final appState = Provider.of<AppState>(context, listen: false);
+    final selectedDate = appState.habitProvider.selectedDate;
+    final isShowingAllHabits = appState.habitProvider.isShowingAllHabits;
+    
+    // Calculate completion count and rate based on filter mode
+    final completedCount = isShowingAllHabits 
+        ? _controller.getCompletedCountForAllHabits()
+        : _controller.getCompletedCountForDate(selectedDate);
+    final completionRate = isShowingAllHabits
+        ? _controller.getCompletionRateForAllHabits()
+        : _controller.getCompletionRateForDate(selectedDate);
+    
+    // Calculate the correct values for the completion count message:
+    // X = Number of habits shown (filtered habits or all habits)
+    // Y = Total number of active (non-archived) habits in the app
+    // Z = Number of shown habits where completions >= goal count
+    final x = habits.length; // Currently shown habits
+    final y = appState.habits.length; // Total active habits
+    final z = completedCount; // Habits that achieved their goal
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,25 +365,28 @@ class _DashboardViewState extends State<DashboardView>
           },
         ),
         const SizedBox(height: 16),
-        Text(
-          'Today\'s Progress',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+        Consumer<AppState>(
+          builder: (context, appState, child) {
+            return _buildHabitFilterDropdown(appState);
+          },
         ),
         const SizedBox(height: 8),
         // Show completion count text if enabled in settings
         Consumer<AppState>(
           builder: (context, appState, child) {
             if (appState.showCompletionCount) {
+              // Completion count message (no date context needed)
+              
               return Column(
                 children: [
                   Text(
-                    '$completedCount of ${habits.length} habits completed',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    '$x out of $y habits shown. $z habits fully completed.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      fontSize: 12,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -602,5 +621,63 @@ class _DashboardViewState extends State<DashboardView>
       appState.habitProvider.updateSelectedDate(pickedDate);
       debugPrint('📅 Date changed to: ${_formatDate(pickedDate)}');
     }
+  }
+
+  /// Build habit filter dropdown (Today's Habits vs All Habits)
+  Widget _buildHabitFilterDropdown(AppState appState) {
+    final isShowingAllHabits = appState.habitProvider.isShowingAllHabits;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.view_list,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Habit Filter',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+          DropdownButton<String>(
+            value: isShowingAllHabits ? 'all' : 'today',
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                appState.habitProvider.setShowAllHabits(newValue == 'all');
+              }
+            },
+            underline: Container(), // Remove default underline
+            icon: Icon(
+              Icons.arrow_drop_down,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'today',
+                child: Text('Today\'s Habits'),
+              ),
+              DropdownMenuItem(
+                value: 'all',
+                child: Text('All Habits'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

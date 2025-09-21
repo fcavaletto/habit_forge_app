@@ -54,6 +54,7 @@ class HabitState extends ChangeNotifier {
   bool _isSortingMode = false;
   int _reorderCount = 0; // Track reorder operations for normalization
   DateTime _selectedDate = DateTime.now(); // Selected date for filtering
+  bool _showAllHabits = false; // Whether to show all habits or just today's habits
 
   HabitState(this._habitRepository);
 
@@ -68,9 +69,10 @@ class HabitState extends ChangeNotifier {
     DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
   bool get isSortingMode => _isSortingMode;
   DateTime get selectedDate => _selectedDate;
+  bool get isShowingAllHabits => _showAllHabits;
   
-  /// Get habits filtered for the currently selected date
-  List<Habit> get filteredHabits => getHabitsForDate(_selectedDate);
+  /// Get habits filtered based on current filter mode (all habits or date-filtered)
+  List<Habit> get filteredHabits => _showAllHabits ? _habits : getHabitsForDate(_selectedDate);
 
   /// Get habits filtered by completion status for a specific date
   List<Habit> getHabitsForDate(DateTime date) {
@@ -432,6 +434,47 @@ class HabitProvider extends HabitState {
       notifyListeners();
       debugPrint('❌ Error unarchiving habit: $e');
       return false;
+    }
+  }
+
+  /// Update the selected date for filtering
+  @override
+  void updateSelectedDate(DateTime newDate) {
+    if (_selectedDate != newDate) {
+      _selectedDate = newDate;
+      notifyListeners();
+      debugPrint('📅 Selected date updated to: ${_formatDate(newDate)}');
+    }
+  }
+
+  /// Set whether to show all habits or just today's habits
+  void setShowAllHabits(bool showAll) {
+    if (_showAllHabits != showAll) {
+      _showAllHabits = showAll;
+      notifyListeners();
+      debugPrint('🔄 Habit filter changed to: ${showAll ? 'All Habits' : 'Today\'s Habits'}');
+    }
+  }
+
+  /// Format date for display
+  String _formatDate(DateTime date) {
+    final today = DateTime.now();
+    final yesterday = today.subtract(const Duration(days: 1));
+    final tomorrow = today.add(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
+
+    if (dateOnly == today) {
+      return 'Today';
+    } else if (dateOnly == yesterday) {
+      return 'Yesterday';
+    } else if (dateOnly == tomorrow) {
+      return 'Tomorrow';
+    } else {
+      // Format as "Mon, Jan 15" or similar
+      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
     }
   }
 }

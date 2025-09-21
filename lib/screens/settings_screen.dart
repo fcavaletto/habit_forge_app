@@ -371,7 +371,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Display "X of Y habits completed" text on dashboard',
+                            'Display "X out of Y habits shown. Z habits fully completed." text on dashboard\n(X=shown habits, Y=total active habits, Z=completed habits)',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
