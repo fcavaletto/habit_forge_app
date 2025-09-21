@@ -1,6 +1,7 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 /// Core data model representing a user habit
 ///
@@ -74,6 +75,9 @@ class Habit {
   /// Default target goal for new habits
   static const int defaultTargetGoal = 1;
 
+  /// UUID generator instance
+  static const _uuid = Uuid();
+
   Habit({
     required this.id,
     required this.name,
@@ -129,6 +133,53 @@ class Habit {
 
     return Habit(
       id: id, // Deterministic ID based on name + icon
+      name: name.trim(), // Clean user input
+      description: description.trim(), // Clean user input
+      colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
+      createdAt: DateTime.now(), // Creation timestamp
+      completions: <DateTime, int>{}, // Start with empty completion history
+      iconName: iconName,
+      reminderTime: reminderTime,
+      enableReminders: enableReminders,
+      isArchived: isArchived,
+      frequencyDays: frequencyDays ?? defaultFrequencyDays,
+      targetGoal: targetGoal,
+    );
+  }
+
+  /// Factory constructor to create a new habit with UUID-based ID generation.
+  ///
+  /// Generates a unique UUID v4 identifier for the habit, allowing for
+  /// flexible editing of name and icon without ID conflicts. This is the
+  /// new preferred method for creating habits.
+  ///
+  /// @param name Required habit name (will be trimmed)
+  /// @param description Optional detailed description (will be trimmed)
+  /// @param colorIndex Visual color theme index (clamped to valid range 0-47)
+  /// @param iconName Material Design icon identifier
+  /// @param reminderTime Optional daily reminder time (null disables reminders)
+  /// @param enableReminders Whether to enable reminder notifications
+  /// @param isArchived Whether habit should start in archived state
+  /// @param frequencyDays Map of days when habit is active
+  /// @param targetGoal Daily completion target
+  /// @return New Habit instance with UUID and current timestamp
+  /// @throws AssertionError if colorIndex is outside valid range
+  factory Habit.createWithUuid({
+    required String name,
+    String description = '',
+    int colorIndex = defaultColorIndex,
+    String iconName = defaultIconName,
+    TimeOfDay? reminderTime,
+    bool enableReminders = false,
+    bool isArchived = false,
+    Map<String, int>? frequencyDays,
+    int targetGoal = defaultTargetGoal,
+  }) {
+    // Generate unique UUID v4
+    final id = _uuid.v4();
+
+    return Habit(
+      id: id, // UUID-based ID
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
       colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
@@ -231,7 +282,6 @@ class Habit {
   ///
   /// @return Ratio between 0.0 and 1.0 representing average completion percentage
   double get completionRate {
-    final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
     double totalCompletionPercentage = 0.0;
     int daysWithData = 0;
     

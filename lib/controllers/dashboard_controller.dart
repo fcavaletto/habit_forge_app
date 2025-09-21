@@ -311,28 +311,28 @@ class DashboardController {
   /// Get all sample habits
   List<Habit> _getAllSampleHabits() {
     return [
-      Habit.create(
+      Habit.createWithUuid(
         name: 'Drink Water',
         description: 'Drink 8 glasses of water daily',
         colorIndex: 0,
         iconName: 'local_drink',
         targetGoal: 8,
       ),
-      Habit.create(
+      Habit.createWithUuid(
         name: 'Take a Walk',
         description: 'Go for a 10-minute walk outdoors',
         colorIndex: 1,
         iconName: 'directions_walk',
         targetGoal: 1,
       ),
-      Habit.create(
+      Habit.createWithUuid(
         name: 'Read 10 Minutes',
         description: 'Read a book for at least 10 minutes',
         colorIndex: 2,
         iconName: 'book',
         targetGoal: 1,
       ),
-      Habit.create(
+      Habit.createWithUuid(
         name: 'Eat Vegetables',
         description: 'Eat 4 portions of vegetables daily',
         colorIndex: 3,

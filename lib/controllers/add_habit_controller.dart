@@ -145,7 +145,7 @@ class AddHabitController {
     try {
       isLoading = true;
 
-      final habit = Habit.create(
+      final habit = Habit.createWithUuid(
         name: nameController.text.trim(),
         description: descriptionController.text.trim(),
         colorIndex: selectedColorIndex,

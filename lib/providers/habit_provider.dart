@@ -253,6 +253,42 @@ class HabitState extends ChangeNotifier {
     }
   }
 
+  /// Check if a habit with the same name and icon already exists
+  ///
+  /// This method provides duplicate detection for habit creation and editing.
+  /// It checks against active (non-archived) habits only.
+  ///
+  /// @param name The habit name to check
+  /// @param iconName The icon name to check
+  /// @param excludeHabitId Optional habit ID to exclude from check (for editing)
+  /// @return true if a duplicate exists, false otherwise
+  Future<bool> hasDuplicateHabit(String name, String iconName, {String? excludeHabitId}) async {
+    try {
+      return await _habitRepository.hasDuplicateHabit(name, iconName, excludeHabitId: excludeHabitId);
+    } catch (e) {
+      debugPrint('❌ Error checking for duplicate habit: $e');
+      return false; // Fail safe - allow creation if check fails
+    }
+  }
+
+  /// Check if a habit can be updated without creating duplicates
+  ///
+  /// This method is used when editing existing habits to ensure the new
+  /// name/icon combination doesn't conflict with other active habits.
+  ///
+  /// @param habitId The ID of the habit being edited
+  /// @param newName The new name for the habit
+  /// @param newIconName The new icon name for the habit
+  /// @return true if the update is safe (no duplicates), false otherwise
+  Future<bool> canUpdateHabit(String habitId, String newName, String newIconName) async {
+    try {
+      return await _habitRepository.canUpdateHabit(habitId, newName, newIconName);
+    } catch (e) {
+      debugPrint('❌ Error checking if habit can be updated: $e');
+      return false; // Fail safe - prevent update if check fails
+    }
+  }
+
   /// Clear error state
   void clearError() {
     _error = null;

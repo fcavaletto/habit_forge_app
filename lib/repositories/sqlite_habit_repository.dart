@@ -110,19 +110,11 @@ class SqliteHabitRepository {
     try {
       debugPrint('💾 Saving habit to SQLite: ${habit.name}');
       
-      // Check for duplicates (including archived)
-      final existingHabits = await getAllHabits();
-      final existingIndex = existingHabits.indexWhere((h) => h.id == habit.id);
-      
-      if (existingIndex >= 0) {
-        final existingHabit = existingHabits[existingIndex];
-        if (existingHabit.isArchived) {
-          debugPrint('💾 Found archived duplicate habit');
-          return HabitSaveResult.duplicateArchived(existingHabit);
-        } else {
-          debugPrint('💾 Found active duplicate habit');
-          return HabitSaveResult.duplicate(existingHabit.name);
-        }
+      // Check for duplicates using name + icon combination
+      final hasDuplicate = await hasDuplicateHabit(habit.name, habit.iconName);
+      if (hasDuplicate) {
+        debugPrint('💾 Found duplicate habit with same name and icon');
+        return HabitSaveResult.duplicate(habit.name);
       }
       
       // Save new habit
@@ -662,5 +654,58 @@ class SqliteHabitRepository {
     } catch (e) {
       debugPrint('❌ Error normalizing order values: $e');
     }
+  }
+
+  /// Check if a habit with the same name and icon already exists
+  ///
+  /// This method provides duplicate detection for habit creation and editing.
+  /// It checks against active (non-archived) habits only.
+  ///
+  /// @param name The habit name to check
+  /// @param iconName The icon name to check
+  /// @param excludeHabitId Optional habit ID to exclude from check (for editing)
+  /// @return true if a duplicate exists, false otherwise
+  Future<bool> hasDuplicateHabit(String name, String iconName, {String? excludeHabitId}) async {
+    try {
+      final normalizedName = name.toLowerCase().trim();
+      final normalizedIcon = iconName.toLowerCase().trim();
+      
+      final db = await _databaseService.database;
+      
+      String whereClause = 'LOWER(TRIM(name)) = ? AND LOWER(TRIM(icon_name)) = ? AND is_archived = 0';
+      List<dynamic> whereArgs = [normalizedName, normalizedIcon];
+      
+      if (excludeHabitId != null) {
+        whereClause += ' AND id != ?';
+        whereArgs.add(excludeHabitId);
+      }
+      
+      final results = await db.query(
+        'habits',
+        where: whereClause,
+        whereArgs: whereArgs,
+      );
+      
+      final hasDuplicate = results.isNotEmpty;
+      debugPrint('🔍 Duplicate check: name="$name", icon="$iconName", exclude="$excludeHabitId" -> $hasDuplicate');
+      
+      return hasDuplicate;
+    } catch (e) {
+      debugPrint('❌ Error checking for duplicate habit: $e');
+      return false; // Fail safe - allow creation if check fails
+    }
+  }
+
+  /// Check if a habit can be updated without creating duplicates
+  ///
+  /// This method is used when editing existing habits to ensure the new
+  /// name/icon combination doesn't conflict with other active habits.
+  ///
+  /// @param habitId The ID of the habit being edited
+  /// @param newName The new name for the habit
+  /// @param newIconName The new icon name for the habit
+  /// @return true if the update is safe (no duplicates), false otherwise
+  Future<bool> canUpdateHabit(String habitId, String newName, String newIconName) async {
+    return !await hasDuplicateHabit(newName, newIconName, excludeHabitId: habitId);
   }
 }
