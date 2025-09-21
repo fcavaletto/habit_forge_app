@@ -135,9 +135,10 @@ class AppState extends ChangeNotifier {
   /// Individual provider failures don't prevent app startup, ensuring
   /// graceful degradation and continued operation.
   Future<void> initialize() async {
-    // Initialize habit provider
+    // Initialize habit provider (this loads filter setting)
     await _habitProvider.initialize();
     
+    // Now load habits with the correct filter setting applied
     await Future.wait([
       _habitProvider.loadHabits(),
       _notificationProvider.initialize(),

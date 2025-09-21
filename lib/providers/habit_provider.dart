@@ -319,7 +319,7 @@ class HabitProvider extends HabitState {
     await databaseService.database;
     debugPrint('✅ Database initialized');
     
-    // Load habit filter setting
+    // Load habit filter setting FIRST
     await loadHabitFilterSetting();
   }
 
