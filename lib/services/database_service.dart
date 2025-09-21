@@ -232,7 +232,7 @@ class DatabaseService {
         );
       }
       
-      // Step 3: Create new tables with UUID primary keys
+      // Step 3: Create new tables with UUID primary keys (no foreign keys initially)
       await txn.execute('''
         CREATE TABLE habits_new (
           id TEXT PRIMARY KEY,
@@ -254,7 +254,6 @@ class DatabaseService {
           completion_date INTEGER NOT NULL,
           completion_count INTEGER NOT NULL DEFAULT 1,
           completion_goal INTEGER NOT NULL DEFAULT 1,
-          FOREIGN KEY (habit_id) REFERENCES habits_new(id) ON DELETE CASCADE,
           UNIQUE(habit_id, completion_date)
         )
       ''');
@@ -264,8 +263,7 @@ class DatabaseService {
           habit_id TEXT PRIMARY KEY,
           reminder_time_hour INTEGER,
           reminder_time_minute INTEGER,
-          enable_reminders INTEGER NOT NULL DEFAULT 0,
-          FOREIGN KEY (habit_id) REFERENCES habits_new(id) ON DELETE CASCADE
+          enable_reminders INTEGER NOT NULL DEFAULT 0
         )
       ''');
       
@@ -273,8 +271,7 @@ class DatabaseService {
         CREATE TABLE habit_display_order_new (
           habit_id TEXT PRIMARY KEY,
           order_value REAL NOT NULL,
-          created_at INTEGER NOT NULL,
-          FOREIGN KEY (habit_id) REFERENCES habits_new(id) ON DELETE CASCADE
+          created_at INTEGER NOT NULL
         )
       ''');
       
