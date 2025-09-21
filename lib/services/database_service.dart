@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:uuid/uuid.dart';
 
 /// Service class for managing SQLite database operations
 ///
@@ -188,53 +187,22 @@ class DatabaseService {
     });
   }
   
-  /// Migrate database to version 3 - Transition to UUID-based IDs
+  /// Migrate database to version 3 - Fresh start with UUID-based IDs
   Future<void> _migrateToVersion3(Database db) async {
-    debugPrint('🔄 Migrating to version 3: Transitioning to UUID-based IDs');
+    debugPrint('🔄 Migrating to version 3: Fresh start with UUID-based IDs');
     
+    // Since we're in early development, just recreate the database with new schema
     await db.transaction((txn) async {
-      // Step 1: Add UUID column to habits table
-      await txn.execute('ALTER TABLE habits ADD COLUMN uuid TEXT');
+      // Drop all existing tables
+      await txn.execute('DROP TABLE IF EXISTS habit_display_order');
+      await txn.execute('DROP TABLE IF EXISTS habit_reminders');
+      await txn.execute('DROP TABLE IF EXISTS habit_completions');
+      await txn.execute('DROP TABLE IF EXISTS habits');
+      await txn.execute('DROP TABLE IF EXISTS app_settings');
       
-      // Step 2: Generate UUIDs for existing habits
-      final existingHabits = await txn.query('habits');
-      for (final habit in existingHabits) {
-        final uuid = _generateUuid();
-        await txn.update(
-          'habits',
-          {'uuid': uuid},
-          where: 'id = ?',
-          whereArgs: [habit['id']],
-        );
-        
-        // Update foreign key references in habit_completions
-        await txn.update(
-          'habit_completions',
-          {'habit_id': uuid},
-          where: 'habit_id = ?',
-          whereArgs: [habit['id']],
-        );
-        
-        // Update foreign key references in habit_reminders
-        await txn.update(
-          'habit_reminders',
-          {'habit_id': uuid},
-          where: 'habit_id = ?',
-          whereArgs: [habit['id']],
-        );
-        
-        // Update foreign key references in habit_display_order
-        await txn.update(
-          'habit_display_order',
-          {'habit_id': uuid},
-          where: 'habit_id = ?',
-          whereArgs: [habit['id']],
-        );
-      }
-      
-      // Step 3: Create new tables with UUID primary keys (no foreign keys initially)
+      // Create new tables with UUID primary keys
       await txn.execute('''
-        CREATE TABLE habits_new (
+        CREATE TABLE habits (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           description TEXT,
@@ -248,7 +216,7 @@ class DatabaseService {
       ''');
       
       await txn.execute('''
-        CREATE TABLE habit_completions_new (
+        CREATE TABLE habit_completions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
           completion_date INTEGER NOT NULL,
@@ -259,7 +227,7 @@ class DatabaseService {
       ''');
       
       await txn.execute('''
-        CREATE TABLE habit_reminders_new (
+        CREATE TABLE habit_reminders (
           habit_id TEXT PRIMARY KEY,
           reminder_time_hour INTEGER,
           reminder_time_minute INTEGER,
@@ -268,50 +236,22 @@ class DatabaseService {
       ''');
       
       await txn.execute('''
-        CREATE TABLE habit_display_order_new (
+        CREATE TABLE habit_display_order (
           habit_id TEXT PRIMARY KEY,
           order_value REAL NOT NULL,
           created_at INTEGER NOT NULL
         )
       ''');
       
-      // Step 4: Copy data to new tables
       await txn.execute('''
-        INSERT INTO habits_new (id, name, description, color_index, icon_name, created_at, is_archived, frequency_days, target_goal)
-        SELECT uuid, name, description, color_index, icon_name, created_at, is_archived, frequency_days, target_goal
-        FROM habits
+        CREATE TABLE app_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
       ''');
       
-      await txn.execute('''
-        INSERT INTO habit_completions_new (habit_id, completion_date, completion_count, completion_goal)
-        SELECT habit_id, completion_date, completion_count, completion_goal
-        FROM habit_completions
-      ''');
-      
-      await txn.execute('''
-        INSERT INTO habit_reminders_new (habit_id, reminder_time_hour, reminder_time_minute, enable_reminders)
-        SELECT habit_id, reminder_time_hour, reminder_time_minute, enable_reminders
-        FROM habit_reminders
-      ''');
-      
-      await txn.execute('''
-        INSERT INTO habit_display_order_new (habit_id, order_value, created_at)
-        SELECT habit_id, order_value, created_at
-        FROM habit_display_order
-      ''');
-      
-      // Step 5: Drop old tables and rename new ones
-      await txn.execute('DROP TABLE habit_display_order');
-      await txn.execute('DROP TABLE habit_reminders');
-      await txn.execute('DROP TABLE habit_completions');
-      await txn.execute('DROP TABLE habits');
-      
-      await txn.execute('ALTER TABLE habits_new RENAME TO habits');
-      await txn.execute('ALTER TABLE habit_completions_new RENAME TO habit_completions');
-      await txn.execute('ALTER TABLE habit_reminders_new RENAME TO habit_reminders');
-      await txn.execute('ALTER TABLE habit_display_order_new RENAME TO habit_display_order');
-      
-      // Step 6: Recreate indexes
+      // Create indexes
       await txn.execute('''
         CREATE INDEX idx_habit_completions_date 
         ON habit_completions(completion_date)
@@ -332,15 +272,10 @@ class DatabaseService {
         ON habit_display_order(order_value)
       ''');
       
-      debugPrint('✅ Migration to version 3 completed successfully');
+      debugPrint('✅ Migration to version 3 completed successfully - Fresh database created');
     });
   }
   
-  /// Generate a UUID v4 for migration
-  String _generateUuid() {
-    const uuid = Uuid();
-    return uuid.v4();
-  }
   
   /// Called when database is opened
   Future<void> _onOpen(Database db) async {
