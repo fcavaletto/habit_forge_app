@@ -67,10 +67,7 @@ class _DashboardViewState extends State<DashboardView>
     WidgetsBinding.instance.addObserver(this);
     _appState = context.read<AppState>();
     _controller = DashboardController(_appState);
-    // Schedule initial data load after the first frame to avoid setState during build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadInitialData();
-    });
+    // No need to load initial data - AppState already loaded it during initialization
   }
 
   @override
@@ -100,9 +97,17 @@ class _DashboardViewState extends State<DashboardView>
 
   void _onAppResumed() {
     final now = DateTime.now();
+    
+    // Skip refresh during initial app startup (when _lastResumeTime is null)
+    // Only refresh when app is actually resumed from background
+    if (_lastResumeTime == null) {
+      debugPrint('🔄 Dashboard: Initial app startup, skipping refresh');
+      _lastResumeTime = now;
+      return;
+    }
+    
     // Check if data needs refresh based on time elapsed or new day
-    final shouldRefresh = _lastResumeTime == null || 
-      DataFreshness.shouldRefreshOnResume(_lastResumeTime!);
+    final shouldRefresh = DataFreshness.shouldRefreshOnResume(_lastResumeTime!);
     
     debugPrint('🔄 Dashboard: App resumed, shouldRefresh: $shouldRefresh');
     
@@ -115,11 +120,6 @@ class _DashboardViewState extends State<DashboardView>
     // Update resume timestamp for future freshness checks
     _lastResumeTime = now;
   }
-
-  Future<void> _loadInitialData() async {
-    await _controller.loadHabits();
-  }
-
 
   Future<void> _refreshData() async {
     try {
