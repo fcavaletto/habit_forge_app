@@ -5,6 +5,7 @@ import '../widgets/year_grid.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../providers/app_state_provider.dart';
 import '../theme.dart';
+import '../services/virtual_date_service.dart';
 import 'package:provider/provider.dart';
 
 /// Calendar Screen - GitHub-style habit tracking calendar
@@ -35,7 +36,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     // Show last 365 days
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     _startDate = DateTime(now.year - 1, now.month, now.day + 1);
     _endDate = now;
     _loadData();

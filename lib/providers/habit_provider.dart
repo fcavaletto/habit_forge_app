@@ -318,7 +318,7 @@ class HabitState extends ChangeNotifier {
 
   /// Get completed habits count for today (habits that achieved their goal)
   int getCompletedTodayCount() {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     return _habits.where((habit) => habit.isGoalAchieved(today)).length;
   }
 
@@ -327,7 +327,7 @@ class HabitState extends ChangeNotifier {
     if (_habits.isEmpty) return 0.0;
     
     double totalCompletionPercentage = 0.0;
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     
     for (final habit in _habits) {
       final count = habit.getCompletionCount(today);

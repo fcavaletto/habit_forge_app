@@ -7,21 +7,20 @@ import 'widgets/error_boundary.dart';
 
 /// Application entry point
 ///
-/// Initializes all necessary services and starts the Flutter application.
-/// This includes:
-/// 1. Storage initialization - Loads existing habit data
-/// 2. Notification service setup - Configures push notifications
-/// 3. State management setup - Initializes Provider architecture
-/// 4. Error handling - Graceful degradation if services fail
-/// 5. App launch - Starts the main Flutter application
+/// Starts the Flutter application immediately and initializes services in the background.
+/// This approach prevents black screen issues by ensuring the UI is rendered
+/// before any potentially blocking service initialization occurs.
 ///
-/// The initialization is designed to be robust and will continue
-/// even if individual services fail to initialize.
+/// Key improvements:
+/// 1. Immediate app launch - No waiting for services
+/// 2. Background service initialization - Non-blocking
+/// 3. Graceful error handling - App continues even if services fail
+/// 4. Timeout protection - Prevents hanging during initialization
 Future<void> main() async {
   // Ensure Flutter framework is ready before any async operations
   WidgetsFlutterBinding.ensureInitialized();
 
-  debugPrint('🚀 Starting Flutter app...');
+  debugPrint('🚀 Starting Flutter app immediately...');
 
   // Set up global error handling
   GlobalErrorHandler.setup();
@@ -29,10 +28,7 @@ Future<void> main() async {
   // Initialize the app state provider
   final appStateProvider = AppStateProvider.create();
 
-  // Initialize all services (including theme loading)
-  await appStateProvider.initialize();
-
-  // Start the Flutter app with provider setup and error boundary
+  // Start the Flutter app immediately - don't wait for services
   runApp(
     ErrorBoundary(
       onError: (error) {
@@ -47,7 +43,36 @@ Future<void> main() async {
     ),
   );
 
-  debugPrint('✅ Flutter app started with state management and error handling');
+  debugPrint('✅ Flutter app started - initializing services in background');
+
+  // Initialize services in the background to prevent blocking
+  _initializeServicesInBackground(appStateProvider);
+}
+
+/// Initialize all services in the background with timeout protection
+///
+/// This method runs after the Flutter app has started, ensuring the UI
+/// is responsive while services initialize. It includes comprehensive
+/// error handling and timeout protection to prevent any service from
+/// hanging the app.
+Future<void> _initializeServicesInBackground(AppStateProvider appStateProvider) async {
+  debugPrint('🔄 Starting background service initialization...');
+
+  try {
+    // Initialize services with timeout protection
+    await appStateProvider.initialize().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        debugPrint('⏰ Service initialization timed out - continuing with partial initialization');
+        return;
+      },
+    );
+    
+    debugPrint('✅ All services initialized successfully in background');
+  } catch (e) {
+    debugPrint('❌ Service initialization failed: $e');
+    debugPrint('⚠️ App will continue with limited functionality');
+  }
 }
 
 /// Root application widget with theme management
@@ -65,12 +90,55 @@ class HabitForgeApp extends StatefulWidget {
   State<HabitForgeApp> createState() => _HabitForgeAppState();
 }
 
-class _HabitForgeAppState extends State<HabitForgeApp> {
+class _HabitForgeAppState extends State<HabitForgeApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    // Listen to app lifecycle changes to handle background/foreground transitions
+    WidgetsBinding.instance.addObserver(this);
   }
 
+  @override
+  void dispose() {
+    // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        debugPrint('📱 App resumed - refreshing data');
+        // Refresh data when app comes back to foreground
+        _refreshDataOnResume();
+        break;
+      case AppLifecycleState.paused:
+        debugPrint('📱 App paused');
+        break;
+      case AppLifecycleState.detached:
+        debugPrint('📱 App detached');
+        break;
+      case AppLifecycleState.inactive:
+        debugPrint('📱 App inactive');
+        break;
+      case AppLifecycleState.hidden:
+        debugPrint('📱 App hidden');
+        break;
+    }
+  }
+
+  /// Refresh data when app resumes to ensure fresh state
+  Future<void> _refreshDataOnResume() async {
+    try {
+      final appState = context.read<AppState>();
+      await appState.refreshAllData(forceRefresh: true);
+    } catch (e) {
+      debugPrint('❌ Failed to refresh data on resume: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +150,8 @@ class _HabitForgeAppState extends State<HabitForgeApp> {
           darkTheme: AppTheme.darkTheme, // Dark theme configuration
           themeMode: appState.themeMode, // Current theme mode from provider
           home: const DashboardScreen(),
+          // Add debug banner in debug mode only
+          debugShowCheckedModeBanner: false,
         );
       },
     );
