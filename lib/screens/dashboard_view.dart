@@ -9,6 +9,7 @@ import '../utils/constants.dart';
 import '../screens/settings_screen.dart';
 import '../screens/add_habit_screen.dart';
 import '../screens/calendar_screen.dart';
+import 'stats_screen.dart';
 import '../utils/data_freshness.dart';
 
 /// Dashboard View - Pure UI component for the main habit tracking interface
@@ -330,6 +331,7 @@ class _DashboardViewState extends State<DashboardView>
       onEdit: () => _showHabitDetails(habit),
       onArchive: () => _onArchiveHabit(habit),
       onDelete: () => _onDeleteHabit(habit),
+      onStats: () => _showHabitStats(habit),
     );
   }
 
@@ -491,6 +493,18 @@ class _DashboardViewState extends State<DashboardView>
             onClose: () => Navigator.of(context).pop(),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showHabitStats(Habit habit) {
+    // Get fresh habit data from the provider to ensure we have the latest completions
+    final appState = Provider.of<AppState>(context, listen: false);
+    final freshHabit = appState.habitProvider.getHabitById(habit.id) ?? habit;
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => StatsScreen(habit: freshHabit),
       ),
     );
   }

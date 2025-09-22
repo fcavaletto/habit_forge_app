@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/habit.dart';
-import '../providers/habit_provider.dart';
 import '../utils/icon_utils.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../widgets/stats/completion_chart.dart';
@@ -32,30 +30,12 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen> {
   Map<DateTime, int> _completions = {};
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadHabitData();
-  }
-
-  /// Loads habit data including completion history
-  /// Handles loading states and error scenarios
-  Future<void> _loadHabitData() async {
-    setState(() => _isLoading = true);
-    try {
-      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
-      final habit = habitProvider.getHabitById(widget.habit.id) ?? widget.habit;
-      setState(() {
-        _completions = habit.completions;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      // Don't show error message in initState to avoid ScaffoldMessenger issues
-      debugPrint('Error loading habit data: $e');
-    }
+    // Use the passed habit data directly - no need to reload
+    _completions = widget.habit.completions;
   }
 
   @override
@@ -69,9 +49,7 @@ class _StatsScreenState extends State<StatsScreen> {
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SafeScrollView(
+      body: SafeScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(AppConstants.defaultPadding),
                 child: Column(
