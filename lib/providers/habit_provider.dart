@@ -5,6 +5,7 @@ import '../models/habit_result.dart';
 import '../repositories/sqlite_habit_repository.dart';
 import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
+import '../services/virtual_date_service.dart';
 import '../utils/data_freshness.dart';
 
 /// State management class for habit-related data and operations
@@ -89,6 +90,10 @@ class HabitState extends ChangeNotifier {
   /// Update the selected date for filtering
   void updateSelectedDate(DateTime newDate) {
     _selectedDate = newDate;
+    
+    // Update the virtual date service to make this the "current date" for the entire app
+    VirtualDateService().setVirtualDate(newDate);
+    
     debugPrint('📅 Selected date updated to: ${_selectedDate.toIso8601String().split('T')[0]}');
     notifyListeners();
   }
@@ -484,6 +489,10 @@ class HabitProvider extends HabitState {
   void updateSelectedDate(DateTime newDate) {
     if (_selectedDate != newDate) {
       _selectedDate = newDate;
+      
+      // Update the virtual date service to make this the "current date" for the entire app
+      VirtualDateService().setVirtualDate(newDate);
+      
       notifyListeners();
       debugPrint('📅 Selected date updated to: ${_formatDate(newDate)}');
     }
