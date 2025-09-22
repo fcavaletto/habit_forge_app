@@ -11,6 +11,7 @@ import '../screens/add_habit_screen.dart';
 import '../screens/calendar_screen.dart';
 import 'stats_screen.dart';
 import '../utils/data_freshness.dart';
+import '../services/virtual_date_service.dart';
 
 /// Dashboard View - Pure UI component for the main habit tracking interface
 ///
@@ -465,13 +466,13 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   Future<void> _onIncrementCompletion(Habit habit) async {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     final currentCount = habit.getCompletionCount(today);
     await _controller.onMarkCompleted(habit, currentCount + 1);
   }
 
   Future<void> _onDecrementCompletion(Habit habit) async {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     final currentCount = habit.getCompletionCount(today);
     if (currentCount > 0) {
       await _controller.onMarkCompleted(habit, currentCount - 1);

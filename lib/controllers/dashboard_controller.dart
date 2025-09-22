@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
 import '../utils/data_freshness.dart';
+import '../services/virtual_date_service.dart';
 
 /// Controller class that handles all business logic for the dashboard
 ///
@@ -111,7 +112,7 @@ class DashboardController {
 
   /// Update habit completion count
   Future<void> onMarkCompleted(Habit habit, [int? count]) async {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     final currentCount = habit.getCompletionCount(today);
 
     // If no count specified, toggle between 0 and 1 for backward compatibility

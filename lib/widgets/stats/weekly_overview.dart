@@ -7,10 +7,12 @@ import '../../utils/constants.dart';
 /// Displays each day with completion status and day labels.
 class WeeklyOverview extends StatelessWidget {
   final List<bool> weeklyData;
+  final DateTime currentDate;
 
   const WeeklyOverview({
     super.key,
     required this.weeklyData,
+    required this.currentDate,
   });
 
   @override

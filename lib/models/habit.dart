@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import '../services/virtual_date_service.dart';
 
 /// Core data model representing a user habit
 ///
@@ -246,16 +247,16 @@ class Habit {
 
   /// Calculate current streak of consecutive goal-achieved days
   ///
-  /// Counts backward from today to find the longest sequence
+  /// Counts backward from the virtual current date to find the longest sequence
   /// of consecutive days where this habit achieved its goal.
   ///
-  /// @return Number of consecutive days with goal achieved (ending today or yesterday)
+  /// @return Number of consecutive days with goal achieved (ending on virtual current date or yesterday)
   int get currentStreak {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     int streak = 0;
     DateTime checkDate = today;
 
-    // Count consecutive goal-achieved days backward from today
+    // Count consecutive goal-achieved days backward from virtual current date
     while (isGoalAchieved(checkDate)) {
       streak++;
       checkDate = checkDate.subtract(const Duration(days: 1));
@@ -276,7 +277,7 @@ class Habit {
 
   /// Calculate completion rate for the last 30 days
   ///
-  /// Measures habit adherence over the most recent 30-day period.
+  /// Measures habit adherence over the most recent 30-day period from the virtual current date.
   /// Each day's completion percentage is calculated based on the target goal.
   /// Used for progress tracking and habit strength assessment.
   ///
@@ -286,7 +287,7 @@ class Habit {
     int daysWithData = 0;
     
     for (int i = 0; i < 30; i++) {
-      final date = DateTime.now().subtract(Duration(days: i));
+      final date = VirtualDateService().currentDate.subtract(Duration(days: i));
       final count = getCompletionCount(date);
       final percentage = (count / targetGoal).clamp(0.0, 1.0);
       totalCompletionPercentage += percentage;
@@ -300,13 +301,13 @@ class Habit {
   ///
   /// Used by UI components to display recent progress in compact views.
   /// Returns boolean array where each element represents a day's completion status.
-  /// Index 0 = 6 days ago, Index 6 = today
+  /// Index 0 = 6 days ago, Index 6 = virtual current date
   ///
   /// @return List of 7 boolean values representing daily completion status
   List<bool> get last7Days {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     return List.generate(7, (index) {
-      final date = today.subtract(Duration(days: 6 - index)); // 6 days ago to today
+      final date = today.subtract(Duration(days: 6 - index)); // 6 days ago to virtual current date
       return isCompleted(date);
     });
   }
@@ -316,14 +317,15 @@ class Habit {
   /// Creates a 2D array suitable for grid-based calendar visualization.
   /// Each inner list represents a week (7 days), with 4 weeks total.
   /// Used by detailed calendar views and progress charts.
+  /// Based on the virtual current date.
   ///
   /// @return 4x7 grid of completion status (week × day)
   List<List<bool>> get last4Weeks {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     return List.generate(4, (weekIndex) { // 4 weeks
       return List.generate(7, (dayIndex) { // 7 days per week
         final date = today.subtract(Duration(
-          days: (3 - weekIndex) * 7 + (6 - dayIndex), // Calculate date offset
+          days: (3 - weekIndex) * 7 + (6 - dayIndex), // Calculate date offset from virtual current date
         ));
         return isCompleted(date);
       });
@@ -332,9 +334,9 @@ class Habit {
 
   /// Get the number of days since the habit was created
   ///
-  /// @return Number of days since creation
+  /// @return Number of days since creation (based on virtual current date)
   int get daysSinceCreation {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     return now.difference(createdAt).inDays;
   }
 

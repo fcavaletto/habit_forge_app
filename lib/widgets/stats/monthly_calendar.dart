@@ -7,11 +7,13 @@ import '../../utils/constants.dart';
 /// Supports navigation through multiple months with visual completion indicators.
 class MonthlyCalendar extends StatefulWidget {
   final Map<DateTime, int> completions;
+  final DateTime currentDate;
   final DateTime? selectedMonth;
 
   const MonthlyCalendar({
     super.key,
     required this.completions,
+    required this.currentDate,
     this.selectedMonth,
   });
 
@@ -94,9 +96,8 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                 controller: _pageController,
                 itemCount: AppConstants.calendarTotalMonths,
                 itemBuilder: (context, pageIndex) {
-                  final currentDate = DateTime.now();
                   final monthOffset = pageIndex - AppConstants.calendarInitialPage;
-                  final targetMonth = DateTime(currentDate.year, currentDate.month + monthOffset, 1);
+                  final targetMonth = DateTime(widget.currentDate.year, widget.currentDate.month + monthOffset, 1);
                   return _buildMonthGrid(targetMonth);
                 },
               ),
@@ -167,9 +168,9 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               final date = DateTime(monthDate.year, monthDate.month, dayNumber);
               final completionCount = widget.completions[DateTime(date.year, date.month, date.day)] ?? 0;
               final isCompleted = completionCount > 0;
-              final isToday = date.year == DateTime.now().year &&
-                             date.month == DateTime.now().month &&
-                             date.day == DateTime.now().day;
+              final isToday = date.year == widget.currentDate.year &&
+                             date.month == widget.currentDate.month &&
+                             date.day == widget.currentDate.day;
 
               return Container(
                 decoration: BoxDecoration(

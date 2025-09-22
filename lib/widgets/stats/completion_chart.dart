@@ -9,10 +9,12 @@ import '../../utils/constants.dart';
 /// for accurate daily habit tracking visualization.
 class CompletionChart extends StatelessWidget {
   final List<double> completionData;
+  final DateTime currentDate;
 
   const CompletionChart({
     super.key,
     required this.completionData,
+    required this.currentDate,
   });
 
   @override
@@ -57,7 +59,7 @@ class CompletionChart extends StatelessWidget {
                           // Show date labels every 7 days to avoid crowding
                           if (value.toInt() % 7 == 0) {
                             final daysAgo = AppConstants.chartDaysCount - 1 - value.toInt();
-                            final date = DateTime.now().subtract(Duration(days: daysAgo));
+                            final date = currentDate.subtract(Duration(days: daysAgo));
                             return Text(
                               '${date.month}/${date.day}',
                               style: const TextStyle(fontSize: 10),
@@ -104,7 +106,7 @@ class CompletionChart extends StatelessWidget {
                         return touchedSpots.map((spot) {
                           final percentage = (spot.y * 100).toInt();
                           final daysAgo = AppConstants.chartDaysCount - 1 - spot.x.toInt();
-                          final date = DateTime.now().subtract(Duration(days: daysAgo));
+                          final date = currentDate.subtract(Duration(days: daysAgo));
 
                           return LineTooltipItem(
                             '${date.month}/${date.day}: $percentage%',

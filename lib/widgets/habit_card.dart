@@ -3,6 +3,7 @@ import '../models/habit.dart';
 import '../theme.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
+import '../services/virtual_date_service.dart';
 
 /// Interactive card widget displaying a habit with progress visualization
 ///
@@ -71,7 +72,7 @@ class HabitCard extends StatelessWidget {
     final habitColor = colorScheme.habitColor(habit.colorIndex);
 
     // Create accessibility labels - memoized for performance
-    final todayCount = habit.getCompletionCount(DateTime.now());
+    final todayCount = habit.getCompletionCount(VirtualDateService().currentDate);
     final completionStatus = todayCount > 0 ? '$todayCount completion${todayCount != 1 ? 's' : ''}' : 'not completed';
     final accessibilityLabel = '${habit.name}. ${habit.description}. Today: $completionStatus.';
 
@@ -158,10 +159,10 @@ class HabitCard extends StatelessWidget {
                           // Conditionally show minus/check button when there are completions
                           if (todayCount > 0) ...[
                             Semantics(
-                              label: habit.isGoalAchieved(DateTime.now())
+                              label: habit.isGoalAchieved(VirtualDateService().currentDate)
                                   ? 'Remove completion from ${habit.name}'
                                   : 'Decrement ${habit.name} completion count',
-                              hint: habit.isGoalAchieved(DateTime.now())
+                              hint: habit.isGoalAchieved(VirtualDateService().currentDate)
                                   ? 'Tap to remove one completion'
                                   : 'Tap to reduce completion count',
                               button: true,
@@ -177,7 +178,7 @@ class HabitCard extends StatelessWidget {
                                   ),
                                   child: Center(
                                     child: Icon(
-                                      habit.isGoalAchieved(DateTime.now()) 
+                                      habit.isGoalAchieved(VirtualDateService().currentDate) 
                                           ? Icons.done 
                                           : Icons.remove,
                                       color: Colors.white,
@@ -190,7 +191,7 @@ class HabitCard extends StatelessWidget {
                             const SizedBox(width: 6),
                           ],
                           // Conditionally show plus button when goal is not achieved
-                          if (!habit.isGoalAchieved(DateTime.now())) ...[
+                          if (!habit.isGoalAchieved(VirtualDateService().currentDate)) ...[
                             Semantics(
                               label: 'Increment ${habit.name} completion count',
                               hint: todayCount == 0 
@@ -273,7 +274,7 @@ class HabitCard extends StatelessWidget {
                 height: 32, // Smaller height
                 child: Row(
                   children: List.generate(7, (index) {
-                    final date = DateTime.now().subtract(Duration(days: 6 - index));
+                    final date = VirtualDateService().currentDate.subtract(Duration(days: 6 - index));
                     final count = habit.getCompletionCount(date);
                     final intensity = count > 0 ? (count / habit.targetGoal).clamp(0.0, 1.0) : 0.0; // Use actual goal for visualization
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../utils/icon_utils.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
@@ -7,6 +8,7 @@ import '../widgets/stats/streak_display.dart';
 import '../widgets/stats/weekly_overview.dart';
 import '../widgets/stats/monthly_calendar.dart';
 import '../utils/constants.dart';
+import '../providers/app_state_provider.dart';
 
 /// Stats Screen - Displays analytics and charts for habit tracking
 ///
@@ -16,7 +18,7 @@ import '../utils/constants.dart';
 /// - Weekly overview with visual completion indicators
 /// - Monthly calendar with horizontal scrolling navigation
 /// - Today highlighting and completion status visualization
-class StatsScreen extends StatefulWidget {
+class StatsScreen extends StatelessWidget {
   final Habit habit;
 
   const StatsScreen({
@@ -25,66 +27,68 @@ class StatsScreen extends StatefulWidget {
   });
 
   @override
-  State<StatsScreen> createState() => _StatsScreenState();
-}
-
-class _StatsScreenState extends State<StatsScreen> {
-  Map<DateTime, int> _completions = {};
-
-  @override
-  void initState() {
-    super.initState();
-    // Use the passed habit data directly - no need to reload
-    _completions = widget.habit.completions;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistics'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        elevation: 0,
-        shadowColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: SafeScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(AppConstants.defaultPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Habit Header
-                    _buildHabitHeader(),
-                    const SizedBox(height: 24),
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        final currentDate = appState.currentDate;
+        final completions = habit.completions;
+        
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Statistics'),
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+          ),
+          body: SafeScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(AppConstants.defaultPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Habit Header
+                  _buildHabitHeader(context),
+                  const SizedBox(height: 24),
 
-                    // Current Streak
-                    StreakDisplay(
-                      currentStreak: _calculateCurrentStreak(),
-                      longestStreak: _calculateLongestStreak(),
-                    ),
-                    const SizedBox(height: 24),
+                  // Current Streak
+                  StreakDisplay(
+                    currentStreak: _calculateCurrentStreak(completions, currentDate),
+                    longestStreak: _calculateLongestStreak(completions),
+                  ),
+                  const SizedBox(height: 24),
 
-                    // Completion Rate Chart
-                    CompletionChart(completionData: _getLast30DaysData()),
-                    const SizedBox(height: 24),
+                  // Completion Rate Chart
+                  CompletionChart(
+                    completionData: _getLast30DaysData(completions, currentDate),
+                    currentDate: currentDate,
+                  ),
+                  const SizedBox(height: 24),
 
-                    // Weekly Overview
-                    WeeklyOverview(weeklyData: _getWeeklyData()),
-                    const SizedBox(height: 24),
+                  // Weekly Overview
+                  WeeklyOverview(
+                    weeklyData: _getWeeklyData(completions, currentDate),
+                    currentDate: currentDate,
+                  ),
+                  const SizedBox(height: 24),
 
-                    // Monthly Calendar
-                    MonthlyCalendar(completions: _completions),
-                  ],
-                ),
+                  // Monthly Calendar
+                  MonthlyCalendar(
+                    completions: completions,
+                    currentDate: currentDate,
+                  ),
+                ],
               ),
             ),
+          ),
+        );
+      },
     );
   }
 
   /// Builds the habit header card with icon and basic information
-  Widget _buildHabitHeader() {
+  Widget _buildHabitHeader(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.defaultPadding),
@@ -98,7 +102,7 @@ class _StatsScreenState extends State<StatsScreen> {
                 borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
               ),
               child: Icon(
-                widget.habit.iconName.toIconData,
+                habit.iconName.toIconData,
                 color: Theme.of(context).colorScheme.primary,
                 size: AppConstants.iconSizeMedium,
               ),
@@ -109,14 +113,14 @@ class _StatsScreenState extends State<StatsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.habit.name,
+                    habit.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.habit.description,
+                    habit.description,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -135,14 +139,13 @@ class _StatsScreenState extends State<StatsScreen> {
   /// Returns a list of double values representing daily completion rates.
   /// Each value represents the completion percentage for that day (0.0 to 1.0).
   /// The chart shows daily completion percentage based on the habit's target goal.
-  List<double> _getLast30DaysData() {
+  List<double> _getLast30DaysData(Map<DateTime, int> completions, DateTime currentDate) {
     final data = <double>[];
-    final now = DateTime.now();
 
     for (int i = AppConstants.chartDaysCount - 1; i >= 0; i--) {
-      final date = now.subtract(Duration(days: i));
-      final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
-      final rate = (completionCount / widget.habit.targetGoal).clamp(0.0, 1.0);
+      final date = currentDate.subtract(Duration(days: i));
+      final completionCount = completions[DateTime(date.year, date.month, date.day)] ?? 0;
+      final rate = (completionCount / habit.targetGoal).clamp(0.0, 1.0);
       data.add(rate);
     }
 
@@ -153,15 +156,14 @@ class _StatsScreenState extends State<StatsScreen> {
   ///
   /// Returns a list of boolean values representing goal achievement status
   /// for each day of the current week (Monday to Sunday).
-  List<bool> _getWeeklyData() {
+  List<bool> _getWeeklyData(Map<DateTime, int> completions, DateTime currentDate) {
     final data = <bool>[];
-    final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekStart = currentDate.subtract(Duration(days: currentDate.weekday - 1));
 
     for (int i = 0; i < AppConstants.weeklyOverviewDays; i++) {
       final date = weekStart.add(Duration(days: i));
-      final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
-      data.add(completionCount >= widget.habit.targetGoal);
+      final completionCount = completions[DateTime(date.year, date.month, date.day)] ?? 0;
+      data.add(completionCount >= habit.targetGoal);
     }
 
     return data;
@@ -171,15 +173,14 @@ class _StatsScreenState extends State<StatsScreen> {
   ///
   /// A streak continues as long as the habit achieves its goal each day.
   /// The streak breaks when a day's goal is not met, but can resume the next day.
-  int _calculateCurrentStreak() {
-    final now = DateTime.now();
+  int _calculateCurrentStreak(Map<DateTime, int> completions, DateTime currentDate) {
     int streak = 0;
 
     for (int i = 0; i < 365; i++) {
-      final date = now.subtract(Duration(days: i));
-      final completionCount = _completions[DateTime(date.year, date.month, date.day)] ?? 0;
+      final date = currentDate.subtract(Duration(days: i));
+      final completionCount = completions[DateTime(date.year, date.month, date.day)] ?? 0;
 
-      if (completionCount >= widget.habit.targetGoal) {
+      if (completionCount >= habit.targetGoal) {
         streak++;
       } else if (i == 0) {
         // Don't break streak for today if goal not achieved yet
@@ -195,14 +196,14 @@ class _StatsScreenState extends State<StatsScreen> {
   /// Calculates the longest streak of consecutive goal-achieved days
   ///
   /// This represents the personal best achievement for this habit.
-  int _calculateLongestStreak() {
+  int _calculateLongestStreak(Map<DateTime, int> completions) {
     int longestStreak = 0;
     int currentStreak = 0;
 
-    final dates = _completions.keys.toList()..sort();
+    final dates = completions.keys.toList()..sort();
 
     for (final date in dates) {
-      if ((_completions[date] ?? 0) >= widget.habit.targetGoal) {
+      if ((completions[date] ?? 0) >= habit.targetGoal) {
         currentStreak++;
         longestStreak = longestStreak > currentStreak ? longestStreak : currentStreak;
       } else {
