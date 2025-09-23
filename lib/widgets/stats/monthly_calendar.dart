@@ -91,7 +91,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
 
             // Calendar pages
             SizedBox(
-              height: AppConstants.calendarHeight - 60, // Account for header and hint
+              height: _calculateCalendarHeight(), // Dynamic height based on actual rows needed
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: AppConstants.calendarTotalMonths,
@@ -108,6 +108,31 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
     );
   }
 
+  /// Calculate dynamic calendar height based on the number of rows needed
+  double _calculateCalendarHeight() {
+    // Calculate the maximum number of rows needed across all months
+    int maxRows = 6; // Default to 6 rows
+    
+    // Check a few months to find the maximum rows needed
+    for (int i = -2; i <= 2; i++) {
+      final month = DateTime(widget.currentDate.year, widget.currentDate.month + i, 1);
+      final lastDay = DateTime(month.year, month.month + 1, 0);
+      final firstWeekday = month.weekday;
+      final offset = (firstWeekday - 1) % 7;
+      final totalDays = lastDay.day;
+      final rowsNeeded = ((totalDays + offset) / 7).ceil();
+      maxRows = maxRows < rowsNeeded ? rowsNeeded : maxRows;
+    }
+    
+    // Calculate height: header + spacing + (rows * cell_height) + spacing
+    const headerHeight = 40.0; // Month/year header
+    const spacing = AppConstants.defaultMargin;
+    const cellHeight = AppConstants.calendarCellSize + AppConstants.calendarSpacing;
+    final totalHeight = headerHeight + spacing + (maxRows * cellHeight) + spacing;
+    
+    return totalHeight;
+  }
+
   Widget _buildMonthGrid(DateTime monthDate) {
     final firstDayOfMonth = DateTime(monthDate.year, monthDate.month, 1);
     final lastDayOfMonth = DateTime(monthDate.year, monthDate.month + 1, 0);
@@ -115,6 +140,10 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
     // Calculate the weekday offset (0 = Monday, 1 = Tuesday, etc.)
     final firstWeekday = firstDayOfMonth.weekday;
     final offset = (firstWeekday - 1) % 7; // Adjust so Monday is 0
+    
+    // Calculate the actual number of rows needed for this month
+    final totalDays = lastDayOfMonth.day;
+    final rowsNeeded = ((totalDays + offset) / 7).ceil();
 
     return Column(
       children: [
@@ -156,7 +185,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               crossAxisSpacing: AppConstants.calendarSpacing,
               mainAxisSpacing: AppConstants.calendarSpacing,
             ),
-            itemCount: AppConstants.calendarGridColumns * AppConstants.calendarGridRows,
+            itemCount: AppConstants.calendarGridColumns * rowsNeeded,
             itemBuilder: (context, index) {
               final dayNumber = index - offset + 1;
 

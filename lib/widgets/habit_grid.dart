@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/virtual_date_service.dart';
 
 /// HabitGrid Widget - GitHub-style contribution grid for habit tracking
 ///
@@ -65,7 +66,7 @@ class _HabitGridState extends State<HabitGrid> with TickerProviderStateMixin {
     _normalizedCompletions = {};
 
     // Create normalized completion map for the last 3 months
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
 
     // Initialize all dates in the last 3 months as not completed
@@ -145,7 +146,7 @@ class _HabitGridState extends State<HabitGrid> with TickerProviderStateMixin {
   }
 
   Widget _buildMonthLabels() {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     final months = <String>[];
 
     // Generate month labels for the last 3 months
@@ -172,7 +173,7 @@ class _HabitGridState extends State<HabitGrid> with TickerProviderStateMixin {
   }
 
   Widget _buildGrid() {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
 
     // Calculate total weeks needed (approximately)
@@ -274,7 +275,7 @@ class OptimizedHabitGrid extends StatelessWidget {
   }
 
   Widget _buildMonthLabels(BuildContext context) {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     final months = <String>[];
 
     for (int i = 2; i >= 0; i--) {
@@ -300,7 +301,7 @@ class OptimizedHabitGrid extends StatelessWidget {
   }
 
   Widget _buildGrid(BuildContext context) {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
 
     // Create a set of completed dates for O(1) lookup

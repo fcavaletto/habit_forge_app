@@ -533,7 +533,7 @@ class _DashboardViewState extends State<DashboardView>
   /// Build the date selector widget
   Widget _buildDateSelector(AppState appState) {
     final selectedDate = appState.habitProvider.selectedDate;
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     final isToday = selectedDate.year == today.year && 
                    selectedDate.month == today.month && 
                    selectedDate.day == today.day;
@@ -591,25 +591,11 @@ class _DashboardViewState extends State<DashboardView>
 
   /// Format date for display
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final tomorrow = today.add(const Duration(days: 1));
-    final dateOnly = DateTime(date.year, date.month, date.day);
-
-    if (dateOnly == today) {
-      return 'Today';
-    } else if (dateOnly == yesterday) {
-      return 'Yesterday';
-    } else if (dateOnly == tomorrow) {
-      return 'Tomorrow';
-    } else {
-      // Format as "Mon, Jan 15" or similar
-      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
-    }
+    // Simply show the actual date in a readable format
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
   }
 
   /// Show date picker dialog
@@ -619,7 +605,7 @@ class _DashboardViewState extends State<DashboardView>
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: VirtualDateService().currentDate.add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

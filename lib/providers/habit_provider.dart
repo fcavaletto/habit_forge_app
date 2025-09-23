@@ -87,17 +87,6 @@ class HabitState extends ChangeNotifier {
     return getHabitsForDate(_selectedDate).map((h) => h.id).toList();
   }
 
-  /// Update the selected date for filtering
-  void updateSelectedDate(DateTime newDate) {
-    _selectedDate = newDate;
-    
-    // Update the virtual date service to make this the "current date" for the entire app
-    VirtualDateService().setVirtualDate(newDate);
-    
-    debugPrint('📅 Selected date updated to: ${_selectedDate.toIso8601String().split('T')[0]}');
-    notifyListeners();
-  }
-
   /// Get day abbreviation from DateTime (mon, tue, wed, etc.)
   String _getDayAbbreviation(DateTime date) {
     const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -318,7 +307,7 @@ class HabitState extends ChangeNotifier {
 
   /// Get completed habits count for today (habits that achieved their goal)
   int getCompletedTodayCount() {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     return _habits.where((habit) => habit.isGoalAchieved(today)).length;
   }
 
@@ -327,7 +316,7 @@ class HabitState extends ChangeNotifier {
     if (_habits.isEmpty) return 0.0;
     
     double totalCompletionPercentage = 0.0;
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     
     for (final habit in _habits) {
       final count = habit.getCompletionCount(today);
@@ -485,7 +474,6 @@ class HabitProvider extends HabitState {
   }
 
   /// Update the selected date for filtering
-  @override
   void updateSelectedDate(DateTime newDate) {
     if (_selectedDate != newDate) {
       _selectedDate = newDate;
@@ -546,23 +534,10 @@ class HabitProvider extends HabitState {
 
   /// Format date for display
   String _formatDate(DateTime date) {
-    final today = DateTime.now();
-    final yesterday = today.subtract(const Duration(days: 1));
-    final tomorrow = today.add(const Duration(days: 1));
-    final dateOnly = DateTime(date.year, date.month, date.day);
-
-    if (dateOnly == today) {
-      return 'Today';
-    } else if (dateOnly == yesterday) {
-      return 'Yesterday';
-    } else if (dateOnly == tomorrow) {
-      return 'Tomorrow';
-    } else {
-      // Format as "Mon, Jan 15" or similar
-      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
-    }
+    // Simply show the actual date in a readable format
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
   }
 }

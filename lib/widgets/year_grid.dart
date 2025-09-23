@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../theme.dart';
+import '../services/virtual_date_service.dart';
 
 /// YearGrid widget - GitHub-style habit tracking grid
 ///
@@ -53,7 +54,7 @@ class _YearGridState extends State<YearGrid> {
   }
 
   void _scrollToRecent() {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     final daysSinceStart = now.difference(widget.startDate).inDays;
     final targetOffset = (daysSinceStart * (widget.squareSize + widget.spacing)) - 200; // Show some context
     if (targetOffset > 0) {
@@ -156,7 +157,7 @@ class _YearGridState extends State<YearGrid> {
   }
 
   Widget _buildDaySquare(DateTime date, int count) {
-    final isToday = _isSameDay(date, DateTime.now());
+    final isToday = _isSameDay(date, VirtualDateService().currentDate);
     final isGoalAchieved = count >= widget.habit.targetGoal;
     final maxOpacity = widget.habit.targetGoal.toDouble();
     final opacity = count > 0 ? (count / maxOpacity).clamp(0.0, 1.0) : 0.0;
