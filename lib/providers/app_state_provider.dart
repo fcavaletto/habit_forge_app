@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../services/notification_service.dart';
@@ -147,17 +148,32 @@ class AppState extends ChangeNotifier {
   /// Individual provider failures don't prevent app startup, ensuring
   /// graceful degradation and continued operation.
   Future<void> initialize() async {
-    // Initialize habit provider (this loads filter setting)
-    await _habitProvider.initialize();
-    
-    // Now load habits with the correct filter setting applied
-    await Future.wait([
-      _habitProvider.loadHabits(),
-      _notificationProvider.initialize(),
-      _themeProvider.loadThemeMode(),
-      _completionCountProvider.loadCompletionCountSetting(),
-      _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
-    ]);
+    try {
+      // Initialize habit provider (this loads filter setting)
+      await _habitProvider.initialize().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException('Habit provider initialization timed out', const Duration(seconds: 15));
+        },
+      );
+      
+      // Now load habits with the correct filter setting applied
+      await Future.wait([
+        _habitProvider.loadHabits(),
+        _notificationProvider.initialize(),
+        _themeProvider.loadThemeMode(),
+        _completionCountProvider.loadCompletionCountSetting(),
+        _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
+      ]).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          throw TimeoutException('App state initialization timed out', const Duration(seconds: 20));
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ App state initialization failed: $e');
+      rethrow;
+    }
   }
 
   /// Clear all errors

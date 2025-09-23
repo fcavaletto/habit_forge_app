@@ -38,12 +38,18 @@ class DatabaseService {
       
       debugPrint('🗄️ Initializing database at: $path');
       
+      // Add timeout to prevent hanging during database initialization
       return await openDatabase(
         path,
         version: _databaseVersion,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Database initialization timed out', const Duration(seconds: 10));
+        },
       );
     } catch (e) {
       debugPrint('❌ Error initializing database: $e');
