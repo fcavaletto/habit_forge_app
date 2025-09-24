@@ -157,18 +157,42 @@ class HabitState extends ChangeNotifier {
   /// Update habit completion count
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
-      await _habitRepository.updateHabitCompletion(habitId, date, count);
-      
-      // Update local state directly instead of reloading all habits
+      // Get current habit to check existing completion count
       final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
-      if (habitIndex >= 0) {
-        final updatedHabit = _habits[habitIndex].markCompleted(date, count);
+      if (habitIndex < 0) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
+      
+      final habit = _habits[habitIndex];
+      final currentCount = habit.getCompletionCount(date);
+      
+      // Calculate the difference and apply changes incrementally
+      final difference = count - currentCount;
+      
+      if (difference > 0) {
+        // Add completions
+        for (int i = 0; i < difference; i++) {
+          await _habitRepository.addHabitCompletion(habitId, date);
+        }
+      } else if (difference < 0) {
+        // Remove completions
+        for (int i = 0; i < -difference; i++) {
+          await _habitRepository.removeHabitCompletion(habitId, date);
+        }
+      }
+      
+      // Update local state by reloading the habit from database
+      final updatedHabit = await _habitRepository.getHabitById(habitId);
+      if (updatedHabit != null) {
         _habits[habitIndex] = updatedHabit;
         notifyListeners();
+        debugPrint('✅ Updated habit completion: $habitId on ${date.toIso8601String().split('T')[0]} = $count');
       }
     } catch (e) {
       _error = 'Failed to update habit completion: $e';
       notifyListeners();
+      debugPrint('❌ Error updating habit completion: $e');
     }
   }
 

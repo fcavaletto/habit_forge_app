@@ -77,16 +77,25 @@ class DatabaseService {
         )
       ''');
       
-      // Create habit_completions table
+      // Create habit_completions table with goal tracking
       await txn.execute('''
         CREATE TABLE habit_completions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
           completion_date INTEGER NOT NULL,
-          completion_count INTEGER NOT NULL DEFAULT 1,
-          completion_goal INTEGER NOT NULL DEFAULT 1,
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE,
-          UNIQUE(habit_id, completion_date)
+          completion_count INTEGER NOT NULL DEFAULT 0,
+          goal_at_completion INTEGER NOT NULL,
+          PRIMARY KEY (habit_id, completion_date),
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        )
+      ''');
+      
+      // Create habit_completion_timestamps table for individual completion tracking
+      await txn.execute('''
+        CREATE TABLE habit_completion_timestamps (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          habit_id TEXT NOT NULL,
+          completion_timestamp INTEGER NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
       
@@ -129,6 +138,16 @@ class DatabaseService {
       await txn.execute('''
         CREATE INDEX idx_habit_completions_habit_id 
         ON habit_completions(habit_id)
+      ''');
+      
+      await txn.execute('''
+        CREATE INDEX idx_habit_completion_timestamps_habit_id 
+        ON habit_completion_timestamps(habit_id)
+      ''');
+      
+      await txn.execute('''
+        CREATE INDEX idx_habit_completion_timestamps_timestamp 
+        ON habit_completion_timestamps(completion_timestamp)
       ''');
       
       await txn.execute('''
@@ -221,14 +240,25 @@ class DatabaseService {
         )
       ''');
       
+      // Create habit_completions table with goal tracking
       await txn.execute('''
         CREATE TABLE habit_completions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
           completion_date INTEGER NOT NULL,
-          completion_count INTEGER NOT NULL DEFAULT 1,
-          completion_goal INTEGER NOT NULL DEFAULT 1,
-          UNIQUE(habit_id, completion_date)
+          completion_count INTEGER NOT NULL DEFAULT 0,
+          goal_at_completion INTEGER NOT NULL,
+          PRIMARY KEY (habit_id, completion_date),
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        )
+      ''');
+      
+      // Create habit_completion_timestamps table for individual completion tracking
+      await txn.execute('''
+        CREATE TABLE habit_completion_timestamps (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          habit_id TEXT NOT NULL,
+          completion_timestamp INTEGER NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
       

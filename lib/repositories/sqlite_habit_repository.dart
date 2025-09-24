@@ -159,10 +159,141 @@ class SqliteHabitRepository {
     }
   }
   
+  /// Get a specific habit by its ID
+  Future<Habit?> getHabitById(String habitId) async {
+    try {
+      final db = await _databaseService.database;
+      final results = await db.query(
+        'habits',
+        where: 'id = ?',
+        whereArgs: [habitId],
+      );
+      
+      if (results.isNotEmpty) {
+        return await _rowToHabit(results.first);
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting habit by ID: $e');
+      return null;
+    }
+  }
+  
+  /// Add a completion for a habit on a specific date
+  Future<void> addHabitCompletion(String habitId, DateTime date) async {
+    try {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final dateTimestamp = normalizedDate.millisecondsSinceEpoch;
+      final completionTimestamp = date.millisecondsSinceEpoch ~/ 1000; // Convert to seconds
+      
+      // Get current habit to get the goal
+      final habit = await getHabitById(habitId);
+      if (habit == null) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
+      
+      await _databaseService.transaction((txn) async {
+        // Update or insert completion record
+        await txn.insert(
+          'habit_completions',
+          {
+            'habit_id': habitId,
+            'completion_date': dateTimestamp,
+            'completion_count': 1,
+            'goal_at_completion': habit.targetGoal,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        
+        // Add timestamp record
+        await txn.insert(
+          'habit_completion_timestamps',
+          {
+            'habit_id': habitId,
+            'completion_timestamp': completionTimestamp,
+          },
+        );
+      });
+      
+      debugPrint('✅ Added completion for habit $habitId on ${normalizedDate.toIso8601String()}');
+    } catch (e) {
+      debugPrint('❌ Error adding habit completion: $e');
+    }
+  }
+  
+  /// Remove a completion for a habit on a specific date
+  Future<void> removeHabitCompletion(String habitId, DateTime date) async {
+    try {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final dateTimestamp = normalizedDate.millisecondsSinceEpoch;
+      
+      await _databaseService.transaction((txn) async {
+        // Get current completion count
+        final completionRows = await txn.query(
+          'habit_completions',
+          where: 'habit_id = ? AND completion_date = ?',
+          whereArgs: [habitId, dateTimestamp],
+        );
+        
+        if (completionRows.isNotEmpty) {
+          final currentCount = completionRows.first['completion_count'] as int;
+          
+          if (currentCount > 1) {
+            // Decrement completion count
+            await txn.update(
+              'habit_completions',
+              {'completion_count': currentCount - 1},
+              where: 'habit_id = ? AND completion_date = ?',
+              whereArgs: [habitId, dateTimestamp],
+            );
+          } else {
+            // Remove completion record entirely
+            await txn.delete(
+              'habit_completions',
+              where: 'habit_id = ? AND completion_date = ?',
+              whereArgs: [habitId, dateTimestamp],
+            );
+          }
+        }
+        
+        // Remove most recent timestamp record for this habit
+        final timestampRows = await txn.query(
+          'habit_completion_timestamps',
+          where: 'habit_id = ?',
+          whereArgs: [habitId],
+          orderBy: 'completion_timestamp DESC',
+          limit: 1,
+        );
+        
+        if (timestampRows.isNotEmpty) {
+          await txn.delete(
+            'habit_completion_timestamps',
+            where: 'id = ?',
+            whereArgs: [timestampRows.first['id']],
+          );
+        }
+      });
+      
+      debugPrint('❌ Removed completion for habit $habitId on ${normalizedDate.toIso8601String()}');
+    } catch (e) {
+      debugPrint('❌ Error removing habit completion: $e');
+    }
+  }
+  
+  /// Update completion count for a habit on a specific date
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
       final normalizedDate = DateTime(date.year, date.month, date.day);
-      final timestamp = normalizedDate.millisecondsSinceEpoch;
+      final dateTimestamp = normalizedDate.millisecondsSinceEpoch;
+      
+      // Get current habit to get the goal
+      final habit = await getHabitById(habitId);
+      if (habit == null) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
       
       await _databaseService.transaction((txn) async {
         if (count > 0) {
@@ -171,9 +302,9 @@ class SqliteHabitRepository {
             'habit_completions',
             {
               'habit_id': habitId,
-              'completion_date': timestamp,
+              'completion_date': dateTimestamp,
               'completion_count': count,
-              'completion_goal': 1, // Default goal, will be updated if needed
+              'goal_at_completion': habit.targetGoal,
             },
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
@@ -182,7 +313,7 @@ class SqliteHabitRepository {
           await txn.delete(
             'habit_completions',
             where: 'habit_id = ? AND completion_date = ?',
-            whereArgs: [habitId, timestamp],
+            whereArgs: [habitId, dateTimestamp],
           );
         }
       });
@@ -337,7 +468,7 @@ class SqliteHabitRepository {
         description: newHabit.description,
         colorIndex: newHabit.colorIndex,
         createdAt: DateTime.now(), // Will be updated from DB
-        completions: <DateTime, int>{}, // Will be loaded from DB
+        completions: <DateTime, CompletionRecord>{}, // Will be loaded from DB
         iconName: newHabit.iconName,
         reminderTime: newHabit.reminderTime,
         enableReminders: newHabit.enableReminders,
@@ -446,11 +577,15 @@ class SqliteHabitRepository {
         whereArgs: [row['id']],
       );
       
-      final completions = <DateTime, int>{};
+      final completions = <DateTime, CompletionRecord>{};
       for (final completionRow in completionRows) {
         final date = DateTime.fromMillisecondsSinceEpoch(completionRow['completion_date'] as int);
         final count = completionRow['completion_count'] as int;
-        completions[date] = count;
+        final goalAtCompletion = completionRow['goal_at_completion'] as int;
+        completions[date] = CompletionRecord(
+          count: count,
+          goalAtCompletion: goalAtCompletion,
+        );
       }
       
       // Load reminder settings

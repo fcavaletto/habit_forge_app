@@ -408,7 +408,7 @@ class _DashboardViewState extends State<DashboardView>
         ),
         const SizedBox(height: 4),
         Text(
-          '${(completionRate * 100).round()}% complete',
+          _getCompletionMessage(completionRate, completedCount, habits.length),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.w500,
@@ -587,6 +587,20 @@ class _DashboardViewState extends State<DashboardView>
         ],
       ),
     );
+  }
+
+  /// Get completion message based on habit goals
+  String _getCompletionMessage(double completionRate, int completedCount, int totalHabits) {
+    final percentage = (completionRate * 100).round();
+    
+    // Check if any habits have goals greater than 1
+    final hasMultiGoalHabits = _appState.habits.any((habit) => habit.targetGoal > 1);
+    
+    if (hasMultiGoalHabits) {
+      return '$completedCount of $totalHabits habits fully completed ($percentage%)';
+    } else {
+      return '$completedCount of $totalHabits habits completed ($percentage%)';
+    }
   }
 
   /// Format date for display
