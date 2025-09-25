@@ -155,7 +155,7 @@ class HourlyHistogram extends StatelessWidget {
           ),
           // Ticks and labels
           Row(
-            children: List.generate(24, (hour) {
+            children: List.generate(25, (hour) {
               final isLabelHour = labelHours.contains(hour);
               
               return Expanded(
@@ -279,7 +279,7 @@ class HourlyHistogram extends StatelessWidget {
       ];
     }
     
-    final baseColor = isPeakHour ? colorScheme.primary : colorScheme.secondary;
+    final baseColor = colorScheme.primary; // Always use primary color
     final intensity = (percentage * 0.8 + 0.2).clamp(0.2, 1.0); // Ensure minimum visibility
     
     return [
