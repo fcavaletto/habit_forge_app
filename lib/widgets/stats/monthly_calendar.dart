@@ -214,7 +214,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                   border: isToday
                       ? Border.all(
                           color: Theme.of(context).colorScheme.secondary,
-                          width: 6,
+                          width: 3,
                         )
                       : null,
                   // Add gradient for partial completion

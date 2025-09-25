@@ -61,7 +61,7 @@ class CompletionChart extends StatelessWidget {
                             final daysAgo = AppConstants.chartDaysCount - 1 - value.toInt();
                             final date = currentDate.subtract(Duration(days: daysAgo));
                             return Text(
-                              '${date.month}/${date.day}',
+                              '${date.day} ${_getMonthAbbreviation(date.month)}',
                               style: const TextStyle(fontSize: 10),
                             );
                           }
@@ -109,7 +109,7 @@ class CompletionChart extends StatelessWidget {
                           final date = currentDate.subtract(Duration(days: daysAgo));
 
                           return LineTooltipItem(
-                            '${date.month}/${date.day}: $percentage%',
+                            '${date.day} ${_getMonthAbbreviation(date.month)}: $percentage%',
                             TextStyle(
                               color: colorScheme.onSurface,
                               fontWeight: FontWeight.w500,
@@ -126,5 +126,14 @@ class CompletionChart extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Get abbreviated month name from month number
+  String _getMonthAbbreviation(int month) {
+    const monthAbbreviations = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return monthAbbreviations[month];
   }
 }
