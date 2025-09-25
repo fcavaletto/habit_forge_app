@@ -123,7 +123,7 @@ class HourlyHistogram extends StatelessWidget {
               }),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 3),
           // Horizontal axis with ticks and labels
           _buildHorizontalAxis(context),
         ],
