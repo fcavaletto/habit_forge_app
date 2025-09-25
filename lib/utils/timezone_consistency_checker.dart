@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'timezone_utils.dart';
+import 'date_range_utils.dart';
 
 /// Timezone Consistency Checker
 ///
@@ -87,7 +88,6 @@ class TimezoneConsistencyChecker {
   /// @throws StateError if timestamp is unreasonable
   static void validateTimestampReasonableness(int timestamp, String context) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final now = DateTime.now();
     final year2000 = DateTime(2000);
     final year2100 = DateTime(2100);
     
