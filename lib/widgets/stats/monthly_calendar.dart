@@ -209,11 +209,9 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                 decoration: BoxDecoration(
                   color: isFullyCompleted
                       ? Theme.of(context).colorScheme.primary
-                      : isToday
-                          ? Theme.of(context).colorScheme.secondaryContainer
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(6),
-                  border: isToday && !hasCompletion
+                  border: isToday
                       ? Border.all(
                           color: Theme.of(context).colorScheme.secondary,
                           width: 2,
