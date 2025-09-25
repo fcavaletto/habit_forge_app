@@ -7,8 +7,10 @@ import '../widgets/stats/completion_chart.dart';
 import '../widgets/stats/streak_display.dart';
 import '../widgets/stats/last_7_days_overview.dart';
 import '../widgets/stats/monthly_calendar.dart';
+import '../widgets/stats/hourly_histogram.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
+import '../services/virtual_date_service.dart';
 
 /// Stats Screen - Displays analytics and charts for habit tracking
 ///
@@ -18,7 +20,7 @@ import '../providers/app_state_provider.dart';
 /// - Weekly overview with visual completion indicators
 /// - Monthly calendar with horizontal scrolling navigation
 /// - Today highlighting and completion status visualization
-class StatsScreen extends StatelessWidget {
+class StatsScreen extends StatefulWidget {
   final Habit habit;
 
   const StatsScreen({
@@ -27,11 +29,78 @@ class StatsScreen extends StatelessWidget {
   });
 
   @override
+  State<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends State<StatsScreen> {
+  String _selectedTimeRange = 'Last 7 Days';
+  HourlyHistogramData? _hourlyData;
+  bool _isLoadingHourlyData = false;
+  String? _hourlyDataError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHourlyData();
+  }
+
+  @override
+  void didUpdateWidget(StatsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.habit.id != widget.habit.id) {
+      _loadHourlyData();
+    }
+  }
+
+  Future<void> _loadHourlyData() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingHourlyData = true;
+      _hourlyDataError = null;
+    });
+
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      final currentDate = VirtualDateService().currentDate;
+      
+      final data = await appState.habitProvider.loadHourlyData(
+        widget.habit.id,
+        _selectedTimeRange,
+        currentDate,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _hourlyData = data;
+          _isLoadingHourlyData = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _hourlyDataError = e.toString();
+          _isLoadingHourlyData = false;
+        });
+      }
+    }
+  }
+
+  void _onTimeRangeChanged(String newRange) {
+    if (newRange != _selectedTimeRange) {
+      setState(() {
+        _selectedTimeRange = newRange;
+      });
+      _loadHourlyData();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
-      builder: (context, appState, child) {
-        final currentDate = appState.currentDate;
-        final completions = habit.completions;
+        builder: (context, appState, child) {
+          final currentDate = VirtualDateService().currentDate;
+          final completions = widget.habit.completions;
         
         return Scaffold(
           appBar: AppBar(
@@ -73,6 +142,20 @@ class StatsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
+                  // Hourly Completion Histogram
+                  if (_hourlyData != null)
+                    HourlyHistogram(
+                      data: _hourlyData!,
+                      onTimeRangeChanged: _onTimeRangeChanged,
+                    )
+                  else if (_isLoadingHourlyData)
+                    _buildHistogramLoadingState()
+                  else if (_hourlyDataError != null)
+                    _buildHistogramErrorState()
+                  else
+                    _buildHistogramEmptyState(),
+                  const SizedBox(height: 24),
+
                   // Monthly Calendar
                   MonthlyCalendar(
                     completions: completions,
@@ -102,7 +185,7 @@ class StatsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
               ),
               child: Icon(
-                habit.iconName.toIconData,
+                widget.habit.iconName.toIconData,
                 color: Theme.of(context).colorScheme.primary,
                 size: AppConstants.iconSizeMedium,
               ),
@@ -113,14 +196,14 @@ class StatsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    habit.name,
+                    widget.habit.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    habit.description,
+                    widget.habit.description,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -214,6 +297,128 @@ class StatsScreen extends StatelessWidget {
     }
 
     return longestStreak;
+  }
+
+  /// Builds loading state for histogram
+  Widget _buildHistogramLoadingState() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.defaultPadding),
+        child: Column(
+          children: [
+            Text(
+              'Completions throughout the day',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppConstants.defaultPadding),
+            const SizedBox(
+              height: 120,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds error state for histogram
+  Widget _buildHistogramErrorState() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.defaultPadding),
+        child: Column(
+          children: [
+            Text(
+              'Completions throughout the day',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppConstants.defaultPadding),
+            SizedBox(
+              height: 120,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: Theme.of(context).colorScheme.error,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Failed to load data',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    TextButton(
+                      onPressed: _loadHourlyData,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds empty state for histogram
+  Widget _buildHistogramEmptyState() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.defaultPadding),
+        child: Column(
+          children: [
+            Text(
+              'Completions throughout the day',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppConstants.defaultPadding),
+            SizedBox(
+              height: 120,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.bar_chart_outlined,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No completion data available',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Complete your habit to see hourly patterns',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
 }

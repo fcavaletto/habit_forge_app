@@ -112,16 +112,27 @@ class DashboardController {
 
   /// Update habit completion count
   Future<void> onMarkCompleted(Habit habit, [int? count]) async {
-    final today = VirtualDateService().currentDate;
-    final currentCount = habit.getCompletionCount(today);
+    final selectedDate = _appState.habitProvider.selectedDate;
+    final selectedTime = _appState.habitProvider.selectedTime;
+    
+    // Combine selected date and time for completion timestamp
+    final completionDateTime = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+    
+    final currentCount = habit.getCompletionCount(selectedDate);
 
     // If no count specified, toggle between 0 and 1 for backward compatibility
     final newCount = count ?? (currentCount > 0 ? 0 : 1);
 
-    // Update completion count
+    // Update completion count with combined date and time
     await _appState.habitProvider.updateHabitCompletion(
       habit.id,
-      today,
+      completionDateTime,
       newCount,
     );
 

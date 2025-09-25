@@ -57,6 +57,7 @@ class HabitState extends ChangeNotifier {
   bool _isSortingMode = false;
   int _reorderCount = 0; // Track reorder operations for normalization
   DateTime _selectedDate = DateTime.now(); // Selected date for filtering
+  TimeOfDay _selectedTime = TimeOfDay.now(); // Selected time for completion timestamps
   bool _showAllHabits = false; // Whether to show all habits or just today's habits
 
   HabitState(this._habitRepository, this._settingsRepository);
@@ -72,6 +73,7 @@ class HabitState extends ChangeNotifier {
     DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
   bool get isSortingMode => _isSortingMode;
   DateTime get selectedDate => _selectedDate;
+  TimeOfDay get selectedTime => _selectedTime;
   bool get isShowingAllHabits => _showAllHabits;
   
   /// Get habits filtered based on current filter mode (all habits or date-filtered)
@@ -193,6 +195,58 @@ class HabitState extends ChangeNotifier {
       _error = 'Failed to update habit completion: $e';
       notifyListeners();
       debugPrint('❌ Error updating habit completion: $e');
+    }
+  }
+
+  /// Load hourly completion data for histogram analysis
+  ///
+  /// @param habitId The ID of the habit to analyze
+  /// @param timeRange The time range for analysis ("Last 7 Days", "Last 30 Days", "Total")
+  /// @param currentDate The current virtual date for calculations
+  /// @return HourlyHistogramData with completion distribution
+  Future<HourlyHistogramData> loadHourlyData(String habitId, String timeRange, DateTime currentDate) async {
+    try {
+      Map<int, int> hourlyCompletions;
+      DateTime startDate;
+      DateTime endDate = currentDate;
+      
+      switch (timeRange) {
+        case 'Last 7 Days':
+          // Include today + 6 previous days = 7 days total
+          startDate = currentDate.subtract(const Duration(days: 6));
+          endDate = DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59); // End of today
+          hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, startDate, endDate);
+          break;
+        case 'Last 30 Days':
+          // Include today + 29 previous days = 30 days total
+          startDate = currentDate.subtract(const Duration(days: 29));
+          endDate = DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59); // End of today
+          hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, startDate, endDate);
+          break;
+        case 'Total':
+          startDate = DateTime(2020); // Arbitrary early date
+          hourlyCompletions = await _habitRepository.getAllTimeHourlyCompletions(habitId);
+          break;
+        default:
+          throw ArgumentError('Invalid time range: $timeRange');
+      }
+      
+      final totalCompletions = hourlyCompletions.values.fold(0, (sum, count) => sum + count);
+      
+      final data = HourlyHistogramData(
+        hourlyCompletions: hourlyCompletions,
+        totalCompletions: totalCompletions,
+        startDate: startDate,
+        endDate: endDate,
+        timeRange: timeRange,
+      );
+      
+      debugPrint('📊 Loaded hourly data for $habitId: $totalCompletions total completions across ${data.activeHours.length} hours');
+      debugPrint('📅 Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
+      return data;
+    } catch (e) {
+      debugPrint('❌ Error loading hourly data: $e');
+      rethrow;
     }
   }
 
@@ -510,6 +564,15 @@ class HabitProvider extends HabitState {
     }
   }
 
+  /// Update the selected time for completion timestamps
+  void updateSelectedTime(TimeOfDay newTime) {
+    if (_selectedTime != newTime) {
+      _selectedTime = newTime;
+      notifyListeners();
+      debugPrint('🕐 Selected time updated to: ${_formatTime(newTime)}');
+    }
+  }
+
   /// Set whether to show all habits or just today's habits
   void setShowAllHabits(bool showAll) {
     if (_showAllHabits != showAll) {
@@ -563,5 +626,10 @@ class HabitProvider extends HabitState {
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
+  }
+
+  /// Format time for display in 24-hour format
+  String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }

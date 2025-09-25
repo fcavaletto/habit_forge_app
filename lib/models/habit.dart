@@ -54,6 +54,134 @@ class CompletionRecord {
   String toString() => 'CompletionRecord(count: $count, goalAtCompletion: $goalAtCompletion)';
 }
 
+/// Data model for hourly completion histogram analysis
+///
+/// Represents the distribution of habit completions throughout the day (0-23 hours)
+/// with calculated percentages and metadata about the analysis period.
+class HourlyHistogramData {
+  final Map<int, int> hourlyCompletions; // hour (0-23) -> completion count
+  final int totalCompletions;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String timeRange; // "Last 7 Days", "Last 30 Days", "Total"
+  
+  const HourlyHistogramData({
+    required this.hourlyCompletions,
+    required this.totalCompletions,
+    required this.startDate,
+    required this.endDate,
+    required this.timeRange,
+  });
+  
+  /// Calculate hourly completion percentages
+  ///
+  /// Returns a map where keys are hours (0-23) and values are percentages (0.0 to 1.0)
+  Map<int, double> get hourlyPercentages {
+    if (totalCompletions == 0) {
+      return {for (int hour = 0; hour < 24; hour++) hour: 0.0};
+    }
+    
+    return {
+      for (int hour = 0; hour < 24; hour++)
+        hour: hourlyCompletions[hour]! / totalCompletions
+    };
+  }
+  
+  /// Get the hour with the most completions
+  int get peakHour {
+    int maxHour = 0;
+    int maxCount = 0;
+    
+    for (int hour = 0; hour < 24; hour++) {
+      final count = hourlyCompletions[hour]!;
+      if (count > maxCount) {
+        maxCount = count;
+        maxHour = hour;
+      }
+    }
+    
+    return maxHour;
+  }
+  
+  /// Get the maximum completion count in any hour
+  int get maxCompletionsInHour {
+    return hourlyCompletions.values.reduce((a, b) => a > b ? a : b);
+  }
+  
+  /// Get the maximum percentage in any hour
+  double get maxPercentage {
+    return hourlyPercentages.values.reduce((a, b) => a > b ? a : b);
+  }
+  
+  /// Get hours with completions (non-zero counts)
+  List<int> get activeHours {
+    return hourlyCompletions.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) => entry.key)
+        .toList()
+      ..sort();
+  }
+  
+  /// Check if there's any completion data
+  bool get hasData => totalCompletions > 0;
+  
+  /// Get formatted time range description
+  String get formattedTimeRange {
+    switch (timeRange) {
+      case 'Last 7 Days':
+        return 'Last 7 Days';
+      case 'Last 30 Days':
+        return 'Last 30 Days';
+      case 'Total':
+        return 'Total';
+      default:
+        return 'Custom Range';
+    }
+  }
+  
+  /// Get formatted hour label (24-hour format)
+  static String formatHour(int hour) {
+    return '${hour.toString().padLeft(2, '0')}:00';
+  }
+  
+  /// Get short hour label for compact display
+  static String formatHourShort(int hour) {
+    return hour.toString().padLeft(2, '0');
+  }
+  
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is HourlyHistogramData &&
+        other.hourlyCompletions.toString() == hourlyCompletions.toString() &&
+        other.totalCompletions == totalCompletions &&
+        other.startDate == startDate &&
+        other.endDate == endDate &&
+        other.timeRange == timeRange;
+  }
+  
+  @override
+  int get hashCode {
+    return Object.hash(
+      hourlyCompletions.toString(),
+      totalCompletions,
+      startDate,
+      endDate,
+      timeRange,
+    );
+  }
+  
+  @override
+  String toString() {
+    return 'HourlyHistogramData('
+        'totalCompletions: $totalCompletions, '
+        'timeRange: $timeRange, '
+        'activeHours: ${activeHours.length}, '
+        'peakHour: ${formatHour(peakHour)}'
+        ')';
+  }
+}
+
 /// Core data model representing a user habit
 ///
 /// A habit encapsulates all information needed to track user behavior,

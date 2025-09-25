@@ -84,12 +84,12 @@ class Last7DaysOverview extends StatelessWidget {
               width: 1,
             ),
             // Add gradient for partial completion
-            gradient: hasCompletion && !isFullyCompleted
+            gradient: hasCompletion && !isFullyCompleted && fillPercentage > 0
                 ? LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      colorScheme.primary.withValues(alpha: fillPercentage),
+                      colorScheme.primary.withValues(alpha: fillPercentage.clamp(0.1, 1.0)), // Ensure minimum alpha
                       colorScheme.surfaceContainerHighest,
                     ],
                   )
