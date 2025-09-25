@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 import '../../models/habit.dart';
+import '../../repositories/sqlite_habit_repository.dart';
+import '../../services/database_service.dart';
 
 /// Last 7 Days Overview Widget
 ///
@@ -11,12 +13,14 @@ class Last7DaysOverview extends StatelessWidget {
   final List<CompletionRecord?> weeklyData;
   final DateTime currentDate;
   final Map<DateTime, CompletionRecord>? completions; // Full completions map for timestamps
+  final String habitId; // Habit ID for fetching completion timestamps
 
   const Last7DaysOverview({
     super.key,
     required this.weeklyData,
     required this.currentDate,
     this.completions,
+    required this.habitId,
   });
 
   @override
@@ -74,7 +78,7 @@ class Last7DaysOverview extends StatelessWidget {
     return Column(
       children: [
         GestureDetector(
-          onTap: () => _showDayDetails(context, date, record),
+          onTap: () async => await _showDayDetails(context, date, record),
           child: Container(
             width: 40,
             height: 40,
@@ -167,9 +171,21 @@ class Last7DaysOverview extends StatelessWidget {
   }
 
   /// Show day details dialog
-  void _showDayDetails(BuildContext context, DateTime date, CompletionRecord? record) {
+  Future<void> _showDayDetails(BuildContext context, DateTime date, CompletionRecord? record) async {
     final fullDayName = _getFullDayName(date);
     final dateStr = '${date.day} ${_getMonthAbbreviation(date.month)}';
+    
+    // Fetch completion timestamps for this day
+    List<DateTime> completionTimes = [];
+    if (record != null && record.count > 0) {
+      try {
+        final databaseService = DatabaseService();
+        final repository = SqliteHabitRepository(databaseService);
+        completionTimes = await repository.getCompletionTimestampsForDay(habitId, date);
+      } catch (e) {
+        debugPrint('❌ Error fetching completion times: $e');
+      }
+    }
     
     showDialog(
       context: context,
@@ -191,13 +207,24 @@ class Last7DaysOverview extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              // TODO: Add actual completion timestamps here
-              Text(
-                'Individual completion times will be shown here once we have access to the habit\'s completion timestamps.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              if (completionTimes.isNotEmpty) ...[
+                ...completionTimes.map((time) => Padding(
+                  padding: const EdgeInsets.only(left: 8, bottom: 2),
+                  child: Text(
+                    _formatTime(time),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+                  ),
+                )),
+              ] else ...[
+                Text(
+                  'No completion times available',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
                 ),
-              ),
+              ],
             ] else ...[
               Text('No completions recorded'),
             ],
@@ -220,5 +247,12 @@ class Last7DaysOverview extends StatelessWidget {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     return monthAbbreviations[month];
+  }
+
+  /// Format time for display (24-hour format)
+  String _formatTime(DateTime time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }

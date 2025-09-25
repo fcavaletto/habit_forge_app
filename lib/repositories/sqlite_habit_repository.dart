@@ -964,4 +964,42 @@ class SqliteHabitRepository {
       rethrow;
     }
   }
+
+  /// Get completion timestamps for a specific day
+  Future<List<DateTime>> getCompletionTimestampsForDay(String habitId, DateTime date) async {
+    try {
+      final db = await _databaseService.database;
+      
+      // Convert date to UTC timestamps for SQLite comparison
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+      
+      final startTimestamp = TimezoneUtils.toUtcTimestampSeconds(startOfDay);
+      final endTimestamp = TimezoneUtils.toUtcTimestampSeconds(endOfDay);
+      
+      debugPrint('📅 [DayQuery] Querying completion timestamps for $habitId on ${date.toIso8601String()}');
+      debugPrint('🌍 [DayQuery] UTC range: $startTimestamp to $endTimestamp');
+      
+      final result = await db.rawQuery('''
+        SELECT completion_timestamp
+        FROM habit_completion_timestamps 
+        WHERE habit_id = ? 
+          AND completion_timestamp >= ? 
+          AND completion_timestamp <= ?
+        ORDER BY completion_timestamp ASC
+      ''', [habitId, startTimestamp, endTimestamp]);
+      
+      // Convert UTC timestamps back to local DateTime
+      final timestamps = result.map((row) {
+        final utcTimestampSeconds = row['completion_timestamp'] as int;
+        return TimezoneUtils.fromUtcTimestampSeconds(utcTimestampSeconds);
+      }).toList();
+      
+      debugPrint('📊 [DayQuery] Found ${timestamps.length} completions for $habitId on ${date.toIso8601String()}');
+      return timestamps;
+    } catch (e) {
+      debugPrint('❌ Error getting completion timestamps for day: $e');
+      rethrow;
+    }
+  }
 }

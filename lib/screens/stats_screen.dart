@@ -140,6 +140,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     weeklyData: _getLast7DaysData(completions, currentDate),
                     currentDate: currentDate,
                     completions: completions,
+                    habitId: widget.habit.id,
                   ),
                   const SizedBox(height: 24),
 
