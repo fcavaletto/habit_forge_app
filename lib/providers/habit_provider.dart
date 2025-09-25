@@ -7,6 +7,8 @@ import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import '../services/virtual_date_service.dart';
 import '../utils/data_freshness.dart';
+import '../utils/date_range_utils.dart';
+import '../utils/performance_monitor.dart';
 
 /// State management class for habit-related data and operations
 ///
@@ -202,52 +204,58 @@ class HabitState extends ChangeNotifier {
   ///
   /// @param habitId The ID of the habit to analyze
   /// @param timeRange The time range for analysis ("Last 7 Days", "Last 30 Days", "Total")
-  /// @param currentDate The current virtual date for calculations
+  /// @param currentDate The current virtual date for calculations (deprecated - now uses VirtualDateService)
   /// @return HourlyHistogramData with completion distribution
   Future<HourlyHistogramData> loadHourlyData(String habitId, String timeRange, DateTime currentDate) async {
-    try {
-      Map<int, int> hourlyCompletions;
-      DateTime startDate;
-      DateTime endDate = currentDate;
-      
-      switch (timeRange) {
-        case 'Last 7 Days':
-          // Include today + 6 previous days = 7 days total
-          startDate = currentDate.subtract(const Duration(days: 6));
-          endDate = DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59); // End of today
-          hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, startDate, endDate);
-          break;
-        case 'Last 30 Days':
-          // Include today + 29 previous days = 30 days total
-          startDate = currentDate.subtract(const Duration(days: 29));
-          endDate = DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59); // End of today
-          hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, startDate, endDate);
-          break;
-        case 'Total':
-          startDate = DateTime(2020); // Arbitrary early date
-          hourlyCompletions = await _habitRepository.getAllTimeHourlyCompletions(habitId);
-          break;
-        default:
-          throw ArgumentError('Invalid time range: $timeRange');
-      }
-      
-      final totalCompletions = hourlyCompletions.values.fold(0, (sum, count) => sum + count);
-      
-      final data = HourlyHistogramData(
-        hourlyCompletions: hourlyCompletions,
-        totalCompletions: totalCompletions,
-        startDate: startDate,
-        endDate: endDate,
-        timeRange: timeRange,
-      );
-      
-      debugPrint('📊 Loaded hourly data for $habitId: $totalCompletions total completions across ${data.activeHours.length} hours');
-      debugPrint('📅 Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
-      return data;
-    } catch (e) {
-      debugPrint('❌ Error loading hourly data: $e');
-      rethrow;
-    }
+    return await PerformanceMonitor.monitorOperation(
+      'loadHourlyData($timeRange)',
+      () async {
+        try {
+          // Always use virtual date service for consistency
+          final virtualDate = VirtualDateService().currentDate;
+          debugPrint('📅 [HabitProvider] Loading hourly data for $timeRange using virtual date: ${virtualDate.toIso8601String()}');
+          
+          Map<int, int> hourlyCompletions;
+          DateRange dateRange;
+          
+          switch (timeRange) {
+            case 'Last 7 Days':
+              dateRange = DateRangeUtils.getLast7Days(virtualDate);
+              DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
+              hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, dateRange.start, dateRange.end);
+              break;
+            case 'Last 30 Days':
+              dateRange = DateRangeUtils.getLast30Days(virtualDate);
+              DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
+              hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, dateRange.start, dateRange.end);
+              break;
+            case 'Total':
+              dateRange = DateRangeUtils.getTotal(virtualDate);
+              hourlyCompletions = await _habitRepository.getAllTimeHourlyCompletions(habitId);
+              break;
+            default:
+              throw ArgumentError('Invalid time range: $timeRange');
+          }
+          
+          final totalCompletions = hourlyCompletions.values.fold(0, (sum, count) => sum + count);
+          
+          final data = HourlyHistogramData(
+            hourlyCompletions: hourlyCompletions,
+            totalCompletions: totalCompletions,
+            startDate: dateRange.start,
+            endDate: dateRange.end,
+            timeRange: timeRange,
+          );
+          
+          debugPrint('📊 [HabitProvider] Loaded hourly data for $habitId: $totalCompletions total completions across ${data.activeHours.length} hours');
+          debugPrint('📅 [HabitProvider] Date range: ${dateRange.start.toIso8601String()} to ${dateRange.end.toIso8601String()}');
+          return data;
+        } catch (e) {
+          debugPrint('❌ [HabitProvider] Error loading hourly data: $e');
+          rethrow;
+        }
+      },
+    );
   }
 
   /// Archive a habit
