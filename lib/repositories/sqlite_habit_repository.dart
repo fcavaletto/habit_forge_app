@@ -933,9 +933,11 @@ class SqliteHabitRepository {
     try {
       final db = await _databaseService.database;
       
+      debugPrint('📊 [HourlyQuery] Querying all-time hourly completions for $habitId');
+      
       final result = await db.rawQuery('''
         SELECT 
-          CAST(strftime('%H', completion_timestamp, 'unixepoch') AS INTEGER) as hour,
+          CAST(strftime('%H', completion_timestamp, 'unixepoch', 'localtime') AS INTEGER) as hour,
           COUNT(*) as count
         FROM habit_completion_timestamps 
         WHERE habit_id = ?
