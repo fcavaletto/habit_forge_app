@@ -33,7 +33,7 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  String _selectedTimeRange = 'Last 7 Days';
+  String _selectedTimeRange = 'Last 30 Days';
   HourlyHistogramData? _hourlyData;
   bool _isLoadingHourlyData = false;
   String? _hourlyDataError;

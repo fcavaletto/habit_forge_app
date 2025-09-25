@@ -194,7 +194,6 @@ class HourlyHistogram extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     
     final peakHour = HourlyHistogramData.formatHour(data.peakHour);
-    final activeHoursCount = data.activeHours.length;
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
