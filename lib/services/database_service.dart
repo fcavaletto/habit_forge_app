@@ -15,7 +15,7 @@ import 'package:path/path.dart';
 /// - Transaction support for data consistency
 class DatabaseService {
   static const String _databaseName = 'habit_forge.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
   
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
@@ -175,6 +175,10 @@ class DatabaseService {
     if (oldVersion < 3) {
       await _migrateToVersion3(db);
     }
+    
+    if (oldVersion < 4) {
+      await _migrateToVersion4(db);
+    }
   }
   
   /// Migrate database to version 2 - Add habit ordering support
@@ -312,6 +316,34 @@ class DatabaseService {
     });
   }
   
+  /// Migrate database to version 4 - Add timezone handling
+  Future<void> _migrateToVersion4(Database db) async {
+    debugPrint('🔄 Migrating to version 4: Adding timezone handling');
+    
+    await db.transaction((txn) async {
+      // Create app_metadata table to track data format
+      await txn.execute('''
+        CREATE TABLE IF NOT EXISTS app_metadata (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      ''');
+      
+      // Mark existing data as legacy (local timezone)
+      await txn.insert('app_metadata', {
+        'key': 'timestamp_format',
+        'value': 'legacy_local'
+      });
+      
+      // Add index for better performance
+      await txn.execute('''
+        CREATE INDEX IF NOT EXISTS idx_app_metadata_key 
+        ON app_metadata(key)
+      ''');
+      
+      debugPrint('✅ Migration to version 4 completed successfully - Timezone handling added');
+    });
+  }
   
   /// Called when database is opened
   Future<void> _onOpen(Database db) async {

@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import '../models/habit.dart';
 import '../models/habit_result.dart';
 import '../services/database_service.dart';
+import '../utils/timezone_utils.dart';
 
 /// SQLite implementation for habit data operations
 ///
@@ -127,7 +128,7 @@ class SqliteHabitRepository {
         await txn.insert('habit_display_order', {
           'habit_id': habit.id,
           'order_value': topOrder,
-          'created_at': DateTime.now().millisecondsSinceEpoch,
+          'created_at': TimezoneUtils.getCurrentUtcTimestamp(),
         });
         
         // Insert reminder if enabled
@@ -144,7 +145,7 @@ class SqliteHabitRepository {
         for (final entry in habit.completions.entries) {
           await txn.insert('habit_completions', {
             'habit_id': habit.id,
-            'completion_date': entry.key.millisecondsSinceEpoch,
+            'completion_date': TimezoneUtils.toUtcTimestamp(entry.key),
             'completion_count': entry.value,
             'completion_goal': habit.targetGoal,
           });
@@ -184,8 +185,8 @@ class SqliteHabitRepository {
   Future<void> addHabitCompletion(String habitId, DateTime date) async {
     try {
       final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = normalizedDate.millisecondsSinceEpoch;
-      final completionTimestamp = date.millisecondsSinceEpoch ~/ 1000; // Convert to seconds
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      final completionTimestamp = TimezoneUtils.toUtcTimestampSeconds(date);
       
       // Get current habit to get the goal
       final habit = await getHabitById(habitId);
@@ -246,7 +247,7 @@ class SqliteHabitRepository {
   Future<void> removeHabitCompletion(String habitId, DateTime date) async {
     try {
       final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = normalizedDate.millisecondsSinceEpoch;
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
       
       await _databaseService.transaction((txn) async {
         // Get current completion count
@@ -305,7 +306,7 @@ class SqliteHabitRepository {
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
       final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = normalizedDate.millisecondsSinceEpoch;
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
       
       // Get current habit to get the goal
       final habit = await getHabitById(habitId);
@@ -422,7 +423,7 @@ class SqliteHabitRepository {
         await txn.rawInsert('''
           INSERT OR REPLACE INTO habit_display_order (habit_id, order_value, created_at)
           VALUES (?, ?, ?)
-        ''', [habitId, bottomOrder, DateTime.now().millisecondsSinceEpoch]);
+        ''', [habitId, bottomOrder, TimezoneUtils.getCurrentUtcTimestamp()]);
       });
       
       debugPrint('💾 Unarchived habit $habitId and positioned at bottom');
@@ -598,7 +599,7 @@ class SqliteHabitRepository {
       
       final completions = <DateTime, CompletionRecord>{};
       for (final completionRow in completionRows) {
-        final date = DateTime.fromMillisecondsSinceEpoch(completionRow['completion_date'] as int);
+        final date = TimezoneUtils.fromTimestamp(completionRow['completion_date'] as int);
         final count = completionRow['completion_count'] as int;
         final goalAtCompletion = completionRow['goal_at_completion'] as int;
         completions[date] = CompletionRecord(
@@ -637,7 +638,7 @@ class SqliteHabitRepository {
         name: row['name'] as String,
         description: row['description'] as String? ?? '',
         colorIndex: row['color_index'] as int,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),
+        createdAt: TimezoneUtils.fromTimestamp(row['created_at'] as int),
         completions: completions,
         iconName: row['icon_name'] as String,
         reminderTime: reminderTime,
@@ -661,7 +662,7 @@ class SqliteHabitRepository {
       'description': habit.description,
       'color_index': habit.colorIndex,
       'icon_name': habit.iconName,
-      'created_at': habit.createdAt.millisecondsSinceEpoch,
+      'created_at': TimezoneUtils.toUtcTimestamp(habit.createdAt),
       'is_archived': habit.isArchived ? 1 : 0,
       'frequency_days': jsonEncode(habit.frequencyDays),
       'target_goal': habit.targetGoal,
@@ -876,9 +877,9 @@ class SqliteHabitRepository {
     try {
       final db = await _databaseService.database;
       
-      // Convert dates to timestamps for SQLite comparison
-      final startTimestamp = startDate.millisecondsSinceEpoch ~/ 1000;
-      final endTimestamp = endDate.millisecondsSinceEpoch ~/ 1000;
+      // Convert dates to UTC timestamps for SQLite comparison
+      final startTimestamp = TimezoneUtils.toUtcTimestampSeconds(startDate);
+      final endTimestamp = TimezoneUtils.toUtcTimestampSeconds(endDate);
       
       final result = await db.rawQuery('''
         SELECT 

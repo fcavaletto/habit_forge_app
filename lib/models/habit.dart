@@ -315,7 +315,7 @@ class Habit {
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
       colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
-      createdAt: DateTime.now(), // Creation timestamp
+      createdAt: DateTime.now().toUtc(), // Creation timestamp
       completions: <DateTime, CompletionRecord>{}, // Start with empty completion history
       iconName: iconName,
       reminderTime: reminderTime,
@@ -362,7 +362,7 @@ class Habit {
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
       colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
-      createdAt: DateTime.now(), // Creation timestamp
+      createdAt: DateTime.now().toUtc(), // Creation timestamp
       completions: <DateTime, CompletionRecord>{}, // Start with empty completion history
       iconName: iconName,
       reminderTime: reminderTime,
