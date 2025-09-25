@@ -139,6 +139,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   Last7DaysOverview(
                     weeklyData: _getLast7DaysData(completions, currentDate),
                     currentDate: currentDate,
+                    completions: completions,
                   ),
                   const SizedBox(height: 24),
 

@@ -10,11 +10,13 @@ import '../../models/habit.dart';
 class Last7DaysOverview extends StatelessWidget {
   final List<CompletionRecord?> weeklyData;
   final DateTime currentDate;
+  final Map<DateTime, CompletionRecord>? completions; // Full completions map for timestamps
 
   const Last7DaysOverview({
     super.key,
     required this.weeklyData,
     required this.currentDate,
+    this.completions,
   });
 
   @override
@@ -46,6 +48,7 @@ class Last7DaysOverview extends StatelessWidget {
                   dayName: dayName,
                   record: record,
                   colorScheme: colorScheme,
+                  date: date,
                 );
               }),
             ),
@@ -62,6 +65,7 @@ class Last7DaysOverview extends StatelessWidget {
     required String dayName,
     required CompletionRecord? record,
     required ColorScheme colorScheme,
+    required DateTime date,
   }) {
     final hasCompletion = record != null && record.count > 0;
     final isFullyCompleted = record?.isGoalAchieved ?? false;
@@ -69,40 +73,43 @@ class Last7DaysOverview extends StatelessWidget {
 
     return Column(
       children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: isFullyCompleted
-                ? colorScheme.primary
-                : colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-            border: Border.all(
-              color: hasCompletion
+        GestureDetector(
+          onTap: () => _showDayDetails(context, date, record),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isFullyCompleted
                   ? colorScheme.primary
-                  : colorScheme.outline.withValues(alpha: 0.2),
-              width: 1,
-            ),
-            // Add gradient for partial completion
-            gradient: hasCompletion && !isFullyCompleted && fillPercentage > 0
-                ? LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      colorScheme.primary.withValues(alpha: fillPercentage.clamp(0.1, 1.0)), // Ensure minimum alpha
-                      colorScheme.surfaceContainerHighest,
-                    ],
-                  )
-                : null,
-          ),
-          child: Icon(
-            isFullyCompleted ? Icons.check : (hasCompletion ? Icons.close : Icons.close),
-            color: isFullyCompleted
-                ? colorScheme.onPrimary
-                : hasCompletion
+                  : colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+              border: Border.all(
+                color: hasCompletion
                     ? colorScheme.primary
-                    : colorScheme.onSurface.withValues(alpha: 0.5),
-            size: AppConstants.iconSizeMedium,
+                    : colorScheme.outline.withValues(alpha: 0.2),
+                width: 1,
+              ),
+              // Add gradient for partial completion
+              gradient: hasCompletion && !isFullyCompleted && fillPercentage > 0
+                  ? LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        colorScheme.primary.withValues(alpha: fillPercentage.clamp(0.1, 1.0)), // Ensure minimum alpha
+                        colorScheme.surfaceContainerHighest,
+                      ],
+                    )
+                  : null,
+            ),
+            child: Icon(
+              isFullyCompleted ? Icons.check : (hasCompletion ? Icons.close : Icons.close),
+              color: isFullyCompleted
+                  ? colorScheme.onPrimary
+                  : hasCompletion
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withValues(alpha: 0.5),
+              size: AppConstants.iconSizeMedium,
+            ),
           ),
         ),
         const SizedBox(height: 4),
@@ -152,5 +159,62 @@ class Last7DaysOverview extends StatelessWidget {
   String _getDayName(DateTime date) {
     const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     return dayNames[date.weekday - 1]; // weekday is 1-7, array is 0-6
+  }
+
+  /// Show day details dialog
+  void _showDayDetails(BuildContext context, DateTime date, CompletionRecord? record) {
+    final dayName = _getDayName(date);
+    final dateStr = '${date.day} ${_getMonthAbbreviation(date.month)}';
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('$dayName, $dateStr'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (record != null) ...[
+              Text('Goal: ${record.goalAtCompletion}'),
+              Text('Completed: ${record.count}'),
+              Text('Status: ${record.isGoalAchieved ? "Goal Achieved" : "Partial"}'),
+              const SizedBox(height: 8),
+              Text(
+                'Completion Times:',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              // TODO: Add actual completion timestamps here
+              Text(
+                'Individual completion times will be shown here once we have access to the habit\'s completion timestamps.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ] else ...[
+              Text('No completions recorded'),
+              Text('Goal: Not set'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Get abbreviated month name from month number
+  String _getMonthAbbreviation(int month) {
+    const monthAbbreviations = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return monthAbbreviations[month];
   }
 }
