@@ -198,23 +198,36 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               final date = DateTime(monthDate.year, monthDate.month, dayNumber);
               final record = widget.completions[DateTime(date.year, date.month, date.day)];
               final completionCount = record?.count ?? 0;
-              final isCompleted = completionCount > 0;
+              final hasCompletion = completionCount > 0;
+              final isFullyCompleted = record?.isGoalAchieved ?? false;
+              final fillPercentage = record != null ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0) : 0.0;
               final isToday = date.year == widget.currentDate.year &&
                              date.month == widget.currentDate.month &&
                              date.day == widget.currentDate.day;
 
               return Container(
                 decoration: BoxDecoration(
-                  color: isCompleted
+                  color: isFullyCompleted
                       ? Theme.of(context).colorScheme.primary
                       : isToday
                           ? Theme.of(context).colorScheme.secondaryContainer
                           : Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(6),
-                  border: isToday && !isCompleted
+                  border: isToday && !hasCompletion
                       ? Border.all(
                           color: Theme.of(context).colorScheme.secondary,
                           width: 2,
+                        )
+                      : null,
+                  // Add gradient for partial completion
+                  gradient: hasCompletion && !isFullyCompleted && fillPercentage > 0
+                      ? LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Theme.of(context).colorScheme.primary.withValues(alpha: fillPercentage.clamp(0.1, 1.0)), // Ensure minimum alpha
+                            Theme.of(context).colorScheme.surfaceContainerHighest,
+                          ],
                         )
                       : null,
                 ),
@@ -222,9 +235,11 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                 child: Text(
                   dayNumber.toString(),
                   style: TextStyle(
-                    color: isCompleted
+                    color: isFullyCompleted
                         ? Theme.of(context).colorScheme.onPrimary
-                        : Theme.of(context).colorScheme.onSurface,
+                        : hasCompletion
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w500,
                     fontSize: 12,
                   ),
