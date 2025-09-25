@@ -161,15 +161,20 @@ class Last7DaysOverview extends StatelessWidget {
     return dayNames[date.weekday - 1]; // weekday is 1-7, array is 0-6
   }
 
+  String _getFullDayName(DateTime date) {
+    const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return fullDayNames[date.weekday - 1]; // weekday is 1-7, array is 0-6
+  }
+
   /// Show day details dialog
   void _showDayDetails(BuildContext context, DateTime date, CompletionRecord? record) {
-    final dayName = _getDayName(date);
+    final fullDayName = _getFullDayName(date);
     final dateStr = '${date.day} ${_getMonthAbbreviation(date.month)}';
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('$dayName, $dateStr'),
+        title: Text('$fullDayName, $dateStr'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,7 +200,6 @@ class Last7DaysOverview extends StatelessWidget {
               ),
             ] else ...[
               Text('No completions recorded'),
-              Text('Goal: Not set'),
             ],
           ],
         ),
