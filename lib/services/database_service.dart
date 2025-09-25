@@ -320,29 +320,8 @@ class DatabaseService {
   Future<void> _migrateToVersion4(Database db) async {
     debugPrint('🔄 Migrating to version 4: Adding timezone handling');
     
-    await db.transaction((txn) async {
-      // Create app_metadata table to track data format
-      await txn.execute('''
-        CREATE TABLE IF NOT EXISTS app_metadata (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL
-        )
-      ''');
-      
-      // Mark existing data as legacy (local timezone)
-      await txn.insert('app_metadata', {
-        'key': 'timestamp_format',
-        'value': 'legacy_local'
-      });
-      
-      // Add index for better performance
-      await txn.execute('''
-        CREATE INDEX IF NOT EXISTS idx_app_metadata_key 
-        ON app_metadata(key)
-      ''');
-      
-      debugPrint('✅ Migration to version 4 completed successfully - Timezone handling added');
-    });
+    // No migration needed - all new data will be stored in UTC
+    debugPrint('✅ Migration to version 4 completed successfully - UTC timezone handling enabled');
   }
   
   /// Called when database is opened

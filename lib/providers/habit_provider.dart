@@ -61,37 +61,7 @@ class HabitState extends ChangeNotifier {
   TimeOfDay _selectedTime = TimeOfDay.now(); // Selected time for completion timestamps
   bool _showAllHabits = false; // Whether to show all habits or just today's habits
 
-  HabitState(this._habitRepository, this._settingsRepository) {
-    _initializeTimezoneHandling();
-  }
-  
-  /// Initialize timezone handling for the app
-  Future<void> _initializeTimezoneHandling() async {
-    try {
-      // Check if we have legacy data (local timezone) or new data (UTC)
-      final db = await databaseService.database;
-      final metadataRows = await db.query(
-        'app_metadata',
-        where: 'key = ?',
-        whereArgs: ['timestamp_format'],
-      );
-      
-      if (metadataRows.isNotEmpty) {
-        final format = metadataRows.first['value'] as String;
-        final isLegacy = format == 'legacy_local';
-        TimezoneUtils.setLegacyDataMode(isLegacy);
-        debugPrint('🌍 Timezone handling initialized: ${isLegacy ? "Legacy (local)" : "New (UTC)"}');
-      } else {
-        // No metadata found, assume legacy data for backward compatibility
-        TimezoneUtils.setLegacyDataMode(true);
-        debugPrint('🌍 Timezone handling initialized: Legacy (local) - no metadata found');
-      }
-    } catch (e) {
-      // If metadata table doesn't exist yet, assume legacy data
-      TimezoneUtils.setLegacyDataMode(true);
-      debugPrint('🌍 Timezone handling initialized: Legacy (local) - metadata table not found');
-    }
-  }
+  HabitState(this._habitRepository, this._settingsRepository);
 
   // Getters
   List<Habit> get habits => _habits;

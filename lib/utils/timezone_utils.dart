@@ -8,21 +8,8 @@ import 'package:flutter/foundation.dart';
 /// Key Features:
 /// - Convert local DateTime to UTC for database storage
 /// - Convert UTC timestamps back to local DateTime for display
-/// - Handle legacy data compatibility
 /// - Ensure consistent timezone handling across the app
 class TimezoneUtils {
-  static bool _isLegacyData = false;
-  
-  /// Set whether the app is using legacy data (stored in local timezone)
-  /// or new data (stored in UTC)
-  static void setLegacyDataMode(bool isLegacy) {
-    _isLegacyData = isLegacy;
-    debugPrint('🌍 TimezoneUtils: Legacy data mode = $isLegacy');
-  }
-  
-  /// Check if app is currently using legacy data format
-  static bool get isLegacyData => _isLegacyData;
-  
   /// Convert local DateTime to UTC timestamp for database storage
   ///
   /// @param localDateTime The local DateTime to convert
@@ -41,24 +28,6 @@ class TimezoneUtils {
     final localDateTime = DateTime.fromMillisecondsSinceEpoch(utcTimestamp).toLocal();
     debugPrint('🌍 Converting UTC timestamp $utcTimestamp to local ${localDateTime.toIso8601String()}');
     return localDateTime;
-  }
-  
-  /// Convert timestamp to local DateTime, handling both legacy and new formats
-  ///
-  /// @param timestamp Timestamp in milliseconds since epoch
-  /// @return Local DateTime for display
-  static DateTime fromTimestamp(int timestamp) {
-    if (_isLegacyData) {
-      // Legacy data was stored in local timezone
-      final localDateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-      debugPrint('🌍 Legacy: Converting timestamp $timestamp to local ${localDateTime.toIso8601String()}');
-      return localDateTime;
-    } else {
-      // New data is stored in UTC
-      final localDateTime = DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal();
-      debugPrint('🌍 New: Converting UTC timestamp $timestamp to local ${localDateTime.toIso8601String()}');
-      return localDateTime;
-    }
   }
   
   /// Get current UTC timestamp for database storage
