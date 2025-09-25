@@ -16,7 +16,7 @@ class TimezoneUtils {
   /// @return UTC timestamp in milliseconds since epoch
   static int toUtcTimestamp(DateTime localDateTime) {
     final utcTimestamp = localDateTime.toUtc().millisecondsSinceEpoch;
-    debugPrint('🌍 Converting local ${localDateTime.toIso8601String()} to UTC timestamp: $utcTimestamp');
+    debugPrint('🌍 [STORAGE] Converting local ${localDateTime.toIso8601String()} to UTC timestamp: $utcTimestamp');
     return utcTimestamp;
   }
   
@@ -26,7 +26,7 @@ class TimezoneUtils {
   /// @return Local DateTime for display
   static DateTime fromUtcTimestamp(int utcTimestamp) {
     final localDateTime = DateTime.fromMillisecondsSinceEpoch(utcTimestamp).toLocal();
-    debugPrint('🌍 Converting UTC timestamp $utcTimestamp to local ${localDateTime.toIso8601String()}');
+    debugPrint('🌍 [DISPLAY] Converting UTC timestamp $utcTimestamp to local ${localDateTime.toIso8601String()}');
     return localDateTime;
   }
   
@@ -35,7 +35,7 @@ class TimezoneUtils {
   /// @return Current UTC timestamp in milliseconds since epoch
   static int getCurrentUtcTimestamp() {
     final utcTimestamp = DateTime.now().toUtc().millisecondsSinceEpoch;
-    debugPrint('🌍 Current UTC timestamp: $utcTimestamp');
+    debugPrint('🌍 [CURRENT] Current UTC timestamp: $utcTimestamp');
     return utcTimestamp;
   }
   
@@ -45,7 +45,7 @@ class TimezoneUtils {
   /// @return UTC timestamp in seconds since epoch
   static int toUtcTimestampSeconds(DateTime localDateTime) {
     final utcTimestampSeconds = localDateTime.toUtc().millisecondsSinceEpoch ~/ 1000;
-    debugPrint('🌍 Converting local ${localDateTime.toIso8601String()} to UTC seconds: $utcTimestampSeconds');
+    debugPrint('🌍 [STORAGE-SECONDS] Converting local ${localDateTime.toIso8601String()} to UTC seconds: $utcTimestampSeconds');
     return utcTimestampSeconds;
   }
   
@@ -55,7 +55,7 @@ class TimezoneUtils {
   /// @return Local DateTime for display
   static DateTime fromUtcTimestampSeconds(int utcTimestampSeconds) {
     final localDateTime = DateTime.fromMillisecondsSinceEpoch(utcTimestampSeconds * 1000).toLocal();
-    debugPrint('🌍 Converting UTC seconds $utcTimestampSeconds to local ${localDateTime.toIso8601String()}');
+    debugPrint('🌍 [DISPLAY-SECONDS] Converting UTC seconds $utcTimestampSeconds to local ${localDateTime.toIso8601String()}');
     return localDateTime;
   }
   

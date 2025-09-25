@@ -599,6 +599,7 @@ class SqliteHabitRepository {
       
       final completions = <DateTime, CompletionRecord>{};
       for (final completionRow in completionRows) {
+        debugPrint('📅 Loading completion record for habit ${row['id']}');
         final date = TimezoneUtils.fromUtcTimestamp(completionRow['completion_date'] as int);
         final count = completionRow['completion_count'] as int;
         final goalAtCompletion = completionRow['goal_at_completion'] as int;
@@ -638,7 +639,10 @@ class SqliteHabitRepository {
         name: row['name'] as String,
         description: row['description'] as String? ?? '',
         colorIndex: row['color_index'] as int,
-        createdAt: TimezoneUtils.fromUtcTimestamp(row['created_at'] as int),
+        createdAt: (() {
+          debugPrint('🕒 Loading habit creation timestamp for habit ${row['id']}');
+          return TimezoneUtils.fromUtcTimestamp(row['created_at'] as int);
+        })(),
         completions: completions,
         iconName: row['icon_name'] as String,
         reminderTime: reminderTime,
