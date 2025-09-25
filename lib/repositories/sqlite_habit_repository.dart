@@ -885,9 +885,13 @@ class SqliteHabitRepository {
       final startTimestamp = TimezoneUtils.toUtcTimestampSeconds(startDate);
       final endTimestamp = TimezoneUtils.toUtcTimestampSeconds(endDate);
       
+      debugPrint('📊 [HourlyQuery] Querying hourly completions for $habitId');
+      debugPrint('📅 [HourlyQuery] Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
+      debugPrint('🌍 [HourlyQuery] UTC range: $startTimestamp to $endTimestamp');
+      
       final result = await db.rawQuery('''
         SELECT 
-          CAST(strftime('%H', completion_timestamp, 'unixepoch') AS INTEGER) as hour,
+          CAST(strftime('%H', completion_timestamp, 'unixepoch', 'localtime') AS INTEGER) as hour,
           COUNT(*) as count
         FROM habit_completion_timestamps 
         WHERE habit_id = ? 
@@ -907,6 +911,7 @@ class SqliteHabitRepository {
         final hour = row['hour'] as int;
         final count = row['count'] as int;
         hourlyCompletions[hour] = count;
+        debugPrint('🕐 [HourlyQuery] Hour $hour: $count completions');
       }
       
       debugPrint('📊 Hourly completions for $habitId: ${hourlyCompletions.entries.where((e) => e.value > 0).length} hours with completions');
