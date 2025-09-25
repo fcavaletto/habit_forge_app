@@ -229,10 +229,10 @@ class HabitState extends ChangeNotifier {
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
               hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, dateRange.start, dateRange.end);
               break;
-            case 'Total':
-              dateRange = DateRangeUtils.getTotal(virtualDate);
-              hourlyCompletions = await _habitRepository.getAllTimeHourlyCompletions(habitId);
-              break;
+        case 'Total':
+          dateRange = DateRangeUtils.getTotal(virtualDate);
+          hourlyCompletions = await _habitRepository.getTotalHourlyCompletions(habitId);
+          break;
             default:
               throw ArgumentError('Invalid time range: $timeRange');
           }

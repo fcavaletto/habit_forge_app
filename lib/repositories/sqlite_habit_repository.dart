@@ -922,18 +922,18 @@ class SqliteHabitRepository {
     }
   }
 
-  /// Get all-time hourly completion distribution for a habit
+  /// Get total hourly completion distribution for a habit
   ///
   /// Analyzes all completion timestamps for a habit to show historical
   /// completion patterns throughout the day.
   ///
   /// @param habitId The ID of the habit to analyze
   /// @return Map<int, int> where key = hour (0-23), value = completion count
-  Future<Map<int, int>> getAllTimeHourlyCompletions(String habitId) async {
+  Future<Map<int, int>> getTotalHourlyCompletions(String habitId) async {
     try {
       final db = await _databaseService.database;
       
-      debugPrint('📊 [HourlyQuery] Querying all-time hourly completions for $habitId');
+      debugPrint('📊 [HourlyQuery] Querying total hourly completions for $habitId');
       
       final result = await db.rawQuery('''
         SELECT 
