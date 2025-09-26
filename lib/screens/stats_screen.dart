@@ -12,6 +12,7 @@ import '../widgets/stats/active_days_widget.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
 import '../services/virtual_date_service.dart';
+import '../theme.dart';
 
 /// Stats Screen - Displays analytics and charts for habit tracking
 ///
@@ -190,8 +191,8 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
               child: Icon(
                 widget.habit.iconName.toIconData,
-                color: Theme.of(context).colorScheme.primary,
-                size: AppConstants.iconSizeMedium,
+                color: Theme.of(context).colorScheme.habitColor(widget.habit.colorIndex),
+                size: AppConstants.habitIconSize,
               ),
             ),
             const SizedBox(width: AppConstants.defaultPadding),
@@ -238,7 +239,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Active Days',
+                    'Active Days:',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
