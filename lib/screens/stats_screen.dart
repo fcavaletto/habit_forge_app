@@ -194,7 +194,7 @@ class _StatsScreenState extends State<StatsScreen> {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
+                color: Colors.black.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Stack(
@@ -219,15 +219,18 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                   ),
                   
-                  // Center message
-                  Center(
+                  // Positioned message (higher up)
+                  Positioned(
+                    top: 80,
+                    left: 0,
+                    right: 0,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.lock_outline,
                           size: 48,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -242,7 +245,7 @@ class _StatsScreenState extends State<StatsScreen> {
                           'Upgrade to PRO to access detailed statistics,\ncompletion patterns, and insights',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 24),
