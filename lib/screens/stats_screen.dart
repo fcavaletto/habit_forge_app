@@ -224,40 +224,59 @@ class _StatsScreenState extends State<StatsScreen> {
                     top: 80,
                     left: 0,
                     right: 0,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.lock_outline,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.onSurface,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                          width: 1,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Advanced Analytics',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Upgrade to PRO to access detailed statistics,\ncompletion patterns, and insights',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            size: 48,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        FilledButton.icon(
-                          onPressed: () {
-                            // Navigate to settings to enable PRO
-                            Navigator.of(context).pushNamed('/settings');
-                          },
-                          icon: const Icon(Icons.upgrade),
-                          label: const Text('Upgrade to PRO'),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'Advanced Analytics',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Upgrade to PRO to access detailed statistics,\ncompletion patterns, and insights',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          FilledButton.icon(
+                            onPressed: () {
+                              // Navigate to settings to enable PRO
+                              Navigator.of(context).pushNamed('/settings');
+                            },
+                            icon: const Icon(Icons.upgrade),
+                            label: const Text('Upgrade to PRO'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
