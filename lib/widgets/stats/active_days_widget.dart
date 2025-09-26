@@ -41,11 +41,14 @@ class ActiveDaysWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     debugPrint('📅 [ActiveDays] Rendering with frequency: $frequencyDays');
+    debugPrint('📅 [ActiveDays] Frequency days type: ${frequencyDays.runtimeType}');
+    debugPrint('📅 [ActiveDays] Frequency days length: ${frequencyDays.length}');
     
     // Validate and process frequency days
     final processedFrequencyDays = _processFrequencyDays(frequencyDays);
     final activeDays = _getActiveDays(processedFrequencyDays);
     
+    debugPrint('📅 [ActiveDays] Processed frequency: $processedFrequencyDays');
     debugPrint('📅 [ActiveDays] Active days: $activeDays');
     
     return Card(
@@ -86,14 +89,14 @@ class ActiveDaysWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
             decoration: BoxDecoration(
               color: isActive 
-                  ? colorScheme.primary.withValues(alpha: 0.1)
+                  ? colorScheme.primary.withValues(alpha: 0.2)
                   : colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
                 color: isActive 
-                    ? colorScheme.primary.withValues(alpha: 0.3)
+                    ? colorScheme.primary.withValues(alpha: 0.6)
                     : colorScheme.outline.withValues(alpha: 0.2),
-                width: 1,
+                width: isActive ? 2 : 1,
               ),
             ),
             child: Text(
@@ -103,7 +106,7 @@ class ActiveDaysWidget extends StatelessWidget {
                 color: isActive 
                     ? colorScheme.primary
                     : colorScheme.onSurface.withValues(alpha: 0.6),
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),
@@ -114,6 +117,8 @@ class ActiveDaysWidget extends StatelessWidget {
 
   /// Process and validate frequency days data
   Map<String, int> _processFrequencyDays(Map<String, int> frequencyDays) {
+    debugPrint('🔍 [ActiveDays] Processing frequency days: $frequencyDays');
+    
     // Handle null or empty frequency days
     if (frequencyDays.isEmpty) {
       debugPrint('⚠️ [ActiveDays] Empty frequency days, using defaults');
@@ -124,14 +129,18 @@ class ActiveDaysWidget extends StatelessWidget {
     final processedDays = <String, int>{};
     for (final dayKey in weekdayKeys) {
       final value = frequencyDays[dayKey];
+      debugPrint('🔍 [ActiveDays] Processing $dayKey: $value');
+      
       if (value != null && (value == 0 || value == 1)) {
         processedDays[dayKey] = value;
+        debugPrint('✅ [ActiveDays] $dayKey: $value (valid)');
       } else {
         debugPrint('⚠️ [ActiveDays] Invalid value for $dayKey: $value, defaulting to active');
         processedDays[dayKey] = 1; // Default to active
       }
     }
 
+    debugPrint('🔍 [ActiveDays] Final processed days: $processedDays');
     return processedDays;
   }
 

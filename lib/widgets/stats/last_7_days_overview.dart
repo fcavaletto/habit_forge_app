@@ -163,10 +163,4 @@ class Last7DaysOverview extends StatelessWidget {
     const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     return dayNames[date.weekday - 1]; // weekday is 1-7, array is 0-6
   }
-
-  String _getFullDayName(DateTime date) {
-    const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    return fullDayNames[date.weekday - 1]; // weekday is 1-7, array is 0-6
-  }
-
 }

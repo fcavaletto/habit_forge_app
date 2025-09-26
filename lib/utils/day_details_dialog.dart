@@ -76,7 +76,7 @@ class DayDetailsDialog {
                 ),
               ],
             ] else ...[
-              Text('No completions recorded'),
+              const Text('No completions recorded'),
             ],
           ],
         ),
