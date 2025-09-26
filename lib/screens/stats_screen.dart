@@ -118,14 +118,8 @@ class _StatsScreenState extends State<StatsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Habit Header
+                  // Habit Header (now includes Active Days)
                   _buildHabitHeader(context),
-                  const SizedBox(height: 24),
-
-                  // Active Days
-                  ActiveDaysWidget(
-                    frequencyDays: widget.habit.frequencyDays,
-                  ),
                   const SizedBox(height: 24),
 
                   // Current Streak
@@ -225,6 +219,18 @@ class _StatsScreenState extends State<StatsScreen> {
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w500,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Active Days',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ActiveDaysWidget(
+                    frequencyDays: widget.habit.frequencyDays,
                   ),
                 ],
               ),

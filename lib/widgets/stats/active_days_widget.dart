@@ -51,24 +51,7 @@ class ActiveDaysWidget extends StatelessWidget {
     debugPrint('📅 [ActiveDays] Processed frequency: $processedFrequencyDays');
     debugPrint('📅 [ActiveDays] Active days: $activeDays');
     
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.defaultPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Active Days',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildDaysRow(context, processedFrequencyDays),
-          ],
-        ),
-      ),
-    );
+    return _buildDaysRow(context, processedFrequencyDays);
   }
 
   /// Build the row of 7 day boxes
@@ -84,14 +67,14 @@ class ActiveDaysWidget extends StatelessWidget {
         return Expanded(
           child: Container(
             margin: EdgeInsets.only(
-              right: index < 6 ? 8.0 : 0, // Add spacing between boxes, except last
+              right: index < 6 ? 4.0 : 0, // Reduced spacing between boxes
             ),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2), // Smaller padding
             decoration: BoxDecoration(
               color: isActive 
                   ? colorScheme.primary.withValues(alpha: 0.2)
                   : colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(4), // Smaller border radius
               border: Border.all(
                 color: isActive 
                     ? colorScheme.primary.withValues(alpha: 0.6)
@@ -107,6 +90,7 @@ class ActiveDaysWidget extends StatelessWidget {
                     ? colorScheme.primary
                     : colorScheme.onSurface.withValues(alpha: 0.6),
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 10, // Smaller font size to fit better
               ),
             ),
           ),
