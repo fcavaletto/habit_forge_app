@@ -192,7 +192,7 @@ class _StatsScreenState extends State<StatsScreen> {
               child: Icon(
                 widget.habit.iconName.toIconData,
                 color: Theme.of(context).colorScheme.habitColor(widget.habit.colorIndex),
-                size: AppConstants.habitIconSize,
+                size: 36.0,
               ),
             ),
             const SizedBox(width: AppConstants.defaultPadding),
