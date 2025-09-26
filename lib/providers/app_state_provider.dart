@@ -9,6 +9,7 @@ import 'notification_provider.dart';
 import 'theme_provider.dart';
 import 'completion_count_provider.dart';
 import 'extended_color_palette_provider.dart';
+import 'pro_subscription_provider.dart';
 import 'date_provider.dart';
 
 /// Combined app state provider that manages all app-wide state
@@ -30,6 +31,7 @@ import 'date_provider.dart';
 /// - **ThemeProvider**: Manages theme preferences and switching
 /// - **CompletionCountProvider**: Tracks completion count display settings
 /// - **ExtendedColorPaletteProvider**: Manages extended color palette settings
+/// - **ProSubscriptionProvider**: Manages PRO subscription state
 ///
 /// ## Key Responsibilities:
 /// - **State Coordination**: Synchronizes state across multiple providers
@@ -57,9 +59,10 @@ class AppState extends ChangeNotifier {
   final ThemeProvider _themeProvider;
   final CompletionCountProvider _completionCountProvider;
   final ExtendedColorPaletteProvider _extendedColorPaletteProvider;
+  final ProSubscriptionProvider _proSubscriptionProvider;
   final DateProvider _dateProvider;
 
-  AppState(this._habitProvider, this._notificationProvider, this._themeProvider, this._completionCountProvider, this._extendedColorPaletteProvider, this._dateProvider) {
+  AppState(this._habitProvider, this._notificationProvider, this._themeProvider, this._completionCountProvider, this._extendedColorPaletteProvider, this._proSubscriptionProvider, this._dateProvider) {
     // Listen to changes in child providers
     _habitProvider.addListener(() {
       debugPrint('🔗 AppState received notification from HabitProvider');
@@ -79,6 +82,10 @@ class AppState extends ChangeNotifier {
     });
     _extendedColorPaletteProvider.addListener(() {
       debugPrint('🔗 AppState received notification from ExtendedColorPaletteProvider');
+      notifyListeners();
+    });
+    _proSubscriptionProvider.addListener(() {
+      debugPrint('🔗 AppState received notification from ProSubscriptionProvider');
       notifyListeners();
     });
     _dateProvider.addListener(() {
@@ -110,6 +117,10 @@ class AppState extends ChangeNotifier {
   // Extended color palette provider access
   ExtendedColorPaletteProvider get extendedColorPaletteProvider => _extendedColorPaletteProvider;
   bool get isExtendedColorPalette => _extendedColorPaletteProvider.isExtendedMode;
+
+  // Pro subscription provider access
+  ProSubscriptionProvider get proSubscriptionProvider => _proSubscriptionProvider;
+  bool get isProSubscriptionActive => _proSubscriptionProvider.isProSubscriptionActive;
 
   // Date provider access
   DateProvider get dateProvider => _dateProvider;
@@ -164,6 +175,7 @@ class AppState extends ChangeNotifier {
         _themeProvider.loadThemeMode(),
         _completionCountProvider.loadCompletionCountSetting(),
         _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
+        _proSubscriptionProvider.loadProSubscriptionSetting(),
       ]).timeout(
         const Duration(seconds: 20),
         onTimeout: () {
@@ -221,13 +233,14 @@ class AppState extends ChangeNotifier {
     _themeProvider.removeListener(notifyListeners);
     _completionCountProvider.removeListener(notifyListeners);
     _extendedColorPaletteProvider.removeListener(notifyListeners);
+    _proSubscriptionProvider.removeListener(notifyListeners);
     super.dispose();
   }
 }
 
 /// Provider for AppState
 class AppStateProvider extends AppState {
-  AppStateProvider(super.habitProvider, super.notificationProvider, super.themeProvider, super.completionCountProvider, super.extendedColorPaletteProvider, super.dateProvider);
+  AppStateProvider(super.habitProvider, super.notificationProvider, super.themeProvider, super.completionCountProvider, super.extendedColorPaletteProvider, super.proSubscriptionProvider, super.dateProvider);
 
   // Factory method for easy creation with SQLite repository
   factory AppStateProvider.create() {
@@ -238,8 +251,9 @@ class AppStateProvider extends AppState {
     final themeProvider = ThemeProvider(settingsRepository);
     final completionCountProvider = CompletionCountProvider(settingsRepository);
     final extendedColorPaletteProvider = ExtendedColorPaletteProvider(settingsRepository);
+    final proSubscriptionProvider = ProSubscriptionProvider(settingsRepository);
     final dateProvider = DateProvider();
 
-    return AppStateProvider(habitProvider, notificationProvider, themeProvider, completionCountProvider, extendedColorPaletteProvider, dateProvider);
+    return AppStateProvider(habitProvider, notificationProvider, themeProvider, completionCountProvider, extendedColorPaletteProvider, proSubscriptionProvider, dateProvider);
   }
 }
