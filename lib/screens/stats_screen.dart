@@ -211,6 +211,14 @@ class _StatsScreenState extends State<StatsScreen> {
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Goal: ${widget.habit.targetGoal}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ),
