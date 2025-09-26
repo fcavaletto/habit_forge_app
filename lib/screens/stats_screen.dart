@@ -162,6 +162,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   MonthlyCalendar(
                     completions: completions,
                     currentDate: currentDate,
+                    habitId: widget.habit.id,
                   ),
                 ],
               ),

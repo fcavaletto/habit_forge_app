@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 import '../../models/habit.dart';
+import '../../utils/day_details_dialog.dart';
 
 /// Monthly Calendar Widget
 ///
@@ -10,12 +11,14 @@ class MonthlyCalendar extends StatefulWidget {
   final Map<DateTime, CompletionRecord> completions;
   final DateTime currentDate;
   final DateTime? selectedMonth;
+  final String habitId; // Habit ID for fetching completion timestamps
 
   const MonthlyCalendar({
     super.key,
     required this.completions,
     required this.currentDate,
     this.selectedMonth,
+    required this.habitId,
   });
 
   @override
@@ -205,41 +208,44 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                              date.month == widget.currentDate.month &&
                              date.day == widget.currentDate.day;
 
-              return Container(
-                decoration: BoxDecoration(
-                  color: isFullyCompleted
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(6),
-                  border: isToday
-                      ? Border.all(
-                          color: Theme.of(context).colorScheme.secondary,
-                          width: 3,
-                        )
-                      : null,
-                  // Add gradient for partial completion
-                  gradient: hasCompletion && !isFullyCompleted && fillPercentage > 0
-                      ? LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            Theme.of(context).colorScheme.primary.withValues(alpha: fillPercentage.clamp(0.1, 1.0)), // Ensure minimum alpha
-                            Theme.of(context).colorScheme.surfaceContainerHighest,
-                          ],
-                        )
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  dayNumber.toString(),
-                  style: TextStyle(
+              return GestureDetector(
+                onTap: () async => await DayDetailsDialog.show(context, date, record, widget.habitId),
+                child: Container(
+                  decoration: BoxDecoration(
                     color: isFullyCompleted
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : hasCompletion
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(6),
+                    border: isToday
+                        ? Border.all(
+                            color: Theme.of(context).colorScheme.secondary,
+                            width: 3,
+                          )
+                        : null,
+                    // Add gradient for partial completion
+                    gradient: hasCompletion && !isFullyCompleted && fillPercentage > 0
+                        ? LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Theme.of(context).colorScheme.primary.withValues(alpha: fillPercentage.clamp(0.1, 1.0)), // Ensure minimum alpha
+                              Theme.of(context).colorScheme.surfaceContainerHighest,
+                            ],
+                          )
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    dayNumber.toString(),
+                    style: TextStyle(
+                      color: isFullyCompleted
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : hasCompletion
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               );

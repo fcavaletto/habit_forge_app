@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 import '../../models/habit.dart';
-import '../../repositories/sqlite_habit_repository.dart';
-import '../../services/database_service.dart';
+import '../../utils/day_details_dialog.dart';
 
 /// Last 7 Days Overview Widget
 ///
@@ -78,7 +77,7 @@ class Last7DaysOverview extends StatelessWidget {
     return Column(
       children: [
         GestureDetector(
-          onTap: () async => await _showDayDetails(context, date, record),
+          onTap: () async => await DayDetailsDialog.show(context, date, record, habitId),
           child: Container(
             width: 40,
             height: 40,
@@ -170,89 +169,4 @@ class Last7DaysOverview extends StatelessWidget {
     return fullDayNames[date.weekday - 1]; // weekday is 1-7, array is 0-6
   }
 
-  /// Show day details dialog
-  Future<void> _showDayDetails(BuildContext context, DateTime date, CompletionRecord? record) async {
-    final fullDayName = _getFullDayName(date);
-    final dateStr = '${date.day} ${_getMonthAbbreviation(date.month)}';
-    
-    // Fetch completion timestamps for this day
-    List<DateTime> completionTimes = [];
-    if (record != null && record.count > 0) {
-      try {
-        final databaseService = DatabaseService();
-        final repository = SqliteHabitRepository(databaseService);
-        completionTimes = await repository.getCompletionTimestampsForDay(habitId, date);
-      } catch (e) {
-        debugPrint('❌ Error fetching completion times: $e');
-      }
-    }
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('$fullDayName, $dateStr'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (record != null) ...[
-              Text('Goal: ${record.goalAtCompletion}'),
-              Text('Completed: ${record.count}'),
-              Text('Status: ${record.isGoalAchieved ? "Goal Achieved" : "Partial"}'),
-              const SizedBox(height: 8),
-              Text(
-                'Completion Times:',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              if (completionTimes.isNotEmpty) ...[
-                ...completionTimes.map((time) => Padding(
-                  padding: const EdgeInsets.only(left: 8, bottom: 2),
-                  child: Text(
-                    _formatTime(time),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                )),
-              ] else ...[
-                Text(
-                  'No completion times available',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ] else ...[
-              Text('No completions recorded'),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Get abbreviated month name from month number
-  String _getMonthAbbreviation(int month) {
-    const monthAbbreviations = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return monthAbbreviations[month];
-  }
-
-  /// Format time for display (24-hour format)
-  String _formatTime(DateTime time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
 }
