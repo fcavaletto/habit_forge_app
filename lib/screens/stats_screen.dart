@@ -137,41 +137,131 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Last 7 Days Overview
-                  Last7DaysOverview(
-                    weeklyData: _getLast7DaysData(completions, currentDate),
-                    currentDate: currentDate,
-                    completions: completions,
-                    habitId: widget.habit.id,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Hourly Completion Histogram
-                  if (_hourlyData != null)
-                    HourlyHistogram(
-                      data: _hourlyData!,
-                      onTimeRangeChanged: _onTimeRangeChanged,
-                    )
-                  else if (_isLoadingHourlyData)
-                    _buildHistogramLoadingState()
-                  else if (_hourlyDataError != null)
-                    _buildHistogramErrorState()
-                  else
-                    _buildHistogramEmptyState(),
-                  const SizedBox(height: 24),
-
-                  // Monthly Calendar
-                  MonthlyCalendar(
-                    completions: completions,
-                    currentDate: currentDate,
-                    habitId: widget.habit.id,
-                  ),
+                  // PRO Features Section (Last 7 Days onward)
+                  _buildProFeaturesSection(context, appState, completions, currentDate),
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  /// Builds the PRO features section with dimmed overlay when PRO is inactive
+  Widget _buildProFeaturesSection(BuildContext context, AppState appState, Map<DateTime, CompletionRecord> completions, DateTime currentDate) {
+    final isProActive = appState.isProSubscriptionActive;
+    
+    return Stack(
+      children: [
+        // Content
+        Column(
+          children: [
+            // Last 7 Days Overview
+            Last7DaysOverview(
+              weeklyData: _getLast7DaysData(completions, currentDate),
+              currentDate: currentDate,
+              completions: completions,
+              habitId: widget.habit.id,
+            ),
+            const SizedBox(height: 24),
+
+            // Hourly Completion Histogram
+            if (_hourlyData != null)
+              HourlyHistogram(
+                data: _hourlyData!,
+                onTimeRangeChanged: _onTimeRangeChanged,
+              )
+            else if (_isLoadingHourlyData)
+              _buildHistogramLoadingState()
+            else if (_hourlyDataError != null)
+              _buildHistogramErrorState()
+            else
+              _buildHistogramEmptyState(),
+            const SizedBox(height: 24),
+
+            // Monthly Calendar
+            MonthlyCalendar(
+              completions: completions,
+              currentDate: currentDate,
+              habitId: widget.habit.id,
+            ),
+          ],
+        ),
+        
+        // Dimmed overlay when PRO is inactive
+        if (!isProActive)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Stack(
+                children: [
+                  // PRO badge in top-right corner
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'PRO',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Center message
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.lock_outline,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Advanced Analytics',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Upgrade to PRO to access detailed statistics,\ncompletion patterns, and insights',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        FilledButton.icon(
+                          onPressed: () {
+                            // Navigate to settings to enable PRO
+                            Navigator.of(context).pushNamed('/settings');
+                          },
+                          icon: const Icon(Icons.upgrade),
+                          label: const Text('Upgrade to PRO'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 
