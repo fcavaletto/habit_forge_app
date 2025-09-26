@@ -205,13 +205,15 @@ class _StatsScreenState extends State<StatsScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.habit.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  if (widget.habit.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.habit.description,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     'Goal: ${widget.habit.targetGoal}',
