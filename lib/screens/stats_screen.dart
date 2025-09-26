@@ -8,6 +8,7 @@ import '../widgets/stats/streak_display.dart';
 import '../widgets/stats/last_7_days_overview.dart';
 import '../widgets/stats/monthly_calendar.dart';
 import '../widgets/stats/hourly_histogram.dart';
+import '../widgets/stats/active_days_widget.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
 import '../services/virtual_date_service.dart';
@@ -119,6 +120,12 @@ class _StatsScreenState extends State<StatsScreen> {
                 children: [
                   // Habit Header
                   _buildHabitHeader(context),
+                  const SizedBox(height: 24),
+
+                  // Active Days
+                  ActiveDaysWidget(
+                    frequencyDays: widget.habit.frequencyDays,
+                  ),
                   const SizedBox(height: 24),
 
                   // Current Streak
