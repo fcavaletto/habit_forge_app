@@ -231,8 +231,10 @@ class _StatsScreenState extends State<StatsScreen> {
                         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-                          width: 1,
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.white.withValues(alpha: 0.3)
+                              : Colors.black.withValues(alpha: 0.3),
+                          width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
