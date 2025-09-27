@@ -5,14 +5,17 @@ import '../../utils/constants.dart';
 ///
 /// Shows the current and longest streaks for a habit.
 /// Provides visual representation of habit consistency and achievement.
+/// Displays the current streak calculation mode for user awareness.
 class StreakDisplay extends StatelessWidget {
   final int currentStreak;
   final int longestStreak;
+  final String streakCalculationMode;
 
   const StreakDisplay({
     super.key,
     required this.currentStreak,
     required this.longestStreak,
+    required this.streakCalculationMode,
   });
 
   @override
@@ -29,6 +32,14 @@ class StreakDisplay extends StatelessWidget {
               'Streaks',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Calculation: $streakCalculationMode',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                fontStyle: FontStyle.italic,
               ),
             ),
             const SizedBox(height: AppConstants.defaultPadding),

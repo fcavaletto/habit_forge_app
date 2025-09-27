@@ -449,22 +449,66 @@ class Habit {
 
   /// Calculate current streak of consecutive goal-achieved days
   ///
+  /// Supports two calculation modes:
+  /// - All Days: Count consecutive days regardless of active days
+  /// - Active Days Only: Count consecutive active days only
+  ///
   /// Counts backward from the virtual current date to find the longest sequence
   /// of consecutive days where this habit achieved its goal.
   ///
+  /// @param isActiveDaysOnly If true, only count active days; if false, count all days
   /// @return Number of consecutive days with goal achieved (ending on virtual current date or yesterday)
-  int get currentStreak {
+  int calculateCurrentStreak({bool isActiveDaysOnly = false}) {
     final today = VirtualDateService().currentDate;
     int streak = 0;
     DateTime checkDate = today;
 
+    // Edge case: No active days in active days mode
+    if (isActiveDaysOnly && !_hasActiveDays()) {
+      return 0;
+    }
+
     // Count consecutive goal-achieved days backward from virtual current date
-    while (isGoalAchieved(checkDate)) {
-      streak++;
-      checkDate = checkDate.subtract(const Duration(days: 1));
+    while (true) {
+      final weekday = _getWeekdayKey(checkDate.weekday);
+      final isActiveDay = frequencyDays[weekday] == 1;
+      
+      // Skip inactive days in active days mode
+      if (isActiveDaysOnly && !isActiveDay) {
+        checkDate = checkDate.subtract(const Duration(days: 1));
+        continue;
+      }
+      
+      if (isGoalAchieved(checkDate)) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
     }
 
     return streak;
+  }
+
+  /// Helper method to check if habit has any active days
+  bool _hasActiveDays() {
+    return frequencyDays.values.any((value) => value == 1);
+  }
+
+  /// Helper method to get weekday key from DateTime weekday
+  String _getWeekdayKey(int weekday) {
+    const weekdays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    return weekdays[weekday % 7];
+  }
+
+  /// Calculate current streak of consecutive goal-achieved days (legacy getter)
+  ///
+  /// This is the original implementation for backward compatibility.
+  /// New code should use calculateCurrentStreak() with explicit parameters.
+  ///
+  /// @return Number of consecutive days with goal achieved (ending on virtual current date or yesterday)
+  int get currentStreak {
+    return calculateCurrentStreak(isActiveDaysOnly: false);
   }
 
   /// Get total number of completions for this habit

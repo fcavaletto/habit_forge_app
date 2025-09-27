@@ -125,8 +125,9 @@ class _StatsScreenState extends State<StatsScreen> {
 
                   // Current Streak
                   StreakDisplay(
-                    currentStreak: _calculateCurrentStreak(completions, currentDate),
-                    longestStreak: _calculateLongestStreak(completions),
+                    currentStreak: _calculateCurrentStreak(completions, currentDate, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled),
+                    longestStreak: _calculateLongestStreak(completions, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled),
+                    streakCalculationMode: appState.streakCalculationMode,
                   ),
                   const SizedBox(height: 24),
 
@@ -410,20 +411,45 @@ class _StatsScreenState extends State<StatsScreen> {
 
   /// Calculates the current streak of consecutive goal-achieved days
   ///
+  /// Supports two calculation modes:
+  /// - All Days: Count consecutive days regardless of active days
+  /// - Active Days Only: Count consecutive active days only
+  ///
   /// A streak continues as long as the habit achieves its goal each day.
   /// The streak breaks when a day's goal is not met, but can resume the next day.
-  int _calculateCurrentStreak(Map<DateTime, CompletionRecord> completions, DateTime currentDate) {
+  int _calculateCurrentStreak(Map<DateTime, CompletionRecord> completions, DateTime currentDate, Map<String, int> frequencyDays, bool isActiveDaysOnly) {
     int streak = 0;
+    DateTime checkDate = currentDate;
 
-    for (int i = 0; i < 365; i++) {
-      final date = currentDate.subtract(Duration(days: i));
-      final record = completions[DateTime(date.year, date.month, date.day)];
+    // Edge case: No active days in active days mode
+    if (isActiveDaysOnly && !_hasActiveDays(frequencyDays)) {
+      return 0;
+    }
 
+    // Count consecutive goal-achieved days backward from current date
+    while (true) {
+      final dayKey = DateTime(checkDate.year, checkDate.month, checkDate.day);
+      final weekday = _getWeekdayKey(checkDate.weekday);
+      
+      // Check if this day is active (only relevant for active days mode)
+      final isActiveDay = frequencyDays[weekday] == 1;
+      
+      if (isActiveDaysOnly && !isActiveDay) {
+        // Skip inactive days in active days mode
+        checkDate = checkDate.subtract(const Duration(days: 1));
+        continue;
+      }
+      
+      final record = completions[dayKey];
+      
       if (record != null && record.isGoalAchieved) {
         streak++;
-      } else if (i == 0) {
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else if (checkDate.year == currentDate.year && 
+                 checkDate.month == currentDate.month && 
+                 checkDate.day == currentDate.day) {
         // Don't break streak for today if goal not achieved yet
-        continue;
+        break;
       } else {
         break;
       }
@@ -434,14 +460,32 @@ class _StatsScreenState extends State<StatsScreen> {
 
   /// Calculates the longest streak of consecutive goal-achieved days
   ///
+  /// Supports two calculation modes:
+  /// - All Days: Count consecutive days regardless of active days
+  /// - Active Days Only: Count consecutive active days only
+  ///
   /// This represents the personal best achievement for this habit.
-  int _calculateLongestStreak(Map<DateTime, CompletionRecord> completions) {
+  int _calculateLongestStreak(Map<DateTime, CompletionRecord> completions, Map<String, int> frequencyDays, bool isActiveDaysOnly) {
     int longestStreak = 0;
     int currentStreak = 0;
+
+    // Edge case: No active days in active days mode
+    if (isActiveDaysOnly && !_hasActiveDays(frequencyDays)) {
+      return 0;
+    }
 
     final dates = completions.keys.toList()..sort();
 
     for (final date in dates) {
+      final weekday = _getWeekdayKey(date.weekday);
+      final isActiveDay = frequencyDays[weekday] == 1;
+      
+      // Skip inactive days in active days mode
+      if (isActiveDaysOnly && !isActiveDay) {
+        currentStreak = 0; // Reset streak when encountering inactive day
+        continue;
+      }
+      
       final record = completions[date];
       if (record != null && record.isGoalAchieved) {
         currentStreak++;
@@ -452,6 +496,17 @@ class _StatsScreenState extends State<StatsScreen> {
     }
 
     return longestStreak;
+  }
+
+  /// Helper method to check if habit has any active days
+  bool _hasActiveDays(Map<String, int> frequencyDays) {
+    return frequencyDays.values.any((value) => value == 1);
+  }
+
+  /// Helper method to get weekday key from DateTime weekday
+  String _getWeekdayKey(int weekday) {
+    const weekdays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    return weekdays[weekday % 7];
   }
 
   /// Builds loading state for histogram
