@@ -124,10 +124,17 @@ class _StatsScreenState extends State<StatsScreen> {
                   const SizedBox(height: 24),
 
                   // Current Streak
-                  StreakDisplay(
-                    currentStreak: _calculateCurrentStreak(completions, currentDate, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled),
-                    longestStreak: _calculateLongestStreak(completions, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled),
-                    streakCalculationMode: appState.streakCalculationMode,
+                  Builder(
+                    builder: (context) {
+                      final longestStreakData = _calculateLongestStreakWithRange(completions, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled);
+                      return StreakDisplay(
+                        currentStreak: _calculateCurrentStreak(completions, currentDate, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled),
+                        longestStreak: longestStreakData['streak'] as int,
+                        streakCalculationMode: appState.streakCalculationMode,
+                        longestStreakStartDate: longestStreakData['startDate'] as DateTime?,
+                        longestStreakEndDate: longestStreakData['endDate'] as DateTime?,
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
 
@@ -496,6 +503,64 @@ class _StatsScreenState extends State<StatsScreen> {
     }
 
     return longestStreak;
+  }
+
+  /// Calculates the longest streak with its date range
+  ///
+  /// Returns a map containing both the streak count and the date range.
+  /// Used for displaying detailed information in tooltips.
+  Map<String, dynamic> _calculateLongestStreakWithRange(Map<DateTime, CompletionRecord> completions, Map<String, int> frequencyDays, bool isActiveDaysOnly) {
+    int longestStreak = 0;
+    int currentStreak = 0;
+    DateTime? longestStreakStart;
+    DateTime? longestStreakEnd;
+    DateTime? currentStreakStart;
+
+    // Edge case: No active days in active days mode
+    if (isActiveDaysOnly && !_hasActiveDays(frequencyDays)) {
+      return {
+        'streak': 0,
+        'startDate': null,
+        'endDate': null,
+      };
+    }
+
+    final dates = completions.keys.toList()..sort();
+
+    for (final date in dates) {
+      final weekday = _getWeekdayKey(date.weekday);
+      final isActiveDay = frequencyDays[weekday] == 1;
+      
+      // Skip inactive days in active days mode
+      if (isActiveDaysOnly && !isActiveDay) {
+        currentStreak = 0; // Reset streak when encountering inactive day
+        currentStreakStart = null;
+        continue;
+      }
+      
+      final record = completions[date];
+      if (record != null && record.isGoalAchieved) {
+        if (currentStreak == 0) {
+          currentStreakStart = date; // Start of new streak
+        }
+        currentStreak++;
+        
+        if (currentStreak > longestStreak) {
+          longestStreak = currentStreak;
+          longestStreakStart = currentStreakStart;
+          longestStreakEnd = date;
+        }
+      } else {
+        currentStreak = 0;
+        currentStreakStart = null;
+      }
+    }
+
+    return {
+      'streak': longestStreak,
+      'startDate': longestStreakStart,
+      'endDate': longestStreakEnd,
+    };
   }
 
   /// Helper method to check if habit has any active days
