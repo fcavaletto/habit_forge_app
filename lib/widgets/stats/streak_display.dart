@@ -48,32 +48,34 @@ class StreakDisplay extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppConstants.defaultPadding),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStreakCard(
-                    context: context,
-                    title: 'Current Streak',
-                    value: currentStreak,
-                    icon: Icons.local_fire_department,
-                    color: colorScheme.primary,
-                    subtitle: _getStreakSubtitle(currentStreak),
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildStreakCard(
+                      context: context,
+                      title: 'Current Streak',
+                      value: currentStreak,
+                      icon: Icons.local_fire_department,
+                      color: colorScheme.primary,
+                      subtitle: _getStreakSubtitle(currentStreak),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppConstants.defaultMargin),
-                Expanded(
-                  child: _buildStreakCard(
-                    context: context,
-                    title: 'Longest Streak',
-                    value: longestStreak,
-                    icon: Icons.emoji_events,
-                    color: colorScheme.secondary,
-                    subtitle: 'Personal best',
-                    showTooltip: true,
-                    tooltipText: _getLongestStreakTooltip(),
+                  const SizedBox(width: AppConstants.defaultMargin),
+                  Expanded(
+                    child: _buildStreakCard(
+                      context: context,
+                      title: 'Longest Streak',
+                      value: longestStreak,
+                      icon: Icons.emoji_events,
+                      color: colorScheme.secondary,
+                      subtitle: 'Personal best',
+                      showTooltip: true,
+                      tooltipText: _getLongestStreakTooltip(),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

@@ -486,35 +486,51 @@ class _StatsScreenState extends State<StatsScreen> {
       };
     }
 
-    final dates = completions.keys.toList()..sort();
+    // Get the date range to check (from earliest completion to latest)
+    if (completions.isEmpty) {
+      return {
+        'streak': 0,
+        'startDate': null,
+        'endDate': null,
+      };
+    }
 
-    for (final date in dates) {
-      final weekday = _getWeekdayKey(date.weekday);
+    final dates = completions.keys.toList()..sort();
+    final startDate = dates.first;
+    final endDate = dates.last;
+
+    // Check consecutive days from start to end
+    DateTime currentDate = startDate;
+    while (currentDate.isBefore(endDate.add(const Duration(days: 1)))) {
+      final weekday = _getWeekdayKey(currentDate.weekday);
       final isActiveDay = frequencyDays[weekday] == 1;
       
       // Skip inactive days in active days mode
       if (isActiveDaysOnly && !isActiveDay) {
         currentStreak = 0; // Reset streak when encountering inactive day
         currentStreakStart = null;
+        currentDate = currentDate.add(const Duration(days: 1));
         continue;
       }
       
-      final record = completions[date];
+      final record = completions[currentDate];
       if (record != null && record.isGoalAchieved) {
         if (currentStreak == 0) {
-          currentStreakStart = date; // Start of new streak
+          currentStreakStart = currentDate; // Start of new streak
         }
         currentStreak++;
         
         if (currentStreak > longestStreak) {
           longestStreak = currentStreak;
           longestStreakStart = currentStreakStart;
-          longestStreakEnd = date;
+          longestStreakEnd = currentDate;
         }
       } else {
         currentStreak = 0;
         currentStreakStart = null;
       }
+      
+      currentDate = currentDate.add(const Duration(days: 1));
     }
 
     return {
