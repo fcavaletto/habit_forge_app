@@ -38,7 +38,23 @@ class CompletionChart extends StatelessWidget {
               height: AppConstants.chartHeight,
               child: LineChart(
                 LineChartData(
-                  gridData: const FlGridData(show: false),
+                  gridData: FlGridData(
+                    show: true,
+                    horizontalInterval: 0.2, // Show lines at 20%, 40%, 60%, 80%
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(
+                        color: colorScheme.outline.withValues(alpha: 0.1),
+                        strokeWidth: 0.5,
+                      );
+                    },
+                    verticalInterval: 1,
+                    getDrawingVerticalLine: (value) {
+                      return FlLine(
+                        color: Colors.transparent,
+                        strokeWidth: 0,
+                      );
+                    },
+                  ),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -52,26 +68,7 @@ class CompletionChart extends StatelessWidget {
                         },
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          // Show date labels every 5 days to avoid crowding
-                          if (value.toInt() % 5 == 0) {
-                            final daysAgo = AppConstants.chartDaysCount - 1 - value.toInt();
-                            final date = currentDate.subtract(Duration(days: daysAgo));
-                            return Transform.rotate(
-                              angle: 30 * (3.14159 / 180), // 30 degrees in radians
-                              child: Text(
-                                '${date.day} ${_getMonthAbbreviation(date.month)}',
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                    ),
+                    bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
