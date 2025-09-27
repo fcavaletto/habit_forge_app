@@ -39,16 +39,8 @@ class ActiveDaysWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('📅 [ActiveDays] Rendering with frequency: $frequencyDays');
-    debugPrint('📅 [ActiveDays] Frequency days type: ${frequencyDays.runtimeType}');
-    debugPrint('📅 [ActiveDays] Frequency days length: ${frequencyDays.length}');
-    
     // Validate and process frequency days
     final processedFrequencyDays = _processFrequencyDays(frequencyDays);
-    final activeDays = _getActiveDays(processedFrequencyDays);
-    
-    debugPrint('📅 [ActiveDays] Processed frequency: $processedFrequencyDays');
-    debugPrint('📅 [ActiveDays] Active days: $activeDays');
     
     return _buildDaysRow(context, processedFrequencyDays);
   }
@@ -100,8 +92,6 @@ class ActiveDaysWidget extends StatelessWidget {
 
   /// Process and validate frequency days data
   Map<String, int> _processFrequencyDays(Map<String, int> frequencyDays) {
-    debugPrint('🔍 [ActiveDays] Processing frequency days: $frequencyDays');
-    
     // Handle null or empty frequency days
     if (frequencyDays.isEmpty) {
       debugPrint('⚠️ [ActiveDays] Empty frequency days, using defaults');
@@ -112,32 +102,16 @@ class ActiveDaysWidget extends StatelessWidget {
     final processedDays = <String, int>{};
     for (final dayKey in weekdayKeys) {
       final value = frequencyDays[dayKey];
-      debugPrint('🔍 [ActiveDays] Processing $dayKey: $value');
       
       if (value != null && (value == 0 || value == 1)) {
         processedDays[dayKey] = value;
-        debugPrint('✅ [ActiveDays] $dayKey: $value (valid)');
       } else {
         debugPrint('⚠️ [ActiveDays] Invalid value for $dayKey: $value, defaulting to active');
         processedDays[dayKey] = 1; // Default to active
       }
     }
 
-    debugPrint('🔍 [ActiveDays] Final processed days: $processedDays');
     return processedDays;
-  }
-
-  /// Get list of active day names
-  List<String> _getActiveDays(Map<String, int> frequencyDays) {
-    final activeDays = <String>[];
-    for (int i = 0; i < weekdayKeys.length; i++) {
-      final dayKey = weekdayKeys[i];
-      final dayName = weekdayNames[i];
-      if (_isDayActive(dayKey, frequencyDays)) {
-        activeDays.add(dayName);
-      }
-    }
-    return activeDays;
   }
 
   /// Check if a specific day is active

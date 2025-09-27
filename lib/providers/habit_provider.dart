@@ -248,7 +248,6 @@ class HabitState extends ChangeNotifier {
           );
           
           debugPrint('📊 [HabitProvider] Loaded hourly data for $habitId: $totalCompletions total completions across ${data.activeHours.length} hours');
-          debugPrint('📅 [HabitProvider] Date range: ${dateRange.start.toIso8601String()} to ${dateRange.end.toIso8601String()}');
           return data;
         } catch (e) {
           debugPrint('❌ [HabitProvider] Error loading hourly data: $e');
