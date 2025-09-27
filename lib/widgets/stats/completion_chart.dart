@@ -47,7 +47,7 @@ class CompletionChart extends StatelessWidget {
                         getTitlesWidget: (value, meta) {
                           return Text(
                             '${(value * 100).toInt()}%',
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 10),
                           );
                         },
                       ),
@@ -56,13 +56,16 @@ class CompletionChart extends StatelessWidget {
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          // Show date labels every 7 days to avoid crowding
-                          if (value.toInt() % 7 == 0) {
+                          // Show date labels every 5 days to avoid crowding
+                          if (value.toInt() % 5 == 0) {
                             final daysAgo = AppConstants.chartDaysCount - 1 - value.toInt();
                             final date = currentDate.subtract(Duration(days: daysAgo));
-                            return Text(
-                              '${date.day} ${_getMonthAbbreviation(date.month)}',
-                              style: const TextStyle(fontSize: 10),
+                            return Transform.rotate(
+                              angle: 30 * (3.14159 / 180), // 30 degrees in radians
+                              child: Text(
+                                '${date.day} ${_getMonthAbbreviation(date.month)}',
+                                style: const TextStyle(fontSize: 10),
+                              ),
                             );
                           }
                           return const Text('');
