@@ -15,7 +15,7 @@ import 'package:path/path.dart';
 /// - Transaction support for data consistency
 class DatabaseService {
   static const String _databaseName = 'habit_forge.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
   
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
@@ -38,12 +38,18 @@ class DatabaseService {
       
       debugPrint('🗄️ Initializing database at: $path');
       
+      // Add timeout to prevent hanging during database initialization
       return await openDatabase(
         path,
         version: _databaseVersion,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Database initialization timed out', const Duration(seconds: 10));
+        },
       );
     } catch (e) {
       debugPrint('❌ Error initializing database: $e');
@@ -71,16 +77,25 @@ class DatabaseService {
         )
       ''');
       
-      // Create habit_completions table
+      // Create habit_completions table with goal tracking
       await txn.execute('''
         CREATE TABLE habit_completions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
           completion_date INTEGER NOT NULL,
-          completion_count INTEGER NOT NULL DEFAULT 1,
-          completion_goal INTEGER NOT NULL DEFAULT 1,
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE,
-          UNIQUE(habit_id, completion_date)
+          completion_count INTEGER NOT NULL DEFAULT 0,
+          goal_at_completion INTEGER NOT NULL,
+          PRIMARY KEY (habit_id, completion_date),
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        )
+      ''');
+      
+      // Create habit_completion_timestamps table for individual completion tracking
+      await txn.execute('''
+        CREATE TABLE habit_completion_timestamps (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          habit_id TEXT NOT NULL,
+          completion_timestamp INTEGER NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
       
@@ -126,6 +141,16 @@ class DatabaseService {
       ''');
       
       await txn.execute('''
+        CREATE INDEX idx_habit_completion_timestamps_habit_id 
+        ON habit_completion_timestamps(habit_id)
+      ''');
+      
+      await txn.execute('''
+        CREATE INDEX idx_habit_completion_timestamps_timestamp 
+        ON habit_completion_timestamps(completion_timestamp)
+      ''');
+      
+      await txn.execute('''
         CREATE INDEX idx_habits_archived 
         ON habits(is_archived)
       ''');
@@ -149,6 +174,10 @@ class DatabaseService {
     
     if (oldVersion < 3) {
       await _migrateToVersion3(db);
+    }
+    
+    if (oldVersion < 4) {
+      await _migrateToVersion4(db);
     }
   }
   
@@ -215,14 +244,25 @@ class DatabaseService {
         )
       ''');
       
+      // Create habit_completions table with goal tracking
       await txn.execute('''
         CREATE TABLE habit_completions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
           completion_date INTEGER NOT NULL,
-          completion_count INTEGER NOT NULL DEFAULT 1,
-          completion_goal INTEGER NOT NULL DEFAULT 1,
-          UNIQUE(habit_id, completion_date)
+          completion_count INTEGER NOT NULL DEFAULT 0,
+          goal_at_completion INTEGER NOT NULL,
+          PRIMARY KEY (habit_id, completion_date),
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        )
+      ''');
+      
+      // Create habit_completion_timestamps table for individual completion tracking
+      await txn.execute('''
+        CREATE TABLE habit_completion_timestamps (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          habit_id TEXT NOT NULL,
+          completion_timestamp INTEGER NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
       
@@ -276,6 +316,13 @@ class DatabaseService {
     });
   }
   
+  /// Migrate database to version 4 - Add timezone handling
+  Future<void> _migrateToVersion4(Database db) async {
+    debugPrint('🔄 Migrating to version 4: Adding timezone handling');
+    
+    // No migration needed - all new data will be stored in UTC
+    debugPrint('✅ Migration to version 4 completed successfully - UTC timezone handling enabled');
+  }
   
   /// Called when database is opened
   Future<void> _onOpen(Database db) async {

@@ -38,7 +38,23 @@ class CompletionChart extends StatelessWidget {
               height: AppConstants.chartHeight,
               child: LineChart(
                 LineChartData(
-                  gridData: const FlGridData(show: false),
+                  gridData: FlGridData(
+                    show: true,
+                    horizontalInterval: 0.2, // Show lines at 20%, 40%, 60%, 80%
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(
+                        color: colorScheme.outline.withValues(alpha: 0.3),
+                        strokeWidth: 0.5,
+                      );
+                    },
+                    verticalInterval: 1,
+                    getDrawingVerticalLine: (value) {
+                      return FlLine(
+                        color: Colors.transparent,
+                        strokeWidth: 0,
+                      );
+                    },
+                  ),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -47,28 +63,12 @@ class CompletionChart extends StatelessWidget {
                         getTitlesWidget: (value, meta) {
                           return Text(
                             '${(value * 100).toInt()}%',
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 10),
                           );
                         },
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          // Show date labels every 7 days to avoid crowding
-                          if (value.toInt() % 7 == 0) {
-                            final daysAgo = AppConstants.chartDaysCount - 1 - value.toInt();
-                            final date = currentDate.subtract(Duration(days: daysAgo));
-                            return Text(
-                              '${date.month}/${date.day}',
-                              style: const TextStyle(fontSize: 10),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                    ),
+                    bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
@@ -78,7 +78,7 @@ class CompletionChart extends StatelessWidget {
                       spots: completionData.asMap().entries.map((entry) {
                         return FlSpot(entry.key.toDouble(), entry.value);
                       }).toList(),
-                      isCurved: true,
+                      isCurved: false,
                       color: colorScheme.primary,
                       barWidth: AppConstants.chartBarWidth,
                       belowBarData: BarAreaData(
@@ -109,7 +109,7 @@ class CompletionChart extends StatelessWidget {
                           final date = currentDate.subtract(Duration(days: daysAgo));
 
                           return LineTooltipItem(
-                            '${date.month}/${date.day}: $percentage%',
+                            '${date.day} ${_getMonthAbbreviation(date.month)}: $percentage%',
                             TextStyle(
                               color: colorScheme.onSurface,
                               fontWeight: FontWeight.w500,
@@ -126,5 +126,14 @@ class CompletionChart extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Get abbreviated month name from month number
+  String _getMonthAbbreviation(int month) {
+    const monthAbbreviations = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return monthAbbreviations[month];
   }
 }

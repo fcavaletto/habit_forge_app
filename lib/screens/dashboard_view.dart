@@ -367,6 +367,13 @@ class _DashboardViewState extends State<DashboardView>
             return _buildDateSelector(appState);
           },
         ),
+        const SizedBox(height: 12),
+        // Time selector
+        Consumer<AppState>(
+          builder: (context, appState, child) {
+            return _buildTimeSelector(appState);
+          },
+        ),
         const SizedBox(height: 16),
         Consumer<AppState>(
           builder: (context, appState, child) {
@@ -408,7 +415,7 @@ class _DashboardViewState extends State<DashboardView>
         ),
         const SizedBox(height: 4),
         Text(
-          '${(completionRate * 100).round()}% complete',
+          _getCompletionMessage(completionRate, completedCount, habits.length),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.w500,
@@ -589,27 +596,87 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
+  /// Build the time selector widget
+  Widget _buildTimeSelector(AppState appState) {
+    final selectedTime = appState.habitProvider.selectedTime;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.access_time,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Completion Time',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatTime(selectedTime),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _showTimePicker(appState),
+            icon: Icon(
+              Icons.edit,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Select Time',
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Get completion message based on habit goals
+  String _getCompletionMessage(double completionRate, int completedCount, int totalHabits) {
+    final percentage = (completionRate * 100).round();
+    
+    // Check if any habits have goals greater than 1
+    final hasMultiGoalHabits = _appState.habits.any((habit) => habit.targetGoal > 1);
+    
+    if (hasMultiGoalHabits) {
+      return '$completedCount of $totalHabits habits fully completed ($percentage%)';
+    } else {
+      return '$completedCount of $totalHabits habits completed ($percentage%)';
+    }
+  }
+
   /// Format date for display
   String _formatDate(DateTime date) {
-    final now = VirtualDateService().currentDate;
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final tomorrow = today.add(const Duration(days: 1));
-    final dateOnly = DateTime(date.year, date.month, date.day);
+    // Simply show the actual date in a readable format
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
+  }
 
-    if (dateOnly == today) {
-      return 'Today';
-    } else if (dateOnly == yesterday) {
-      return 'Yesterday';
-    } else if (dateOnly == tomorrow) {
-      return 'Tomorrow';
-    } else {
-      // Format as "Mon, Jan 15" or similar
-      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
-    }
+  /// Format time for display in 24-hour format
+  String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   /// Show date picker dialog
@@ -635,6 +702,30 @@ class _DashboardViewState extends State<DashboardView>
     if (pickedDate != null && pickedDate != selectedDate) {
       appState.habitProvider.updateSelectedDate(pickedDate);
       debugPrint('📅 Date changed to: ${_formatDate(pickedDate)}');
+    }
+  }
+
+  /// Show time picker dialog
+  Future<void> _showTimePicker(AppState appState) async {
+    final selectedTime = appState.habitProvider.selectedTime;
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: selectedTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime != null && pickedTime != selectedTime) {
+      appState.habitProvider.updateSelectedTime(pickedTime);
+      debugPrint('🕐 Time changed to: ${_formatTime(pickedTime)}');
     }
   }
 

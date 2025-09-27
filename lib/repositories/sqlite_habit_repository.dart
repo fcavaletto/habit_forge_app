@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import '../models/habit.dart';
 import '../models/habit_result.dart';
 import '../services/database_service.dart';
+import '../utils/timezone_utils.dart';
 
 /// SQLite implementation for habit data operations
 ///
@@ -127,7 +128,7 @@ class SqliteHabitRepository {
         await txn.insert('habit_display_order', {
           'habit_id': habit.id,
           'order_value': topOrder,
-          'created_at': DateTime.now().millisecondsSinceEpoch,
+          'created_at': TimezoneUtils.getCurrentUtcTimestamp(),
         });
         
         // Insert reminder if enabled
@@ -144,7 +145,7 @@ class SqliteHabitRepository {
         for (final entry in habit.completions.entries) {
           await txn.insert('habit_completions', {
             'habit_id': habit.id,
-            'completion_date': entry.key.millisecondsSinceEpoch,
+            'completion_date': TimezoneUtils.toUtcTimestamp(entry.key),
             'completion_count': entry.value,
             'completion_goal': habit.targetGoal,
           });
@@ -159,10 +160,160 @@ class SqliteHabitRepository {
     }
   }
   
+  /// Get a specific habit by its ID
+  Future<Habit?> getHabitById(String habitId) async {
+    try {
+      final db = await _databaseService.database;
+      final results = await db.query(
+        'habits',
+        where: 'id = ?',
+        whereArgs: [habitId],
+      );
+      
+      if (results.isNotEmpty) {
+        return await _rowToHabit(results.first);
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting habit by ID: $e');
+      return null;
+    }
+  }
+  
+  /// Add a completion for a habit on a specific date
+  Future<void> addHabitCompletion(String habitId, DateTime date) async {
+    try {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      final completionTimestamp = TimezoneUtils.toUtcTimestampSeconds(date);
+      
+      // Get current habit to get the goal
+      final habit = await getHabitById(habitId);
+      if (habit == null) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
+      
+      await _databaseService.transaction((txn) async {
+        // Check if completion record exists
+        final existingRecord = await txn.query(
+          'habit_completions',
+          where: 'habit_id = ? AND completion_date = ?',
+          whereArgs: [habitId, dateTimestamp],
+        );
+        
+        if (existingRecord.isNotEmpty) {
+          // Increment existing count
+          await txn.update(
+            'habit_completions',
+            {
+              'completion_count': (existingRecord.first['completion_count'] as int) + 1,
+              'goal_at_completion': habit.targetGoal, // Update goal in case it changed
+            },
+            where: 'habit_id = ? AND completion_date = ?',
+            whereArgs: [habitId, dateTimestamp],
+          );
+        } else {
+          // Insert new record
+          await txn.insert(
+            'habit_completions',
+            {
+              'habit_id': habitId,
+              'completion_date': dateTimestamp,
+              'completion_count': 1,
+              'goal_at_completion': habit.targetGoal,
+            },
+          );
+        }
+        
+        // Add timestamp record
+        await txn.insert(
+          'habit_completion_timestamps',
+          {
+            'habit_id': habitId,
+            'completion_timestamp': completionTimestamp,
+          },
+        );
+      });
+      
+      debugPrint('✅ Added completion for habit $habitId on ${date.toIso8601String()} (timestamp: $completionTimestamp)');
+    } catch (e) {
+      debugPrint('❌ Error adding habit completion: $e');
+    }
+  }
+  
+  /// Remove a completion for a habit on a specific date
+  Future<void> removeHabitCompletion(String habitId, DateTime date) async {
+    try {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      
+      await _databaseService.transaction((txn) async {
+        // Get current completion count
+        final completionRows = await txn.query(
+          'habit_completions',
+          where: 'habit_id = ? AND completion_date = ?',
+          whereArgs: [habitId, dateTimestamp],
+        );
+        
+        if (completionRows.isNotEmpty) {
+          final currentCount = completionRows.first['completion_count'] as int;
+          
+          if (currentCount > 1) {
+            // Decrement completion count
+            await txn.update(
+              'habit_completions',
+              {'completion_count': currentCount - 1},
+              where: 'habit_id = ? AND completion_date = ?',
+              whereArgs: [habitId, dateTimestamp],
+            );
+          } else {
+            // Remove completion record entirely
+            await txn.delete(
+              'habit_completions',
+              where: 'habit_id = ? AND completion_date = ?',
+              whereArgs: [habitId, dateTimestamp],
+            );
+          }
+        }
+        
+        // Remove most recent timestamp record for this habit
+        final timestampRows = await txn.query(
+          'habit_completion_timestamps',
+          where: 'habit_id = ?',
+          whereArgs: [habitId],
+          orderBy: 'completion_timestamp DESC',
+          limit: 1,
+        );
+        
+        if (timestampRows.isNotEmpty) {
+          await txn.delete(
+            'habit_completion_timestamps',
+            where: 'id = ?',
+            whereArgs: [timestampRows.first['id']],
+          );
+        }
+      });
+      
+      debugPrint('❌ Removed completion for habit $habitId on ${date.toIso8601String()}');
+    } catch (e) {
+      debugPrint('❌ Error removing habit completion: $e');
+    }
+  }
+  
+  /// Update completion count for a habit on a specific date
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
       final normalizedDate = DateTime(date.year, date.month, date.day);
-      final timestamp = normalizedDate.millisecondsSinceEpoch;
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      
+      // Get current habit to get the goal
+      final habit = await getHabitById(habitId);
+      if (habit == null) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
       
       await _databaseService.transaction((txn) async {
         if (count > 0) {
@@ -171,9 +322,9 @@ class SqliteHabitRepository {
             'habit_completions',
             {
               'habit_id': habitId,
-              'completion_date': timestamp,
+              'completion_date': dateTimestamp,
               'completion_count': count,
-              'completion_goal': 1, // Default goal, will be updated if needed
+              'goal_at_completion': habit.targetGoal,
             },
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
@@ -182,12 +333,12 @@ class SqliteHabitRepository {
           await txn.delete(
             'habit_completions',
             where: 'habit_id = ? AND completion_date = ?',
-            whereArgs: [habitId, timestamp],
+            whereArgs: [habitId, dateTimestamp],
           );
         }
       });
       
-      debugPrint('💾 Updated habit completion: $habitId on ${normalizedDate.toIso8601String()} = $count');
+      debugPrint('💾 Updated habit completion: $habitId on ${date.toIso8601String()} = $count');
     } catch (e) {
       debugPrint('❌ Error updating habit completion: $e');
     }
@@ -272,7 +423,7 @@ class SqliteHabitRepository {
         await txn.rawInsert('''
           INSERT OR REPLACE INTO habit_display_order (habit_id, order_value, created_at)
           VALUES (?, ?, ?)
-        ''', [habitId, bottomOrder, DateTime.now().millisecondsSinceEpoch]);
+        ''', [habitId, bottomOrder, TimezoneUtils.getCurrentUtcTimestamp()]);
       });
       
       debugPrint('💾 Unarchived habit $habitId and positioned at bottom');
@@ -337,7 +488,7 @@ class SqliteHabitRepository {
         description: newHabit.description,
         colorIndex: newHabit.colorIndex,
         createdAt: DateTime.now(), // Will be updated from DB
-        completions: <DateTime, int>{}, // Will be loaded from DB
+        completions: <DateTime, CompletionRecord>{}, // Will be loaded from DB
         iconName: newHabit.iconName,
         reminderTime: newHabit.reminderTime,
         enableReminders: newHabit.enableReminders,
@@ -446,11 +597,16 @@ class SqliteHabitRepository {
         whereArgs: [row['id']],
       );
       
-      final completions = <DateTime, int>{};
+      final completions = <DateTime, CompletionRecord>{};
       for (final completionRow in completionRows) {
-        final date = DateTime.fromMillisecondsSinceEpoch(completionRow['completion_date'] as int);
+        debugPrint('📅 Loading completion record for habit ${row['id']}');
+        final date = TimezoneUtils.fromUtcTimestamp(completionRow['completion_date'] as int);
         final count = completionRow['completion_count'] as int;
-        completions[date] = count;
+        final goalAtCompletion = completionRow['goal_at_completion'] as int;
+        completions[date] = CompletionRecord(
+          count: count,
+          goalAtCompletion: goalAtCompletion,
+        );
       }
       
       // Load reminder settings
@@ -483,7 +639,10 @@ class SqliteHabitRepository {
         name: row['name'] as String,
         description: row['description'] as String? ?? '',
         colorIndex: row['color_index'] as int,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),
+        createdAt: (() {
+          debugPrint('🕒 Loading habit creation timestamp for habit ${row['id']}');
+          return TimezoneUtils.fromUtcTimestamp(row['created_at'] as int);
+        })(),
         completions: completions,
         iconName: row['icon_name'] as String,
         reminderTime: reminderTime,
@@ -507,7 +666,7 @@ class SqliteHabitRepository {
       'description': habit.description,
       'color_index': habit.colorIndex,
       'icon_name': habit.iconName,
-      'created_at': habit.createdAt.millisecondsSinceEpoch,
+      'created_at': TimezoneUtils.toUtcTimestamp(habit.createdAt),
       'is_archived': habit.isArchived ? 1 : 0,
       'frequency_days': jsonEncode(habit.frequencyDays),
       'target_goal': habit.targetGoal,
@@ -707,5 +866,140 @@ class SqliteHabitRepository {
   /// @return true if the update is safe (no duplicates), false otherwise
   Future<bool> canUpdateHabit(String habitId, String newName, String newIconName) async {
     return !await hasDuplicateHabit(newName, newIconName, excludeHabitId: habitId);
+  }
+
+  /// Get hourly completion distribution for a specific date range
+  ///
+  /// Analyzes completion timestamps to show when during the day completions occur.
+  /// Returns a map where keys are hours (0-23) and values are completion counts.
+  ///
+  /// @param habitId The ID of the habit to analyze
+  /// @param startDate The start date for the analysis (inclusive)
+  /// @param endDate The end date for the analysis (inclusive)
+  /// @return Map<int, int> where key = hour (0-23), value = completion count
+  Future<Map<int, int>> getHourlyCompletions(String habitId, DateTime startDate, DateTime endDate) async {
+    try {
+      final db = await _databaseService.database;
+      
+      // Convert dates to UTC timestamps for SQLite comparison
+      final startTimestamp = TimezoneUtils.toUtcTimestampSeconds(startDate);
+      final endTimestamp = TimezoneUtils.toUtcTimestampSeconds(endDate);
+      
+      debugPrint('📊 [HourlyQuery] Querying hourly completions for $habitId');
+      debugPrint('📅 [HourlyQuery] Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
+      debugPrint('🌍 [HourlyQuery] UTC range: $startTimestamp to $endTimestamp');
+      
+      final result = await db.rawQuery('''
+        SELECT 
+          CAST(strftime('%H', completion_timestamp, 'unixepoch', 'localtime') AS INTEGER) as hour,
+          COUNT(*) as count
+        FROM habit_completion_timestamps 
+        WHERE habit_id = ? 
+          AND completion_timestamp >= ? 
+          AND completion_timestamp <= ?
+        GROUP BY hour
+        ORDER BY hour
+      ''', [habitId, startTimestamp, endTimestamp]);
+      
+      // Convert result to Map<int, int> and ensure all hours (0-23) are represented
+      final hourlyCompletions = <int, int>{};
+      for (int hour = 0; hour < 24; hour++) {
+        hourlyCompletions[hour] = 0;
+      }
+      
+      for (final row in result) {
+        final hour = row['hour'] as int;
+        final count = row['count'] as int;
+        hourlyCompletions[hour] = count;
+        debugPrint('🕐 [HourlyQuery] Hour $hour: $count completions');
+      }
+      
+      debugPrint('📊 Hourly completions for $habitId: ${hourlyCompletions.entries.where((e) => e.value > 0).length} hours with completions');
+      return hourlyCompletions;
+    } catch (e) {
+      debugPrint('❌ Error getting hourly completions: $e');
+      rethrow;
+    }
+  }
+
+  /// Get total hourly completion distribution for a habit
+  ///
+  /// Analyzes all completion timestamps for a habit to show historical
+  /// completion patterns throughout the day.
+  ///
+  /// @param habitId The ID of the habit to analyze
+  /// @return Map<int, int> where key = hour (0-23), value = completion count
+  Future<Map<int, int>> getTotalHourlyCompletions(String habitId) async {
+    try {
+      final db = await _databaseService.database;
+      
+      debugPrint('📊 [HourlyQuery] Querying total hourly completions for $habitId');
+      
+      final result = await db.rawQuery('''
+        SELECT 
+          CAST(strftime('%H', completion_timestamp, 'unixepoch', 'localtime') AS INTEGER) as hour,
+          COUNT(*) as count
+        FROM habit_completion_timestamps 
+        WHERE habit_id = ?
+        GROUP BY hour
+        ORDER BY hour
+      ''', [habitId]);
+      
+      // Convert result to Map<int, int> and ensure all hours (0-23) are represented
+      final hourlyCompletions = <int, int>{};
+      for (int hour = 0; hour < 24; hour++) {
+        hourlyCompletions[hour] = 0;
+      }
+      
+      for (final row in result) {
+        final hour = row['hour'] as int;
+        final count = row['count'] as int;
+        hourlyCompletions[hour] = count;
+      }
+      
+      debugPrint('📊 All-time hourly completions for $habitId: ${hourlyCompletions.entries.where((e) => e.value > 0).length} hours with completions');
+      return hourlyCompletions;
+    } catch (e) {
+      debugPrint('❌ Error getting all-time hourly completions: $e');
+      rethrow;
+    }
+  }
+
+  /// Get completion timestamps for a specific day
+  Future<List<DateTime>> getCompletionTimestampsForDay(String habitId, DateTime date) async {
+    try {
+      final db = await _databaseService.database;
+      
+      // Convert date to UTC timestamps for SQLite comparison
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+      
+      final startTimestamp = TimezoneUtils.toUtcTimestampSeconds(startOfDay);
+      final endTimestamp = TimezoneUtils.toUtcTimestampSeconds(endOfDay);
+      
+      debugPrint('📅 [DayQuery] Querying completion timestamps for $habitId on ${date.toIso8601String()}');
+      debugPrint('🌍 [DayQuery] UTC range: $startTimestamp to $endTimestamp');
+      
+      final result = await db.rawQuery('''
+        SELECT completion_timestamp
+        FROM habit_completion_timestamps 
+        WHERE habit_id = ? 
+          AND completion_timestamp >= ? 
+          AND completion_timestamp <= ?
+        ORDER BY completion_timestamp ASC
+      ''', [habitId, startTimestamp, endTimestamp]);
+      
+      // Convert UTC timestamps back to local DateTime
+      final timestamps = result.map((row) {
+        final utcTimestampSeconds = row['completion_timestamp'] as int;
+        return TimezoneUtils.fromUtcTimestampSeconds(utcTimestampSeconds);
+      }).toList();
+      
+      debugPrint('📊 [DayQuery] Found ${timestamps.length} completions for $habitId on ${date.toIso8601String()}');
+      return timestamps;
+    } catch (e) {
+      debugPrint('❌ Error getting completion timestamps for day: $e');
+      rethrow;
+    }
   }
 }

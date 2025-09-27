@@ -7,6 +7,8 @@ import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import '../services/virtual_date_service.dart';
 import '../utils/data_freshness.dart';
+import '../utils/date_range_utils.dart';
+import '../utils/performance_monitor.dart';
 
 /// State management class for habit-related data and operations
 ///
@@ -57,6 +59,7 @@ class HabitState extends ChangeNotifier {
   bool _isSortingMode = false;
   int _reorderCount = 0; // Track reorder operations for normalization
   DateTime _selectedDate = DateTime.now(); // Selected date for filtering
+  TimeOfDay _selectedTime = TimeOfDay.now(); // Selected time for completion timestamps
   bool _showAllHabits = false; // Whether to show all habits or just today's habits
 
   HabitState(this._habitRepository, this._settingsRepository);
@@ -72,6 +75,7 @@ class HabitState extends ChangeNotifier {
     DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
   bool get isSortingMode => _isSortingMode;
   DateTime get selectedDate => _selectedDate;
+  TimeOfDay get selectedTime => _selectedTime;
   bool get isShowingAllHabits => _showAllHabits;
   
   /// Get habits filtered based on current filter mode (all habits or date-filtered)
@@ -85,17 +89,6 @@ class HabitState extends ChangeNotifier {
   /// Get habit IDs that should be visible based on current filter
   List<String> getVisibleHabitIds() {
     return getHabitsForDate(_selectedDate).map((h) => h.id).toList();
-  }
-
-  /// Update the selected date for filtering
-  void updateSelectedDate(DateTime newDate) {
-    _selectedDate = newDate;
-    
-    // Update the virtual date service to make this the "current date" for the entire app
-    VirtualDateService().setVirtualDate(newDate);
-    
-    debugPrint('📅 Selected date updated to: ${_selectedDate.toIso8601String().split('T')[0]}');
-    notifyListeners();
   }
 
   /// Get day abbreviation from DateTime (mon, tue, wed, etc.)
@@ -168,19 +161,100 @@ class HabitState extends ChangeNotifier {
   /// Update habit completion count
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
-      await _habitRepository.updateHabitCompletion(habitId, date, count);
-      
-      // Update local state directly instead of reloading all habits
+      // Get current habit to check existing completion count
       final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
-      if (habitIndex >= 0) {
-        final updatedHabit = _habits[habitIndex].markCompleted(date, count);
+      if (habitIndex < 0) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
+      
+      final habit = _habits[habitIndex];
+      final currentCount = habit.getCompletionCount(date);
+      
+      // Calculate the difference and apply changes incrementally
+      final difference = count - currentCount;
+      
+      if (difference > 0) {
+        // Add completions
+        for (int i = 0; i < difference; i++) {
+          await _habitRepository.addHabitCompletion(habitId, date);
+        }
+      } else if (difference < 0) {
+        // Remove completions
+        for (int i = 0; i < -difference; i++) {
+          await _habitRepository.removeHabitCompletion(habitId, date);
+        }
+      }
+      
+      // Update local state by reloading the habit from database
+      final updatedHabit = await _habitRepository.getHabitById(habitId);
+      if (updatedHabit != null) {
         _habits[habitIndex] = updatedHabit;
         notifyListeners();
+        debugPrint('✅ Updated habit completion: $habitId on ${date.toIso8601String().split('T')[0]} = $count');
       }
     } catch (e) {
       _error = 'Failed to update habit completion: $e';
       notifyListeners();
+      debugPrint('❌ Error updating habit completion: $e');
     }
+  }
+
+  /// Load hourly completion data for histogram analysis
+  ///
+  /// @param habitId The ID of the habit to analyze
+  /// @param timeRange The time range for analysis ("Last 7 Days", "Last 30 Days", "Total")
+  /// @param currentDate The current virtual date for calculations (deprecated - now uses VirtualDateService)
+  /// @return HourlyHistogramData with completion distribution
+  Future<HourlyHistogramData> loadHourlyData(String habitId, String timeRange, DateTime currentDate) async {
+    return await PerformanceMonitor.monitorOperation(
+      'loadHourlyData($timeRange)',
+      () async {
+        try {
+          // Always use virtual date service for consistency
+          final virtualDate = VirtualDateService().currentDate;
+          debugPrint('📅 [HabitProvider] Loading hourly data for $timeRange using virtual date: ${virtualDate.toIso8601String()}');
+          
+          Map<int, int> hourlyCompletions;
+          DateRange dateRange;
+          
+          switch (timeRange) {
+            case 'Last 7 Days':
+              dateRange = DateRangeUtils.getLast7Days(virtualDate);
+              DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
+              hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, dateRange.start, dateRange.end);
+              break;
+            case 'Last 30 Days':
+              dateRange = DateRangeUtils.getLast30Days(virtualDate);
+              DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
+              hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, dateRange.start, dateRange.end);
+              break;
+        case 'Total':
+          dateRange = DateRangeUtils.getTotal(virtualDate);
+          hourlyCompletions = await _habitRepository.getTotalHourlyCompletions(habitId);
+          break;
+            default:
+              throw ArgumentError('Invalid time range: $timeRange');
+          }
+          
+          final totalCompletions = hourlyCompletions.values.fold(0, (sum, count) => sum + count);
+          
+          final data = HourlyHistogramData(
+            hourlyCompletions: hourlyCompletions,
+            totalCompletions: totalCompletions,
+            startDate: dateRange.start,
+            endDate: dateRange.end,
+            timeRange: timeRange,
+          );
+          
+          debugPrint('📊 [HabitProvider] Loaded hourly data for $habitId: $totalCompletions total completions across ${data.activeHours.length} hours');
+          return data;
+        } catch (e) {
+          debugPrint('❌ [HabitProvider] Error loading hourly data: $e');
+          rethrow;
+        }
+      },
+    );
   }
 
   /// Archive a habit
@@ -485,7 +559,6 @@ class HabitProvider extends HabitState {
   }
 
   /// Update the selected date for filtering
-  @override
   void updateSelectedDate(DateTime newDate) {
     if (_selectedDate != newDate) {
       _selectedDate = newDate;
@@ -495,6 +568,15 @@ class HabitProvider extends HabitState {
       
       notifyListeners();
       debugPrint('📅 Selected date updated to: ${_formatDate(newDate)}');
+    }
+  }
+
+  /// Update the selected time for completion timestamps
+  void updateSelectedTime(TimeOfDay newTime) {
+    if (_selectedTime != newTime) {
+      _selectedTime = newTime;
+      notifyListeners();
+      debugPrint('🕐 Selected time updated to: ${_formatTime(newTime)}');
     }
   }
 
@@ -546,23 +628,15 @@ class HabitProvider extends HabitState {
 
   /// Format date for display
   String _formatDate(DateTime date) {
-    final today = DateTime.now();
-    final yesterday = today.subtract(const Duration(days: 1));
-    final tomorrow = today.add(const Duration(days: 1));
-    final dateOnly = DateTime(date.year, date.month, date.day);
+    // Simply show the actual date in a readable format
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
+  }
 
-    if (dateOnly == today) {
-      return 'Today';
-    } else if (dateOnly == yesterday) {
-      return 'Yesterday';
-    } else if (dateOnly == tomorrow) {
-      return 'Tomorrow';
-    } else {
-      // Format as "Mon, Jan 15" or similar
-      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
-    }
+  /// Format time for display in 24-hour format
+  String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }

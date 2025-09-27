@@ -5,14 +5,22 @@ import '../../utils/constants.dart';
 ///
 /// Shows the current and longest streaks for a habit.
 /// Provides visual representation of habit consistency and achievement.
+/// Displays the current streak calculation mode for user awareness.
+/// Shows tooltip with date range for longest streak on tap.
 class StreakDisplay extends StatelessWidget {
   final int currentStreak;
   final int longestStreak;
+  final String streakCalculationMode;
+  final DateTime? longestStreakStartDate;
+  final DateTime? longestStreakEndDate;
 
   const StreakDisplay({
     super.key,
     required this.currentStreak,
     required this.longestStreak,
+    required this.streakCalculationMode,
+    this.longestStreakStartDate,
+    this.longestStreakEndDate,
   });
 
   @override
@@ -31,31 +39,43 @@ class StreakDisplay extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              'Calculation: $streakCalculationMode',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
             const SizedBox(height: AppConstants.defaultPadding),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStreakCard(
-                    context: context,
-                    title: 'Current Streak',
-                    value: currentStreak,
-                    icon: Icons.local_fire_department,
-                    color: colorScheme.primary,
-                    subtitle: _getStreakSubtitle(currentStreak),
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildStreakCard(
+                      context: context,
+                      title: 'Current Streak',
+                      value: currentStreak,
+                      icon: Icons.local_fire_department,
+                      color: colorScheme.primary,
+                      subtitle: _getStreakSubtitle(currentStreak),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppConstants.defaultMargin),
-                Expanded(
-                  child: _buildStreakCard(
-                    context: context,
-                    title: 'Longest Streak',
-                    value: longestStreak,
-                    icon: Icons.emoji_events,
-                    color: colorScheme.secondary,
-                    subtitle: 'Personal best',
+                  const SizedBox(width: AppConstants.defaultMargin),
+                  Expanded(
+                    child: _buildStreakCard(
+                      context: context,
+                      title: 'Longest Streak',
+                      value: longestStreak,
+                      icon: Icons.emoji_events,
+                      color: colorScheme.secondary,
+                      subtitle: 'Personal best',
+                      showTooltip: true,
+                      tooltipText: _getLongestStreakTooltip(),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -70,8 +90,10 @@ class StreakDisplay extends StatelessWidget {
     required IconData icon,
     required Color color,
     required String subtitle,
+    bool showTooltip = false,
+    String? tooltipText,
   }) {
-    return Container(
+    Widget cardContent = Container(
       padding: const EdgeInsets.all(AppConstants.defaultPadding),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
@@ -116,6 +138,23 @@ class StreakDisplay extends StatelessWidget {
         ],
       ),
     );
+
+    if (showTooltip && tooltipText != null && tooltipText.isNotEmpty) {
+      return Tooltip(
+        message: tooltipText,
+        preferBelow: false,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.inverseSurface,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onInverseSurface,
+        ),
+        child: cardContent,
+      );
+    }
+
+    return cardContent;
   }
 
   String _getStreakSubtitle(int streak) {
@@ -132,5 +171,34 @@ class StreakDisplay extends StatelessWidget {
     } else {
       return 'Legendary streak!';
     }
+  }
+
+  String _getLongestStreakTooltip() {
+    if (longestStreak == 0) {
+      return 'No streak recorded yet';
+    }
+    
+    if (longestStreakStartDate == null || longestStreakEndDate == null) {
+      return 'Longest streak: $longestStreak days';
+    }
+    
+    final startFormatted = _formatDate(longestStreakStartDate!);
+    final endFormatted = _formatDate(longestStreakEndDate!);
+    
+    if (longestStreakStartDate!.year == longestStreakEndDate!.year &&
+        longestStreakStartDate!.month == longestStreakEndDate!.month &&
+        longestStreakStartDate!.day == longestStreakEndDate!.day) {
+      return 'Longest streak: $longestStreak days\nDate: $startFormatted';
+    }
+    
+    return 'Longest streak: $longestStreak days\nFrom: $startFormatted\nTo: $endFormatted';
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

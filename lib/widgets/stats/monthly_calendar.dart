@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
+import '../../models/habit.dart';
+import '../../utils/day_details_dialog.dart';
 
 /// Monthly Calendar Widget
 ///
 /// Displays a scrollable monthly calendar with habit completion data.
 /// Supports navigation through multiple months with visual completion indicators.
 class MonthlyCalendar extends StatefulWidget {
-  final Map<DateTime, int> completions;
+  final Map<DateTime, CompletionRecord> completions;
   final DateTime currentDate;
   final DateTime? selectedMonth;
+  final String habitId; // Habit ID for fetching completion timestamps
 
   const MonthlyCalendar({
     super.key,
     required this.completions,
     required this.currentDate,
     this.selectedMonth,
+    required this.habitId,
   });
 
   @override
@@ -91,7 +95,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
 
             // Calendar pages
             SizedBox(
-              height: AppConstants.calendarHeight - 60, // Account for header and hint
+              height: _calculateCalendarHeight(), // Dynamic height based on actual rows needed
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: AppConstants.calendarTotalMonths,
@@ -108,6 +112,31 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
     );
   }
 
+  /// Calculate dynamic calendar height based on the number of rows needed
+  double _calculateCalendarHeight() {
+    // Calculate the maximum number of rows needed across all months
+    int maxRows = 6; // Default to 6 rows
+    
+    // Check a few months to find the maximum rows needed
+    for (int i = -2; i <= 2; i++) {
+      final month = DateTime(widget.currentDate.year, widget.currentDate.month + i, 1);
+      final lastDay = DateTime(month.year, month.month + 1, 0);
+      final firstWeekday = month.weekday;
+      final offset = (firstWeekday - 1) % 7;
+      final totalDays = lastDay.day;
+      final rowsNeeded = ((totalDays + offset) / 7).ceil();
+      maxRows = maxRows < rowsNeeded ? rowsNeeded : maxRows;
+    }
+    
+    // Calculate height: header + spacing + (rows * cell_height) + spacing
+    const headerHeight = 40.0; // Month/year header
+    const spacing = AppConstants.defaultMargin;
+    const cellHeight = AppConstants.calendarCellSize + AppConstants.calendarSpacing;
+    final totalHeight = headerHeight + spacing + (maxRows * cellHeight) + spacing;
+    
+    return totalHeight;
+  }
+
   Widget _buildMonthGrid(DateTime monthDate) {
     final firstDayOfMonth = DateTime(monthDate.year, monthDate.month, 1);
     final lastDayOfMonth = DateTime(monthDate.year, monthDate.month + 1, 0);
@@ -115,6 +144,10 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
     // Calculate the weekday offset (0 = Monday, 1 = Tuesday, etc.)
     final firstWeekday = firstDayOfMonth.weekday;
     final offset = (firstWeekday - 1) % 7; // Adjust so Monday is 0
+    
+    // Calculate the actual number of rows needed for this month
+    final totalDays = lastDayOfMonth.day;
+    final rowsNeeded = ((totalDays + offset) / 7).ceil();
 
     return Column(
       children: [
@@ -156,7 +189,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               crossAxisSpacing: AppConstants.calendarSpacing,
               mainAxisSpacing: AppConstants.calendarSpacing,
             ),
-            itemCount: AppConstants.calendarGridColumns * AppConstants.calendarGridRows,
+            itemCount: AppConstants.calendarGridColumns * rowsNeeded,
             itemBuilder: (context, index) {
               final dayNumber = index - offset + 1;
 
@@ -166,36 +199,53 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               }
 
               final date = DateTime(monthDate.year, monthDate.month, dayNumber);
-              final completionCount = widget.completions[DateTime(date.year, date.month, date.day)] ?? 0;
-              final isCompleted = completionCount > 0;
+              final record = widget.completions[DateTime(date.year, date.month, date.day)];
+              final completionCount = record?.count ?? 0;
+              final hasCompletion = completionCount > 0;
+              final isFullyCompleted = record?.isGoalAchieved ?? false;
+              final fillPercentage = record != null ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0) : 0.0;
               final isToday = date.year == widget.currentDate.year &&
                              date.month == widget.currentDate.month &&
                              date.day == widget.currentDate.day;
 
-              return Container(
-                decoration: BoxDecoration(
-                  color: isCompleted
-                      ? Theme.of(context).colorScheme.primary
-                      : isToday
-                          ? Theme.of(context).colorScheme.secondaryContainer
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(6),
-                  border: isToday && !isCompleted
-                      ? Border.all(
-                          color: Theme.of(context).colorScheme.secondary,
-                          width: 2,
-                        )
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  dayNumber.toString(),
-                  style: TextStyle(
-                    color: isCompleted
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
+              return GestureDetector(
+                onTap: () async => await DayDetailsDialog.show(context, date, record, widget.habitId),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isFullyCompleted
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(6),
+                    border: isToday
+                        ? Border.all(
+                            color: Theme.of(context).colorScheme.secondary,
+                            width: 3,
+                          )
+                        : null,
+                    // Add gradient for partial completion
+                    gradient: hasCompletion && !isFullyCompleted && fillPercentage > 0
+                        ? LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Theme.of(context).colorScheme.primary.withValues(alpha: fillPercentage.clamp(0.1, 1.0)), // Ensure minimum alpha
+                              Theme.of(context).colorScheme.surfaceContainerHighest,
+                            ],
+                          )
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    dayNumber.toString(),
+                    style: TextStyle(
+                      color: isFullyCompleted
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : hasCompletion
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               );

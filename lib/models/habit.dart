@@ -4,6 +4,184 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../services/virtual_date_service.dart';
 
+/// Represents a completion record for a specific date
+/// 
+/// Stores both the completion count and the goal that was active
+/// when the completion was recorded, enabling accurate historical tracking.
+class CompletionRecord {
+  final int count;
+  final int goalAtCompletion;
+  
+  const CompletionRecord({
+    required this.count,
+    required this.goalAtCompletion,
+  });
+  
+  /// Creates a CompletionRecord from JSON data
+  factory CompletionRecord.fromJson(Map<String, dynamic> json) {
+    return CompletionRecord(
+      count: json['count'] as int,
+      goalAtCompletion: json['goalAtCompletion'] as int,
+    );
+  }
+  
+  /// Converts CompletionRecord to JSON data
+  Map<String, dynamic> toJson() {
+    return {
+      'count': count,
+      'goalAtCompletion': goalAtCompletion,
+    };
+  }
+  
+  /// Returns the completion percentage (0.0 to 1.0+)
+  double get completionPercentage => count / goalAtCompletion;
+  
+  /// Returns true if the goal was fully achieved
+  bool get isGoalAchieved => count >= goalAtCompletion;
+  
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CompletionRecord &&
+        other.count == count &&
+        other.goalAtCompletion == goalAtCompletion;
+  }
+  
+  @override
+  int get hashCode => count.hashCode ^ goalAtCompletion.hashCode;
+  
+  @override
+  String toString() => 'CompletionRecord(count: $count, goalAtCompletion: $goalAtCompletion)';
+}
+
+/// Data model for hourly completion histogram analysis
+///
+/// Represents the distribution of habit completions throughout the day (0-23 hours)
+/// with calculated percentages and metadata about the analysis period.
+class HourlyHistogramData {
+  final Map<int, int> hourlyCompletions; // hour (0-23) -> completion count
+  final int totalCompletions;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String timeRange; // "Last 7 Days", "Last 30 Days", "Total"
+  
+  const HourlyHistogramData({
+    required this.hourlyCompletions,
+    required this.totalCompletions,
+    required this.startDate,
+    required this.endDate,
+    required this.timeRange,
+  });
+  
+  /// Calculate hourly completion percentages
+  ///
+  /// Returns a map where keys are hours (0-23) and values are percentages (0.0 to 1.0)
+  Map<int, double> get hourlyPercentages {
+    if (totalCompletions == 0) {
+      return {for (int hour = 0; hour < 24; hour++) hour: 0.0};
+    }
+    
+    return {
+      for (int hour = 0; hour < 24; hour++)
+        hour: hourlyCompletions[hour]! / totalCompletions
+    };
+  }
+  
+  /// Get the hour with the most completions
+  int get peakHour {
+    int maxHour = 0;
+    int maxCount = 0;
+    
+    for (int hour = 0; hour < 24; hour++) {
+      final count = hourlyCompletions[hour]!;
+      if (count > maxCount) {
+        maxCount = count;
+        maxHour = hour;
+      }
+    }
+    
+    return maxHour;
+  }
+  
+  /// Get the maximum completion count in any hour
+  int get maxCompletionsInHour {
+    return hourlyCompletions.values.reduce((a, b) => a > b ? a : b);
+  }
+  
+  /// Get the maximum percentage in any hour
+  double get maxPercentage {
+    return hourlyPercentages.values.reduce((a, b) => a > b ? a : b);
+  }
+  
+  /// Get hours with completions (non-zero counts)
+  List<int> get activeHours {
+    return hourlyCompletions.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) => entry.key)
+        .toList()
+      ..sort();
+  }
+  
+  /// Check if there's any completion data
+  bool get hasData => totalCompletions > 0;
+  
+  /// Get formatted time range description
+  String get formattedTimeRange {
+    switch (timeRange) {
+      case 'Last 7 Days':
+        return 'Last 7 Days';
+      case 'Last 30 Days':
+        return 'Last 30 Days';
+      case 'Total':
+        return 'Total';
+      default:
+        return 'Custom Range';
+    }
+  }
+  
+  /// Get formatted hour label (24-hour format)
+  static String formatHour(int hour) {
+    return '${hour.toString().padLeft(2, '0')}:00';
+  }
+  
+  /// Get short hour label for compact display
+  static String formatHourShort(int hour) {
+    return hour.toString().padLeft(2, '0');
+  }
+  
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is HourlyHistogramData &&
+        other.hourlyCompletions.toString() == hourlyCompletions.toString() &&
+        other.totalCompletions == totalCompletions &&
+        other.startDate == startDate &&
+        other.endDate == endDate &&
+        other.timeRange == timeRange;
+  }
+  
+  @override
+  int get hashCode {
+    return Object.hash(
+      hourlyCompletions.toString(),
+      totalCompletions,
+      startDate,
+      endDate,
+      timeRange,
+    );
+  }
+  
+  @override
+  String toString() {
+    return 'HourlyHistogramData('
+        'totalCompletions: $totalCompletions, '
+        'timeRange: $timeRange, '
+        'activeHours: ${activeHours.length}, '
+        'peakHour: ${formatHour(peakHour)}'
+        ')';
+  }
+}
+
 /// Core data model representing a user habit
 ///
 /// A habit encapsulates all information needed to track user behavior,
@@ -34,9 +212,9 @@ class Habit {
   /// Timestamp when this habit was first created
   final DateTime createdAt;
 
-  /// Map of completion records where key is date and value is completion count
-  /// Zero or missing entries indicate no completions for that day
-  final Map<DateTime, int> completions;
+  /// Map of completion records where key is date and value is CompletionRecord
+  /// Missing entries indicate no completions for that day
+  final Map<DateTime, CompletionRecord> completions;
 
   /// Material Icons name for visual representation
   final String iconName;
@@ -137,8 +315,8 @@ class Habit {
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
       colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
-      createdAt: DateTime.now(), // Creation timestamp
-      completions: <DateTime, int>{}, // Start with empty completion history
+      createdAt: DateTime.now().toUtc(), // Creation timestamp
+      completions: <DateTime, CompletionRecord>{}, // Start with empty completion history
       iconName: iconName,
       reminderTime: reminderTime,
       enableReminders: enableReminders,
@@ -184,8 +362,8 @@ class Habit {
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
       colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
-      createdAt: DateTime.now(), // Creation timestamp
-      completions: <DateTime, int>{}, // Start with empty completion history
+      createdAt: DateTime.now().toUtc(), // Creation timestamp
+      completions: <DateTime, CompletionRecord>{}, // Start with empty completion history
       iconName: iconName,
       reminderTime: reminderTime,
       enableReminders: enableReminders,
@@ -205,10 +383,13 @@ class Habit {
   /// @return New Habit instance with updated completion map
   Habit markCompleted(DateTime date, int count) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    final newCompletions = Map<DateTime, int>.from(completions);
+    final newCompletions = Map<DateTime, CompletionRecord>.from(completions);
 
     if (count > 0) {
-      newCompletions[normalizedDate] = count;
+      newCompletions[normalizedDate] = CompletionRecord(
+        count: count,
+        goalAtCompletion: targetGoal,
+      );
     } else {
       newCompletions.remove(normalizedDate);
     }
@@ -225,7 +406,7 @@ class Habit {
   /// @return true if habit has at least one completion on this date, false otherwise
   bool isCompleted(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    return (completions[normalizedDate] ?? 0) > 0;
+    return (completions[normalizedDate]?.count ?? 0) > 0;
   }
 
   /// Get the completion count for a specific date
@@ -234,35 +415,100 @@ class Habit {
   /// @return The number of completions for this date (0 if none)
   int getCompletionCount(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    return completions[normalizedDate] ?? 0;
+    return completions[normalizedDate]?.count ?? 0;
+  }
+  
+  /// Get the completion record for a specific date
+  ///
+  /// @param date The date to get completion record for
+  /// @return The CompletionRecord for this date (null if none)
+  CompletionRecord? getCompletionRecord(DateTime date) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return completions[normalizedDate];
+  }
+  
+  /// Get the goal that was active when completion was recorded for a specific date
+  ///
+  /// @param date The date to get goal for
+  /// @return The goal at completion (current targetGoal if no completion record)
+  int getGoalAtCompletion(DateTime date) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return completions[normalizedDate]?.goalAtCompletion ?? targetGoal;
   }
 
   /// Check if the goal is achieved for a specific date
   ///
   /// @param date The date to check goal achievement for
-  /// @return true if completion count >= target goal, false otherwise
+  /// @return true if completion count >= goal at completion, false otherwise
   bool isGoalAchieved(DateTime date) {
-    return getCompletionCount(date) >= targetGoal;
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final record = completions[normalizedDate];
+    if (record == null) return false;
+    return record.count >= record.goalAtCompletion;
   }
 
   /// Calculate current streak of consecutive goal-achieved days
   ///
+  /// Supports two calculation modes:
+  /// - All Days: Count consecutive days regardless of active days
+  /// - Active Days Only: Count consecutive active days only
+  ///
   /// Counts backward from the virtual current date to find the longest sequence
   /// of consecutive days where this habit achieved its goal.
   ///
+  /// @param isActiveDaysOnly If true, only count active days; if false, count all days
   /// @return Number of consecutive days with goal achieved (ending on virtual current date or yesterday)
-  int get currentStreak {
+  int calculateCurrentStreak({bool isActiveDaysOnly = false}) {
     final today = VirtualDateService().currentDate;
     int streak = 0;
     DateTime checkDate = today;
 
+    // Edge case: No active days in active days mode
+    if (isActiveDaysOnly && !_hasActiveDays()) {
+      return 0;
+    }
+
     // Count consecutive goal-achieved days backward from virtual current date
-    while (isGoalAchieved(checkDate)) {
-      streak++;
-      checkDate = checkDate.subtract(const Duration(days: 1));
+    while (true) {
+      final weekday = _getWeekdayKey(checkDate.weekday);
+      final isActiveDay = frequencyDays[weekday] == 1;
+      
+      // Skip inactive days in active days mode
+      if (isActiveDaysOnly && !isActiveDay) {
+        checkDate = checkDate.subtract(const Duration(days: 1));
+        continue;
+      }
+      
+      if (isGoalAchieved(checkDate)) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
     }
 
     return streak;
+  }
+
+  /// Helper method to check if habit has any active days
+  bool _hasActiveDays() {
+    return frequencyDays.values.any((value) => value == 1);
+  }
+
+  /// Helper method to get weekday key from DateTime weekday
+  String _getWeekdayKey(int weekday) {
+    const weekdays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    return weekdays[weekday % 7];
+  }
+
+  /// Calculate current streak of consecutive goal-achieved days (legacy getter)
+  ///
+  /// This is the original implementation for backward compatibility.
+  /// New code should use calculateCurrentStreak() with explicit parameters.
+  ///
+  /// @return Number of consecutive days with goal achieved (ending on virtual current date or yesterday)
+  int get currentStreak {
+    return calculateCurrentStreak(isActiveDaysOnly: false);
   }
 
   /// Get total number of completions for this habit
@@ -272,7 +518,7 @@ class Habit {
   ///
   /// @return Total sum of all completion counts across all time
   int get totalCompletions {
-    return completions.values.fold(0, (sum, count) => sum + count);
+    return completions.values.fold(0, (sum, record) => sum + record.count);
   }
 
   /// Calculate completion rate for the last 30 days
@@ -288,8 +534,10 @@ class Habit {
     
     for (int i = 0; i < 30; i++) {
       final date = VirtualDateService().currentDate.subtract(Duration(days: i));
-      final count = getCompletionCount(date);
-      final percentage = (count / targetGoal).clamp(0.0, 1.0);
+      final record = completions[DateTime(date.year, date.month, date.day)];
+      final percentage = record != null 
+          ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0)
+          : 0.0;
       totalCompletionPercentage += percentage;
       daysWithData++;
     }
@@ -355,7 +603,7 @@ class Habit {
     if (completions.isEmpty) return null;
 
     final completedDates = completions.entries
-        .where((entry) => entry.value > 0) // At least 1 completion
+        .where((entry) => entry.value.count > 0) // At least 1 completion
         .map((entry) => entry.key)
         .toList();
 
@@ -377,7 +625,7 @@ class Habit {
     String? description,
     int? colorIndex,
     DateTime? createdAt,
-    Map<DateTime, int>? completions,
+    Map<DateTime, CompletionRecord>? completions,
     String? iconName,
     TimeOfDay? reminderTime,
     bool? enableReminders,
@@ -428,9 +676,9 @@ class Habit {
       'isArchived': isArchived,
       'frequencyDays': frequencyDays,
       'targetGoal': targetGoal,
-      // Convert DateTime keys to ISO strings for JSON compatibility
+      // Convert DateTime keys to ISO strings and CompletionRecord to JSON
       'completions': completions.map(
-        (key, value) => MapEntry(key.toIso8601String(), value),
+        (key, value) => MapEntry(key.toIso8601String(), value.toJson()),
       ),
     };
   }
@@ -472,13 +720,34 @@ class Habit {
         (key, value) => MapEntry(key, value as int),
       ) ?? defaultFrequencyDays, // Default to every day
       targetGoal: json['targetGoal'] as int? ?? defaultTargetGoal, // Default to 1
-      // Reconstruct completion map with DateTime keys
-      // Handle backward compatibility: convert boolean values to integers
+      // Reconstruct completion map with DateTime keys and CompletionRecord values
+      // Handle backward compatibility: convert old format to CompletionRecord
       completions: (json['completions'] as Map<String, dynamic>).map(
-        (key, value) => MapEntry(
-          DateTime.parse(key),
-          value is bool ? (value ? 1 : 0) : (value as int),
-        ),
+        (key, value) {
+          final date = DateTime.parse(key);
+          if (value is Map<String, dynamic>) {
+            // New format: CompletionRecord
+            return MapEntry(date, CompletionRecord.fromJson(value));
+          } else if (value is int) {
+            // Old format: just count, use current targetGoal
+            return MapEntry(date, CompletionRecord(
+              count: value,
+              goalAtCompletion: json['targetGoal'] as int? ?? defaultTargetGoal,
+            ));
+          } else if (value is bool) {
+            // Very old format: boolean, convert to count
+            return MapEntry(date, CompletionRecord(
+              count: value ? 1 : 0,
+              goalAtCompletion: json['targetGoal'] as int? ?? defaultTargetGoal,
+            ));
+          } else {
+            // Fallback
+            return MapEntry(date, CompletionRecord(
+              count: 0,
+              goalAtCompletion: json['targetGoal'] as int? ?? defaultTargetGoal,
+            ));
+          }
+        },
       ),
     );
   }

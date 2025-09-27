@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 
-/// Weekly Overview Widget
+/// Last 7 Days Overview Widget
 ///
-/// Shows a visual representation of habit completion for the current week.
+/// Shows a visual representation of habit completion for the last 7 days.
 /// Displays each day with completion status and day labels.
-class WeeklyOverview extends StatelessWidget {
+class Last7DaysOverview extends StatelessWidget {
   final List<bool> weeklyData;
   final DateTime currentDate;
 
-  const WeeklyOverview({
+  const Last7DaysOverview({
     super.key,
     required this.weeklyData,
     required this.currentDate,
@@ -26,7 +26,7 @@ class WeeklyOverview extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'This Week',
+              'Last 7 Days',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -111,16 +111,6 @@ class WeeklyOverview extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            completionRate >= 70
-                ? Icons.thumb_up
-                : completionRate >= 40
-                    ? Icons.thumbs_up_down
-                    : Icons.thumb_down,
-            size: AppConstants.iconSizeSmall,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
           Text(
             '$completedCount of $totalDays days completed ($completionRate%)',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
