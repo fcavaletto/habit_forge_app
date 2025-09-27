@@ -157,21 +157,31 @@ class AppState extends ChangeNotifier {
   /// and providers, ensuring proper dependency order and error handling.
   /// It's called during app startup to prepare all systems for operation.
   ///
-  /// ## Initialization Order:
-  /// 1. **HabitProvider**: Database initialization and habit loading
-  /// 2. **NotificationProvider**: Notification service setup
-  /// 3. **ThemeProvider**: Theme preferences loading
-  /// 4. **CompletionCountProvider**: Display settings loading
-  /// 5. **ExtendedColorPaletteProvider**: Color palette settings loading
+  /// ## Optimized Initialization Order:
+  /// 1. **HabitProvider**: Database initialization and habit loading (PRIORITY)
+  /// 2. **ThemeProvider**: Theme preferences loading (PRIORITY - affects UI)
+  /// 3. **Other Services**: Load in parallel after core services are ready
+  ///    - NotificationProvider: Notification service setup
+  ///    - CompletionCountProvider: Display settings loading
+  ///    - ExtendedColorPaletteProvider: Color palette settings loading
+  ///    - ProSubscriptionProvider: PRO subscription settings
+  ///    - StreakSettingsProvider: Streak calculation preferences
   ///
-  /// ## Parallel Operations:
-  /// Steps 2-5 run in parallel using Future.wait() for optimal performance.
+  /// ## Performance Benefits:
+  /// - Users see their habits immediately when dashboard loads
+  /// - Theme is applied before UI renders, preventing theme flash
+  /// - Non-critical services load in background without blocking UI
   ///
   /// ## Error Handling:
   /// Individual provider failures don't prevent app startup, ensuring
   /// graceful degradation and continued operation.
   Future<void> initialize() async {
     try {
+      debugPrint('🚀 Starting optimized app initialization...');
+      
+      // PHASE 1: Initialize core services (habits + theme)
+      debugPrint('📱 Phase 1: Initializing core services (habits + theme)...');
+      
       // Initialize habit provider (this loads filter setting)
       await _habitProvider.initialize().timeout(
         const Duration(seconds: 15),
@@ -180,21 +190,35 @@ class AppState extends ChangeNotifier {
         },
       );
       
-      // Now load habits with the correct filter setting applied
+      // Load theme (habits are already loaded during habitProvider.initialize())
+      await _themeProvider.loadThemeMode().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          throw TimeoutException('Theme loading timed out', const Duration(seconds: 5));
+        },
+      );
+      
+      debugPrint('✅ Phase 1 complete: Habits and theme loaded');
+      
+      // PHASE 2: Initialize secondary services in parallel
+      debugPrint('🔧 Phase 2: Initializing secondary services...');
+      
       await Future.wait([
-        _habitProvider.loadHabits(),
         _notificationProvider.initialize(),
-        _themeProvider.loadThemeMode(),
         _completionCountProvider.loadCompletionCountSetting(),
         _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
         _proSubscriptionProvider.loadProSubscriptionSetting(),
         _streakSettingsProvider.loadStreakSetting(),
       ]).timeout(
-        const Duration(seconds: 20),
+        const Duration(seconds: 15),
         onTimeout: () {
-          throw TimeoutException('App state initialization timed out', const Duration(seconds: 20));
+          debugPrint('⚠️ Secondary services initialization timed out - continuing with core functionality');
+          // Return empty list to satisfy Future.wait return type
+          return <void>[];
         },
       );
+      
+      debugPrint('✅ App initialization completed successfully');
     } catch (e) {
       debugPrint('❌ App state initialization failed: $e');
       rethrow;

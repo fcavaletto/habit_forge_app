@@ -436,6 +436,11 @@ class HabitProvider extends HabitState {
     
     // Load habit filter setting FIRST
     await loadHabitFilterSetting();
+    
+    // Load habits immediately during initialization to prevent empty state flash
+    debugPrint('📱 HabitProvider: Loading habits during initialization...');
+    await _performLoad(false); // Don't force refresh, use cached data if available
+    debugPrint('✅ HabitProvider: Initialization complete with ${_habits.length} habits');
   }
 
   // Getter to access repository for complex operations
