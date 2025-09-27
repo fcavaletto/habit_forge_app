@@ -104,26 +104,26 @@ class _StatsScreenState extends State<StatsScreen> {
           final currentDate = VirtualDateService().currentDate;
           final completions = widget.habit.completions;
         
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Statistics'),
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            foregroundColor: Theme.of(context).colorScheme.onSurface,
-            elevation: 0,
-            shadowColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Statistics'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+      ),
           body: SafeScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(AppConstants.defaultPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              child: Padding(
+                padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   // Habit Header (now includes Active Days)
                   _buildHabitHeader(context),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // Current Streak
+                    // Current Streak
                   Builder(
                     builder: (context) {
                       final longestStreakData = _calculateLongestStreakWithRange(completions, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled);
@@ -135,10 +135,10 @@ class _StatsScreenState extends State<StatsScreen> {
                         longestStreakEndDate: longestStreakData['endDate'] as DateTime?,
                       );
                     },
-                  ),
-                  const SizedBox(height: 24),
+                    ),
+                    const SizedBox(height: 24),
 
-                  // Completion Rate Chart
+                    // Completion Rate Chart
                   CompletionChart(
                     completionData: _getLast30DaysData(completions, currentDate),
                     currentDate: currentDate,
@@ -172,7 +172,7 @@ class _StatsScreenState extends State<StatsScreen> {
               completions: completions,
               habitId: widget.habit.id,
             ),
-            const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
             // Hourly Completion Histogram
             if (_hourlyData != null)
@@ -186,9 +186,9 @@ class _StatsScreenState extends State<StatsScreen> {
               _buildHistogramErrorState()
             else
               _buildHistogramEmptyState(),
-            const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-            // Monthly Calendar
+                    // Monthly Calendar
             MonthlyCalendar(
               completions: completions,
               currentDate: currentDate,
@@ -329,12 +329,12 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                   ),
                   if (widget.habit.description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.habit.description,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.habit.description,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
                     ),
                   ],
                   const SizedBox(height: 4),
@@ -465,45 +465,6 @@ class _StatsScreenState extends State<StatsScreen> {
     return streak;
   }
 
-  /// Calculates the longest streak of consecutive goal-achieved days
-  ///
-  /// Supports two calculation modes:
-  /// - All Days: Count consecutive days regardless of active days
-  /// - Active Days Only: Count consecutive active days only
-  ///
-  /// This represents the personal best achievement for this habit.
-  int _calculateLongestStreak(Map<DateTime, CompletionRecord> completions, Map<String, int> frequencyDays, bool isActiveDaysOnly) {
-    int longestStreak = 0;
-    int currentStreak = 0;
-
-    // Edge case: No active days in active days mode
-    if (isActiveDaysOnly && !_hasActiveDays(frequencyDays)) {
-      return 0;
-    }
-
-    final dates = completions.keys.toList()..sort();
-
-    for (final date in dates) {
-      final weekday = _getWeekdayKey(date.weekday);
-      final isActiveDay = frequencyDays[weekday] == 1;
-      
-      // Skip inactive days in active days mode
-      if (isActiveDaysOnly && !isActiveDay) {
-        currentStreak = 0; // Reset streak when encountering inactive day
-        continue;
-      }
-      
-      final record = completions[date];
-      if (record != null && record.isGoalAchieved) {
-        currentStreak++;
-        longestStreak = longestStreak > currentStreak ? longestStreak : currentStreak;
-      } else {
-        currentStreak = 0;
-      }
-    }
-
-    return longestStreak;
-  }
 
   /// Calculates the longest streak with its date range
   ///
