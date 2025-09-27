@@ -43,7 +43,7 @@ class CompletionChart extends StatelessWidget {
                     horizontalInterval: 0.2, // Show lines at 20%, 40%, 60%, 80%
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: colorScheme.outline.withValues(alpha: 0.1),
+                        color: colorScheme.outline.withValues(alpha: 0.3),
                         strokeWidth: 0.5,
                       );
                     },
@@ -78,7 +78,7 @@ class CompletionChart extends StatelessWidget {
                       spots: completionData.asMap().entries.map((entry) {
                         return FlSpot(entry.key.toDouble(), entry.value);
                       }).toList(),
-                      isCurved: true,
+                      isCurved: false,
                       color: colorScheme.primary,
                       barWidth: AppConstants.chartBarWidth,
                       belowBarData: BarAreaData(
