@@ -5,6 +5,135 @@ import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
 import '../services/virtual_date_service.dart';
 
+/// Smart completion button that adapts its appearance and behavior
+/// based on the habit's goal and current completion state.
+class SmartCompletionButton extends StatelessWidget {
+  final Habit habit;
+  final VoidCallback? onIncrement;
+  final VoidCallback? onDecrement;
+
+  const SmartCompletionButton({
+    super.key,
+    required this.habit,
+    this.onIncrement,
+    this.onDecrement,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final todayCount = habit.getCompletionCount(VirtualDateService().currentDate);
+    final isCompleted = habit.isGoalAchieved(VirtualDateService().currentDate);
+    final habitColor = Theme.of(context).colorScheme.habitColor(habit.colorIndex);
+
+    // Determine button state
+    final buttonState = _getButtonState(todayCount, isCompleted);
+
+    return Semantics(
+      label: _getAccessibilityLabel(todayCount, isCompleted),
+      hint: _getAccessibilityHint(todayCount, isCompleted),
+      button: true,
+      child: InkWell(
+        onTap: () => _handleButtonPress(todayCount, isCompleted),
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _getButtonColor(habitColor, buttonState),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Progress circle for multi-completion habits (goal > 1)
+              if (habit.targetGoal > 1 && buttonState != ButtonState.completed) ...[
+                SizedBox.expand(
+                  child: CircularProgressIndicator(
+                    value: todayCount / habit.targetGoal,
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation(habitColor.withValues(alpha: 0.8)),
+                    backgroundColor: habitColor.withValues(alpha: 0.2),
+                  ),
+                ),
+              ],
+              // Main icon
+              Icon(
+                _getButtonIcon(buttonState),
+                color: Colors.white,
+                size: _getIconSize(buttonState),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  ButtonState _getButtonState(int todayCount, bool isCompleted) {
+    if (todayCount == 0) return ButtonState.empty;
+    if (isCompleted) return ButtonState.completed;
+    return ButtonState.inProgress;
+  }
+
+  Color _getButtonColor(Color habitColor, ButtonState state) {
+    final alpha = state == ButtonState.empty ? 0.3 : 1.0;
+    return habitColor.withValues(alpha: alpha);
+  }
+
+  IconData _getButtonIcon(ButtonState state) {
+    switch (state) {
+      case ButtonState.empty:
+      case ButtonState.inProgress:
+        return Icons.add;
+      case ButtonState.completed:
+        return Icons.check;
+    }
+  }
+
+  double _getIconSize(ButtonState state) {
+    return state == ButtonState.completed ? 28 : 24;
+  }
+
+  String _getAccessibilityLabel(int todayCount, bool isCompleted) {
+    if (todayCount == 0) {
+      return 'Add first completion for ${habit.name}';
+    }
+    if (isCompleted) {
+      return 'Completed ${habit.name} - tap to reset';
+    }
+    return '${habit.name}: $todayCount of ${habit.targetGoal} completions - tap to add';
+  }
+
+  String _getAccessibilityHint(int todayCount, bool isCompleted) {
+    if (todayCount == 0) {
+      return 'Tap to add your first completion today';
+    }
+    if (isCompleted) {
+      return 'Tap to remove all completions and start over';
+    }
+    return 'Tap to add another completion';
+  }
+
+  void _handleButtonPress(int todayCount, bool isCompleted) {
+    if (todayCount == 0) {
+      // Add first completion
+      onIncrement?.call();
+    } else if (isCompleted) {
+      // Reset all completions
+      onDecrement?.call();
+    } else {
+      // Add another completion
+      onIncrement?.call();
+    }
+  }
+}
+
+enum ButtonState {
+  empty,        // No completions
+  inProgress,   // Some completions, not complete
+  completed,    // Goal achieved
+}
+
 /// Interactive card widget displaying a habit with progress visualization
 ///
 /// This is the primary UI component for displaying habits in the main dashboard.
@@ -152,72 +281,11 @@ class HabitCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      // Completion controls - conditionally show buttons based on goal achievement
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Conditionally show minus/check button when there are completions
-                          if (todayCount > 0) ...[
-                            Semantics(
-                              label: habit.isGoalAchieved(VirtualDateService().currentDate)
-                                  ? 'Remove completion from ${habit.name}'
-                                  : 'Decrement ${habit.name} completion count',
-                              hint: habit.isGoalAchieved(VirtualDateService().currentDate)
-                                  ? 'Tap to remove one completion'
-                                  : 'Tap to reduce completion count',
-                              button: true,
-                              child: InkWell(
-                                onTap: onDecrement ?? onComplete,
-                                borderRadius: BorderRadius.circular(18), // Maintains circular shape
-                                child: Container(
-                                  width: 36, // Smaller than before
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: habitColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      habit.isGoalAchieved(VirtualDateService().currentDate)
-                                          ? Icons.done
-                                          : Icons.remove,
-                                      color: Colors.white,
-                                      size: 22, // Smaller than before
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          // Conditionally show plus button when goal is not achieved
-                          if (!habit.isGoalAchieved(VirtualDateService().currentDate)) ...[
-                            Semantics(
-                              label: 'Increment ${habit.name} completion count',
-                              hint: todayCount == 0 
-                                  ? 'Tap to add first completion for today'
-                                  : 'Tap to increase completion count',
-                              button: true,
-                              child: InkWell(
-                                onTap: onIncrement ?? onComplete,
-                                borderRadius: BorderRadius.circular(24), // 50% bigger radius
-                                child: Container(
-                                  width: 42, // 50% bigger (28 * 1.5)
-                                  height: 42,
-                                  decoration: BoxDecoration(
-                                    color: habitColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                    size: 27, // 50% bigger (18 * 1.5)
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
+                      // Smart completion button - single button that adapts to state
+                      SmartCompletionButton(
+                        habit: habit,
+                        onIncrement: onIncrement,
+                        onDecrement: onDecrement,
                       ),
                     ],
                   ),
