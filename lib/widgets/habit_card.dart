@@ -168,21 +168,21 @@ class HabitCard extends StatelessWidget {
                               button: true,
                               child: InkWell(
                                 onTap: onDecrement ?? onComplete,
-                                borderRadius: BorderRadius.circular(24), // 50% bigger radius
+                                borderRadius: BorderRadius.circular(18), // Maintains circular shape
                                 child: Container(
-                                  width: 42, // 50% bigger (28 * 1.5)
-                                  height: 42,
+                                  width: 36, // Smaller than before
+                                  height: 36,
                                   decoration: BoxDecoration(
                                     color: habitColor,
                                     shape: BoxShape.circle,
                                   ),
                                   child: Center(
                                     child: Icon(
-                                      habit.isGoalAchieved(VirtualDateService().currentDate) 
-                                          ? Icons.done 
+                                      habit.isGoalAchieved(VirtualDateService().currentDate)
+                                          ? Icons.done
                                           : Icons.remove,
                                       color: Colors.white,
-                                      size: 27, // 50% bigger (18 * 1.5)
+                                      size: 22, // Smaller than before
                                     ),
                                   ),
                                 ),

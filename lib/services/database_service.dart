@@ -15,7 +15,7 @@ import 'package:path/path.dart';
 /// - Transaction support for data consistency
 class DatabaseService {
   static const String _databaseName = 'habit_forge.db';
-  static const int _databaseVersion = 4;
+  static const int _databaseVersion = 5;
   
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
@@ -73,7 +73,8 @@ class DatabaseService {
           created_at INTEGER NOT NULL,
           is_archived INTEGER NOT NULL DEFAULT 0,
           frequency_days TEXT NOT NULL,
-          target_goal INTEGER NOT NULL DEFAULT 1
+          target_goal INTEGER NOT NULL DEFAULT 1,
+          allow_exceed_goal INTEGER NOT NULL DEFAULT 0
         )
       ''');
       
@@ -178,6 +179,10 @@ class DatabaseService {
     
     if (oldVersion < 4) {
       await _migrateToVersion4(db);
+    }
+
+    if (oldVersion < 5) {
+      await _migrateToVersion5(db);
     }
   }
   
@@ -319,9 +324,23 @@ class DatabaseService {
   /// Migrate database to version 4 - Add timezone handling
   Future<void> _migrateToVersion4(Database db) async {
     debugPrint('🔄 Migrating to version 4: Adding timezone handling');
-    
+
     // No migration needed - all new data will be stored in UTC
     debugPrint('✅ Migration to version 4 completed successfully - UTC timezone handling enabled');
+  }
+
+  /// Migrate database to version 5 - Add allow_exceed_goal column
+  Future<void> _migrateToVersion5(Database db) async {
+    debugPrint('🔄 Migrating to version 5: Adding allow_exceed_goal column');
+
+    await db.transaction((txn) async {
+      // Add the new column with default value of 0 (false)
+      await txn.execute('''
+        ALTER TABLE habits ADD COLUMN allow_exceed_goal INTEGER NOT NULL DEFAULT 0
+      ''');
+
+      debugPrint('✅ Migration to version 5 completed successfully - allow_exceed_goal column added');
+    });
   }
   
   /// Called when database is opened

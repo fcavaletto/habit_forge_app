@@ -462,6 +462,7 @@ class SqliteHabitRepository {
             'icon_name': newHabit.iconName,
             'frequency_days': jsonEncode(newHabit.frequencyDays),
             'target_goal': newHabit.targetGoal,
+            'allow_exceed_goal': newHabit.allowExceedGoal ? 1 : 0,
             'is_archived': 0, // Unarchive
           },
           where: 'id = ?',
@@ -651,6 +652,7 @@ class SqliteHabitRepository {
         orderValue: row['order_value'] as double?,
         frequencyDays: frequencyDays,
         targetGoal: row['target_goal'] as int,
+        allowExceedGoal: (row['allow_exceed_goal'] as int) == 1,
       );
     } catch (e) {
       debugPrint('❌ Error converting row to habit: $e');
@@ -670,6 +672,7 @@ class SqliteHabitRepository {
       'is_archived': habit.isArchived ? 1 : 0,
       'frequency_days': jsonEncode(habit.frequencyDays),
       'target_goal': habit.targetGoal,
+      'allow_exceed_goal': habit.allowExceedGoal ? 1 : 0,
     };
   }
   

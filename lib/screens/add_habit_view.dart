@@ -147,6 +147,17 @@ class _AddHabitViewState extends State<AddHabitView> {
 
           const SizedBox(height: 24),
 
+          // Allow Exceed Goal
+          _buildSectionTitle('Advanced Options'),
+          CheckboxListTile(
+            title: const Text('Allow completions beyond target goal'),
+            subtitle: const Text('Continue tracking completions even after reaching your daily goal'),
+            value: _controller.allowExceedGoal,
+            onChanged: (value) => setState(() => _controller.allowExceedGoal = value ?? false),
+          ),
+
+          const SizedBox(height: 24),
+
           // Frequency Selection
           _buildSectionTitle('Frequency'),
           FrequencySelector(

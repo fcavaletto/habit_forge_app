@@ -237,6 +237,9 @@ class Habit {
   /// Target number of completions per day for this habit
   final int targetGoal;
 
+  /// Whether to allow tracking completions beyond the target goal
+  final bool allowExceedGoal;
+
   /// Maximum number of habit colors available in the theme
   static const int maxColorIndex = 47;
 
@@ -271,6 +274,7 @@ class Habit {
     this.orderValue,
     this.frequencyDays = defaultFrequencyDays,
     this.targetGoal = defaultTargetGoal,
+    this.allowExceedGoal = false,
   }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex,
               'Color index must be between 0 and $maxColorIndex'),
        assert(targetGoal > 0, 'Target goal must be greater than 0');
@@ -305,6 +309,7 @@ class Habit {
     bool isArchived = false,
     Map<String, int>? frequencyDays,
     int targetGoal = defaultTargetGoal,
+    bool allowExceedGoal = false,
   }) {
     // Generate deterministic ID based on normalized name and icon
     final normalizedName = name.toLowerCase().trim();
@@ -323,6 +328,7 @@ class Habit {
       isArchived: isArchived,
       frequencyDays: frequencyDays ?? defaultFrequencyDays,
       targetGoal: targetGoal,
+      allowExceedGoal: allowExceedGoal,
     );
   }
 
@@ -353,6 +359,7 @@ class Habit {
     bool isArchived = false,
     Map<String, int>? frequencyDays,
     int targetGoal = defaultTargetGoal,
+    bool allowExceedGoal = false,
   }) {
     // Generate unique UUID v4
     final id = _uuid.v4();
@@ -370,6 +377,7 @@ class Habit {
       isArchived: isArchived,
       frequencyDays: frequencyDays ?? defaultFrequencyDays,
       targetGoal: targetGoal,
+      allowExceedGoal: allowExceedGoal,
     );
   }
 
@@ -633,6 +641,7 @@ class Habit {
     double? orderValue,
     Map<String, int>? frequencyDays,
     int? targetGoal,
+    bool? allowExceedGoal,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -648,6 +657,7 @@ class Habit {
       orderValue: orderValue ?? this.orderValue,
       frequencyDays: frequencyDays ?? this.frequencyDays,
       targetGoal: targetGoal ?? this.targetGoal,
+      allowExceedGoal: allowExceedGoal ?? this.allowExceedGoal,
     );
   }
 
@@ -676,6 +686,7 @@ class Habit {
       'isArchived': isArchived,
       'frequencyDays': frequencyDays,
       'targetGoal': targetGoal,
+      'allowExceedGoal': allowExceedGoal,
       // Convert DateTime keys to ISO strings and CompletionRecord to JSON
       'completions': completions.map(
         (key, value) => MapEntry(key.toIso8601String(), value.toJson()),
@@ -720,6 +731,7 @@ class Habit {
         (key, value) => MapEntry(key, value as int),
       ) ?? defaultFrequencyDays, // Default to every day
       targetGoal: json['targetGoal'] as int? ?? defaultTargetGoal, // Default to 1
+      allowExceedGoal: json['allowExceedGoal'] as bool? ?? false, // Default to false
       // Reconstruct completion map with DateTime keys and CompletionRecord values
       // Handle backward compatibility: convert old format to CompletionRecord
       completions: (json['completions'] as Map<String, dynamic>).map(

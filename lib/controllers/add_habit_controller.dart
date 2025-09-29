@@ -53,6 +53,7 @@ class AddHabitController {
   TimeOfDay? reminderTime;
   bool enableReminders = false;
   int targetGoal = 1;
+  bool allowExceedGoal = false;
 
   bool isLoading = false;
   String? errorMessage;
@@ -154,6 +155,7 @@ class AddHabitController {
         enableReminders: enableReminders,
         frequencyDays: frequencyData.days,
         targetGoal: targetGoal,
+        allowExceedGoal: allowExceedGoal,
       );
 
       debugPrint('🎯 Habit created successfully: ${habit.name}');
