@@ -50,7 +50,7 @@ class SmartCompletionButton extends StatelessWidget {
                 SizedBox.expand(
                   child: CircularProgressIndicator(
                     value: todayCount / habit.targetGoal,
-                    strokeWidth: 3,
+                    strokeWidth: 4,
                     valueColor: AlwaysStoppedAnimation(habitColor.withValues(alpha: 0.8)),
                     backgroundColor: habitColor.withValues(alpha: 0.2),
                   ),
@@ -76,7 +76,7 @@ class SmartCompletionButton extends StatelessWidget {
   }
 
   Color _getButtonColor(Color habitColor, ButtonState state) {
-    final alpha = state == ButtonState.empty ? 0.3 : 1.0;
+    final alpha = (state == ButtonState.empty || state == ButtonState.inProgress) ? 0.3 : 1.0;
     return habitColor.withValues(alpha: alpha);
   }
 
