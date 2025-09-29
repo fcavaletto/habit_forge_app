@@ -5,16 +5,45 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 import 'package:habit_forge_app/main.dart';
+import 'package:habit_forge_app/providers/app_state_provider.dart';
+import 'package:habit_forge_app/theme.dart';
+import 'package:habit_forge_app/screens/dashboard_screen.dart';
 
 void main() {
-  testWidgets('Habit app smoke test', (WidgetTester tester) async {
+  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const HabitForgeApp());
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>(create: (_) => AppStateProvider.create()),
+        ],
+        child: Consumer<AppState>(
+          builder: (context, appState, child) {
+            return MaterialApp(
+              title: 'Habit Forge',
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: appState.themeMode,
+              home: const DashboardScreen(),
+            );
+          },
+        ),
+      ),
+    );
 
-    // Verify that our app loads without errors
-    expect(find.text('Habit Forge'), findsOneWidget);
+    // Verify that counter has incremented.
+    expect(find.text('0'), findsOneWidget);
+    expect(find.text('1'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+
+    expect(find.text('0'), findsNothing);
+    expect(find.text('1'), findsOneWidget);
   });
 }

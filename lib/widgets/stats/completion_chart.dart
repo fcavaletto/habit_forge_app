@@ -33,7 +33,7 @@ class CompletionChart extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: AppConstants.defaultPadding),
+            const SizedBox(height: 16),
             SizedBox(
               height: AppConstants.chartHeight,
               child: LineChart(

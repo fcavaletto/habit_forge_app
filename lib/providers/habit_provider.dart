@@ -429,17 +429,15 @@ class HabitProvider extends HabitState {
   
   // Initialize the provider
   Future<void> initialize() async {
-    // Initialize database
+    debugPrint('🗄️ Initializing database...');
     final databaseService = DatabaseService();
-    await databaseService.database;
+    await databaseService.database; // Pre-open database
     debugPrint('✅ Database initialized');
-    
-    // Load habit filter setting FIRST
+
     await loadHabitFilterSetting();
-    
-    // Load habits immediately during initialization to prevent empty state flash
+
     debugPrint('📱 HabitProvider: Loading habits during initialization...');
-    await _performLoad(false); // Don't force refresh, use cached data if available
+    await _performLoad(false);
     debugPrint('✅ HabitProvider: Initialization complete with ${_habits.length} habits');
   }
 

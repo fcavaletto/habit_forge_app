@@ -282,6 +282,7 @@ class AppStateProvider extends AppState {
 
   // Factory method for easy creation with SQLite repository
   factory AppStateProvider.create() {
+    final databaseService = DatabaseService();
     final habitProvider = HabitProvider.create();
     final notificationService = NotificationService();
     final notificationProvider = NotificationProvider(notificationService);
@@ -294,5 +295,16 @@ class AppStateProvider extends AppState {
     final dateProvider = DateProvider();
 
     return AppStateProvider(habitProvider, notificationProvider, themeProvider, completionCountProvider, extendedColorPaletteProvider, proSubscriptionProvider, streakSettingsProvider, dateProvider);
+  }
+
+  static Future<AppStateProvider> preload() async {
+    final appStateProvider = AppStateProvider.create();
+    await appStateProvider.preloadCore();
+    return appStateProvider;
+  }
+
+  Future<void> preloadCore() async {
+    await _habitProvider.initialize();
+    await _themeProvider.loadThemeMode();
   }
 }
