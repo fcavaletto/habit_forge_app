@@ -328,7 +328,7 @@ class _DashboardViewState extends State<DashboardView>
       onTap: () => _onHabitTap(habit),
       onComplete: () => _onMarkCompleted(habit),
       onIncrement: () => _onIncrementCompletion(habit),
-      onDecrement: () => _onDecrementCompletion(habit),
+      onDecrement: () => _onCompletionButtonPress(habit),
       onEdit: () => _showHabitDetails(habit),
       onArchive: () => _onArchiveHabit(habit),
       onDelete: () => _onDeleteHabit(habit),
@@ -483,6 +483,27 @@ class _DashboardViewState extends State<DashboardView>
     final currentCount = habit.getCompletionCount(today);
     if (currentCount > 0) {
       await _controller.onMarkCompleted(habit, currentCount - 1);
+    }
+  }
+
+  /// Reset all completions for a habit on the current day
+  /// This is called when user taps the tick mark on a completed habit
+  Future<void> _onResetAllCompletions(Habit habit) async {
+    await _controller.onResetAllCompletions(habit);
+  }
+
+  /// Handle completion button press - determines whether to decrement or reset all
+  /// This method checks if the habit is completed and calls the appropriate action
+  Future<void> _onCompletionButtonPress(Habit habit) async {
+    final today = VirtualDateService().currentDate;
+    final isCompleted = habit.isGoalAchieved(today);
+    
+    if (isCompleted) {
+      // Habit is completed - reset all completions
+      await _onResetAllCompletions(habit);
+    } else {
+      // Habit is not completed - decrement by 1
+      await _onDecrementCompletion(habit);
     }
   }
 

@@ -150,6 +150,21 @@ class DashboardController {
     }
   }
 
+  /// Reset all completions for a habit on the current day
+  /// This is called when user taps the tick mark on a completed habit
+  Future<void> onResetAllCompletions(Habit habit) async {
+    // Use VirtualDateService to get the current day
+    final currentDate = VirtualDateService().currentDate;
+    
+    // Reset all completions for this habit on the current day
+    await _appState.habitProvider.resetAllCompletionsForDate(habit.id, currentDate);
+    
+    // Handle notification scheduling - schedule reminder for today since habit is now incomplete
+    if (habit.enableReminders) {
+      await _appState.notificationProvider.scheduleHabitReminder(habit);
+    }
+  }
+
   /// Archive a habit
   Future<void> archiveHabit(BuildContext context, Habit habit) async {
     final success = await _appState.habitProvider.archiveHabit(habit.id);

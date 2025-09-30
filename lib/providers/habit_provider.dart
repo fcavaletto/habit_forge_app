@@ -200,6 +200,34 @@ class HabitState extends ChangeNotifier {
     }
   }
 
+  /// Reset all completions for a habit on a specific date
+  /// This completely removes all completion records for that day
+  Future<void> resetAllCompletionsForDate(String habitId, DateTime date) async {
+    try {
+      // Get current habit to verify it exists
+      final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
+      if (habitIndex < 0) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
+      
+      // Call repository method to remove all completions for this date
+      await _habitRepository.removeAllCompletionsForDate(habitId, date);
+      
+      // Update local state by reloading the habit from database
+      final updatedHabit = await _habitRepository.getHabitById(habitId);
+      if (updatedHabit != null) {
+        _habits[habitIndex] = updatedHabit;
+        notifyListeners();
+        debugPrint('🔄 Reset all completions for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+      }
+    } catch (e) {
+      _error = 'Failed to reset habit completions: $e';
+      notifyListeners();
+      debugPrint('❌ Error resetting habit completions: $e');
+    }
+  }
+
   /// Load hourly completion data for histogram analysis
   ///
   /// @param habitId The ID of the habit to analyze

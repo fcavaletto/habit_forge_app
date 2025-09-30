@@ -343,6 +343,41 @@ class SqliteHabitRepository {
       debugPrint('❌ Error updating habit completion: $e');
     }
   }
+
+  /// Remove all completions for a habit on a specific date
+  /// This completely resets the habit for that day, removing all completion records
+  Future<void> removeAllCompletionsForDate(String habitId, DateTime date) async {
+    try {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      
+      await _databaseService.transaction((txn) async {
+        // Remove completion record for this date
+        await txn.delete(
+          'habit_completions',
+          where: 'habit_id = ? AND completion_date = ?',
+          whereArgs: [habitId, dateTimestamp],
+        );
+        
+        // Remove all timestamp records for this habit on this date
+        // Calculate the full day range for timestamp cleanup
+        final startOfDay = dateTimestamp; // Same as normalizedDate timestamp
+        final endOfDay = TimezoneUtils.toUtcTimestamp(
+          DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59, 999)
+        );
+        
+        await txn.delete(
+          'habit_completion_timestamps',
+          where: 'habit_id = ? AND completion_timestamp >= ? AND completion_timestamp <= ?',
+          whereArgs: [habitId, startOfDay, endOfDay],
+        );
+      });
+      
+      debugPrint('🔄 Reset all completions for habit $habitId on ${date.toIso8601String()}');
+    } catch (e) {
+      debugPrint('❌ Error removing all completions for date: $e');
+    }
+  }
   
   Future<bool> archiveHabit(String habitId) async {
     try {
