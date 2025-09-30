@@ -33,9 +33,8 @@ class SmartCompletionButton extends StatelessWidget {
       label: _getAccessibilityLabel(todayCount, isCompleted),
       hint: _getAccessibilityHint(todayCount, isCompleted),
       button: true,
-      child: InkWell(
+      child: GestureDetector(
         onTap: () => _handleButtonPress(todayCount, isCompleted),
-        borderRadius: BorderRadius.circular(24),
         child: Container(
           width: 48,
           height: 48,
