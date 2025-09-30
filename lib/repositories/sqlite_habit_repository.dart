@@ -278,11 +278,17 @@ class SqliteHabitRepository {
           }
         }
         
-        // Remove most recent timestamp record for this habit
+        // Remove most recent timestamp record for this habit on this specific date
+        // We need to be more specific about which timestamp to remove
+        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(normalizedDate);
+        final endOfDay = TimezoneUtils.toUtcTimestampSeconds(
+          DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59)
+        );
+        
         final timestampRows = await txn.query(
           'habit_completion_timestamps',
-          where: 'habit_id = ?',
-          whereArgs: [habitId],
+          where: 'habit_id = ? AND completion_timestamp >= ? AND completion_timestamp <= ?',
+          whereArgs: [habitId, startOfDay, endOfDay],
           orderBy: 'completion_timestamp DESC',
           limit: 1,
         );
@@ -361,10 +367,13 @@ class SqliteHabitRepository {
         
         // Remove all timestamp records for this habit on this date
         // Calculate the full day range for timestamp cleanup
-        final startOfDay = dateTimestamp; // Same as normalizedDate timestamp
-        final endOfDay = TimezoneUtils.toUtcTimestamp(
-          DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59, 999)
+        // IMPORTANT: Use toUtcTimestampSeconds for timestamps table (stored in seconds)
+        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(normalizedDate);
+        final endOfDay = TimezoneUtils.toUtcTimestampSeconds(
+          DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59)
         );
+        
+        debugPrint('🗑️ [Reset] Deleting timestamps for $habitId from $startOfDay to $endOfDay (seconds)');
         
         await txn.delete(
           'habit_completion_timestamps',
