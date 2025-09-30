@@ -4,6 +4,7 @@ import '../theme.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
 import '../services/virtual_date_service.dart';
+import 'segmented_progress_ring.dart';
 
 /// Smart completion button that adapts its appearance and behavior
 /// based on the habit's goal and current completion state.
@@ -48,12 +49,7 @@ class SmartCompletionButton extends StatelessWidget {
               // Progress circle for multi-completion habits (goal > 1)
               if (habit.targetGoal > 1 && buttonState != ButtonState.completed) ...[
                 SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: todayCount / habit.targetGoal,
-                    strokeWidth: 4,
-                    valueColor: AlwaysStoppedAnimation(habitColor.withValues(alpha: 0.8)),
-                    backgroundColor: habitColor.withValues(alpha: 0.2),
-                  ),
+                  child: _buildProgressIndicator(todayCount, habitColor),
                 ),
               ],
               // Main icon
@@ -124,6 +120,31 @@ class SmartCompletionButton extends StatelessWidget {
     } else {
       // Add another completion
       onIncrement?.call();
+    }
+  }
+
+  /// Build the appropriate progress indicator based on goal size
+  Widget _buildProgressIndicator(int todayCount, Color habitColor) {
+    // Use segmented ring for goals ≤ 12, smooth ring for higher goals
+    if (habit.targetGoal <= 12) {
+      return SegmentedProgressRing(
+        completed: todayCount,
+        goal: habit.targetGoal,
+        segmentColor: habitColor.withValues(alpha: 0.9),
+        emptyColor: habitColor.withValues(alpha: 0.4),
+        strokeWidth: 8,              // Thicker ring (was 4)
+        size: 48,
+        gapSize: 8.0,                // Gap between segments
+        startAngleOffset: 15.0,      // Start 10° from top
+      );
+    } else {
+      // Fall back to smooth circular progress indicator for higher goals
+      return CircularProgressIndicator(
+        value: todayCount / habit.targetGoal,
+        strokeWidth: 4,
+        valueColor: AlwaysStoppedAnimation(habitColor.withValues(alpha: 0.8)),
+        backgroundColor: habitColor.withValues(alpha: 0.2),
+      );
     }
   }
 }
