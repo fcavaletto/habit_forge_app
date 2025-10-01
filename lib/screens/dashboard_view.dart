@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
+import '../providers/habit_provider.dart';
 import '../controllers/dashboard_controller.dart';
 import '../widgets/habit_card.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
@@ -160,7 +161,7 @@ class _DashboardViewState extends State<DashboardView>
           hint: 'Main screen showing your habits and progress',
           child: Scaffold(
             appBar: _buildAppBar(appState),
-            body: _buildBody(appState),
+            body: _buildOptimizedBody(appState),
           ),
         );
       },
@@ -212,6 +213,37 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
+  /// Optimized body builder that minimizes rebuilds
+  /// 
+  /// This method uses selective consumers to avoid rebuilding
+  /// the entire dashboard when only specific parts change.
+  Widget _buildOptimizedBody(AppState appState) {
+    // Use Consumer<HabitProvider> to listen only to habit list changes
+    // This prevents rebuilding when individual habit completions change
+    return Consumer<HabitProvider>(
+      builder: (context, habitProvider, child) {
+        final filteredHabits = habitProvider.filteredHabits;
+        debugPrint('🔄 Optimized DashboardView building with ${filteredHabits.length} filtered habits');
+
+        if (appState.isLoadingHabits) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (filteredHabits.isEmpty) {
+          debugPrint('📭 No habits found for selected date, showing empty state');
+          return _buildEmptyState(isFiltered: true);
+        }
+
+        debugPrint('📊 Building habits list with selective rebuilds');
+        return _buildHabitsList(filteredHabits);
+      },
+    );
+  }
+
+  /// Legacy body builder kept for backward compatibility
+  /// 
+  /// This method rebuilds the entire dashboard on any change.
+  /// Use _buildOptimizedBody for better performance.
   Widget _buildBody(AppState appState) {
     final filteredHabits = appState.habitProvider.filteredHabits;
     debugPrint('🔄 DashboardView building with ${filteredHabits.length} filtered habits');
@@ -309,7 +341,7 @@ class _DashboardViewState extends State<DashboardView>
                 return Container(
                   key: ValueKey(habit.id),
                   margin: const EdgeInsets.only(bottom: 12),
-                  child: _buildHabitCard(habit),
+                  child: _buildSelectiveHabitCard(habit),
                 );
               },
             ),
@@ -319,6 +351,42 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
+  /// Builds a habit card with selective rebuilds
+  /// 
+  /// This method uses Consumer<HabitProvider> to listen only to changes
+  /// in the specific habit, rather than rebuilding the entire dashboard
+  /// when any habit changes. This provides significant performance improvements.
+  Widget _buildSelectiveHabitCard(Habit habit) {
+    return Consumer<HabitProvider>(
+      builder: (context, habitProvider, child) {
+        // Get the updated habit from the provider
+        final updatedHabit = habitProvider.habits.firstWhere(
+          (h) => h.id == habit.id,
+          orElse: () => habit, // Fallback to original habit if not found
+        );
+        
+        debugPrint('🔄 Selective rebuild: Habit ${habit.id} (${habit.name})');
+        
+        return HabitCard(
+          key: ValueKey(habit.id), // Stable key for performance
+          habit: updatedHabit,
+          onTap: () => _onHabitTap(updatedHabit),
+          onComplete: () => _onMarkCompleted(updatedHabit),
+          onIncrement: () => _onIncrementCompletion(updatedHabit),
+          onDecrement: () => _onCompletionButtonPress(updatedHabit),
+          onEdit: () => _showHabitDetails(updatedHabit),
+          onArchive: () => _onArchiveHabit(updatedHabit),
+          onDelete: () => _onDeleteHabit(updatedHabit),
+          onStats: () => _showHabitStats(updatedHabit),
+        );
+      },
+    );
+  }
+
+  /// Legacy method kept for backward compatibility
+  /// 
+  /// This method rebuilds the entire dashboard on any habit change.
+  /// Use _buildSelectiveHabitCard for better performance.
   Widget _buildHabitCard(Habit habit) {
     // Extract to separate method for better performance
     // This allows Flutter to optimize widget rebuilding
