@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'theme.dart';
 import 'screens/dashboard_screen.dart';
 import 'providers/app_state_provider.dart';
+import 'providers/habit_provider.dart';
 import 'widgets/error_boundary.dart';
 
 /// Application entry point
@@ -28,6 +29,11 @@ Future<void> main() async {
         child: MultiProvider(
           providers: [
             ChangeNotifierProvider<AppState>.value(value: appState),
+            // Expose HabitProvider directly for selective UI rebuilds
+            ChangeNotifierProxyProvider<AppState, HabitProvider>(
+              create: (context) => appState.habitProvider,
+              update: (context, appState, previous) => appState.habitProvider,
+            ),
           ],
           child: Consumer<AppState>(
             builder: (context, appState, child) {

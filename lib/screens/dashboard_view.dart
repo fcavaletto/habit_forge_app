@@ -351,21 +351,23 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  /// Builds a habit card with selective rebuilds
+  /// Builds a habit card with true selective rebuilds
   /// 
-  /// This method uses Consumer<HabitProvider> to listen only to changes
-  /// in the specific habit, rather than rebuilding the entire dashboard
-  /// when any habit changes. This provides significant performance improvements.
+  /// This method uses Selector<HabitProvider, Habit> to listen only to changes
+  /// in the specific habit data, rather than rebuilding when any habit changes.
+  /// This provides significant performance improvements by only rebuilding
+  /// the specific habit card that actually changed.
   Widget _buildSelectiveHabitCard(Habit habit) {
-    return Consumer<HabitProvider>(
-      builder: (context, habitProvider, child) {
-        // Get the updated habit from the provider
-        final updatedHabit = habitProvider.habits.firstWhere(
+    return Selector<HabitProvider, Habit>(
+      selector: (context, habitProvider) {
+        // Only select the specific habit we care about
+        return habitProvider.habits.firstWhere(
           (h) => h.id == habit.id,
           orElse: () => habit, // Fallback to original habit if not found
         );
-        
-        debugPrint('🔄 Selective rebuild: Habit ${habit.id} (${habit.name})');
+      },
+      builder: (context, updatedHabit, child) {
+        debugPrint('🎯 True selective rebuild: Habit ${habit.id} (${habit.name})');
         
         return HabitCard(
           key: ValueKey(habit.id), // Stable key for performance
