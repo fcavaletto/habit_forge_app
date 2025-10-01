@@ -358,30 +358,19 @@ class _DashboardViewState extends State<DashboardView>
   /// This provides significant performance improvements by only rebuilding
   /// the specific habit card that actually changed.
   Widget _buildSelectiveHabitCard(Habit habit) {
-    return Selector<HabitProvider, Habit>(
-      selector: (context, habitProvider) {
-        // Only select the specific habit we care about
-        return habitProvider.habits.firstWhere(
-          (h) => h.id == habit.id,
-          orElse: () => habit, // Fallback to original habit if not found
-        );
-      },
-      builder: (context, updatedHabit, child) {
-        debugPrint('🎯 True selective rebuild: Habit ${habit.id} (${habit.name})');
-        
-        return HabitCard(
-          key: ValueKey(habit.id), // Stable key for performance
-          habit: updatedHabit,
-          onTap: () => _onHabitTap(updatedHabit),
-          onComplete: () => _onMarkCompleted(updatedHabit),
-          onIncrement: () => _onIncrementCompletion(updatedHabit),
-          onDecrement: () => _onCompletionButtonPress(updatedHabit),
-          onEdit: () => _showHabitDetails(updatedHabit),
-          onArchive: () => _onArchiveHabit(updatedHabit),
-          onDelete: () => _onDeleteHabit(updatedHabit),
-          onStats: () => _showHabitStats(updatedHabit),
-        );
-      },
+    // Use RepaintBoundary to isolate repaints and implement true selective rebuilds
+    return RepaintBoundary(
+      child: _HabitCardWrapper(
+        habit: habit,
+        onTap: () => _onHabitTap(habit),
+        onComplete: () => _onMarkCompleted(habit),
+        onIncrement: () => _onIncrementCompletion(habit),
+        onDecrement: () => _onCompletionButtonPress(habit),
+        onEdit: () => _showHabitDetails(habit),
+        onArchive: () => _onArchiveHabit(habit),
+        onDelete: () => _onDeleteHabit(habit),
+        onStats: () => _showHabitStats(habit),
+      ),
     );
   }
 
@@ -874,6 +863,102 @@ class _DashboardViewState extends State<DashboardView>
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Wrapper widget that implements true selective rebuilds for individual habit cards
+/// 
+/// This widget uses a custom approach to only rebuild when the specific habit
+/// data changes, avoiding unnecessary rebuilds of other habit cards.
+class _HabitCardWrapper extends StatefulWidget {
+  final Habit habit;
+  final VoidCallback onTap;
+  final VoidCallback onComplete;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+  final VoidCallback onEdit;
+  final VoidCallback onArchive;
+  final VoidCallback onDelete;
+  final VoidCallback onStats;
+
+  const _HabitCardWrapper({
+    required this.habit,
+    required this.onTap,
+    required this.onComplete,
+    required this.onIncrement,
+    required this.onDecrement,
+    required this.onEdit,
+    required this.onArchive,
+    required this.onDelete,
+    required this.onStats,
+  });
+
+  @override
+  State<_HabitCardWrapper> createState() => _HabitCardWrapperState();
+}
+
+class _HabitCardWrapperState extends State<_HabitCardWrapper> {
+  Habit? _cachedHabit;
+  int? _cachedCompletionCount;
+  DateTime? _cachedDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<HabitProvider>(
+      builder: (context, habitProvider, child) {
+        // Get the updated habit from the provider
+        final updatedHabit = habitProvider.habits.firstWhere(
+          (h) => h.id == widget.habit.id,
+          orElse: () => widget.habit,
+        );
+        
+        final currentDate = habitProvider.currentDate;
+        final currentCompletionCount = updatedHabit.getCompletionCount(currentDate);
+        
+        // Check if this specific habit actually changed
+        final hasChanged = _cachedHabit == null ||
+            _cachedCompletionCount != currentCompletionCount ||
+            _cachedDate != currentDate ||
+            _cachedHabit!.id != updatedHabit.id;
+        
+        if (!hasChanged) {
+          debugPrint('⏭️ Skipping rebuild: Habit ${widget.habit.id} (${widget.habit.name}) - no change');
+          return child!; // Return cached widget
+        }
+        
+        // Update cache
+        _cachedHabit = updatedHabit;
+        _cachedCompletionCount = currentCompletionCount;
+        _cachedDate = currentDate;
+        
+        debugPrint('🎯 True selective rebuild: Habit ${widget.habit.id} (${widget.habit.name}) = $currentCompletionCount');
+        
+        return HabitCard(
+          key: ValueKey(widget.habit.id),
+          habit: updatedHabit,
+          onTap: widget.onTap,
+          onComplete: widget.onComplete,
+          onIncrement: widget.onIncrement,
+          onDecrement: widget.onDecrement,
+          onEdit: widget.onEdit,
+          onArchive: widget.onArchive,
+          onDelete: widget.onDelete,
+          onStats: widget.onStats,
+        );
+      },
+      child: HabitCard(
+        key: ValueKey(widget.habit.id),
+        habit: widget.habit,
+        onTap: widget.onTap,
+        onComplete: widget.onComplete,
+        onIncrement: widget.onIncrement,
+        onDecrement: widget.onDecrement,
+        onEdit: widget.onEdit,
+        onArchive: widget.onArchive,
+        onDelete: widget.onDelete,
+        onStats: widget.onStats,
       ),
     );
   }
