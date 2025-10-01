@@ -49,7 +49,7 @@ class CompletionChart extends StatelessWidget {
                     },
                     verticalInterval: 1,
                     getDrawingVerticalLine: (value) {
-                      return FlLine(
+                      return const FlLine(
                         color: Colors.transparent,
                         strokeWidth: 0,
                       );

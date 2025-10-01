@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:habit_forge_app/main.dart';
 import 'package:habit_forge_app/providers/app_state_provider.dart';
 import 'package:habit_forge_app/theme.dart';
 import 'package:habit_forge_app/screens/dashboard_screen.dart';

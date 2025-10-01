@@ -244,22 +244,6 @@ class _DashboardViewState extends State<DashboardView>
   /// 
   /// This method rebuilds the entire dashboard on any change.
   /// Use _buildOptimizedBody for better performance.
-  Widget _buildBody(AppState appState) {
-    final filteredHabits = appState.habitProvider.filteredHabits;
-    debugPrint('🔄 DashboardView building with ${filteredHabits.length} filtered habits');
-
-    if (appState.isLoadingHabits) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (filteredHabits.isEmpty) {
-      debugPrint('📭 No habits found for selected date, showing empty state');
-      return _buildEmptyState(isFiltered: true);
-    }
-
-    debugPrint('📊 Building habits list with drag-and-drop capability');
-    return _buildHabitsList(filteredHabits);
-  }
 
   Widget _buildEmptyState({bool isFiltered = false}) {
     return SafeScrollableWrapper(
@@ -378,22 +362,6 @@ class _DashboardViewState extends State<DashboardView>
   /// 
   /// This method rebuilds the entire dashboard on any habit change.
   /// Use _buildSelectiveHabitCard for better performance.
-  Widget _buildHabitCard(Habit habit) {
-    // Extract to separate method for better performance
-    // This allows Flutter to optimize widget rebuilding
-    return HabitCard(
-      key: ValueKey(habit.id), // Stable key for performance
-      habit: habit,
-      onTap: () => _onHabitTap(habit),
-      onComplete: () => _onMarkCompleted(habit),
-      onIncrement: () => _onIncrementCompletion(habit),
-      onDecrement: () => _onCompletionButtonPress(habit),
-      onEdit: () => _showHabitDetails(habit),
-      onArchive: () => _onArchiveHabit(habit),
-      onDelete: () => _onDeleteHabit(habit),
-      onStats: () => _showHabitStats(habit),
-    );
-  }
 
   Widget _buildHeader(List<Habit> habits) {
     // Get the provider state
@@ -914,7 +882,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
           orElse: () => widget.habit,
         );
         
-        final currentDate = habitProvider.currentDate;
+        final currentDate = habitProvider.selectedDate;
         final currentCompletionCount = updatedHabit.getCompletionCount(currentDate);
         
         // Check if this specific habit actually changed
