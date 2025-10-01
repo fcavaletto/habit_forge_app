@@ -158,7 +158,11 @@ class HabitState extends ChangeNotifier {
     }
   }
 
-  /// Update habit completion count
+  /// Update habit completion count with optimistic UI updates
+  /// 
+  /// This method updates the UI immediately (optimistic) and then syncs
+  /// to the database in the background. If the database sync fails,
+  /// the UI will be rolled back to the previous state.
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
       // Get current habit to check existing completion count
@@ -168,17 +172,52 @@ class HabitState extends ChangeNotifier {
         return;
       }
       
-      final habit = _habits[habitIndex];
-      final currentCount = habit.getCompletionCount(date);
+      final originalHabit = _habits[habitIndex];
+      final currentCount = originalHabit.getCompletionCount(date);
       
-      // Calculate the difference and apply changes incrementally
+      // Calculate the difference
+      final difference = count - currentCount;
+      
+      if (difference == 0) {
+        debugPrint('📝 No change needed for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+        return;
+      }
+      
+      // OPTIMISTIC UI UPDATE: Update UI immediately
+      final optimisticHabit = originalHabit.markCompleted(date, count);
+      _habits[habitIndex] = optimisticHabit;
+      notifyListeners(); // Instant UI update
+      
+      debugPrint('⚡ Optimistic update: $habitId on ${date.toIso8601String().split('T')[0]} = $count');
+      
+      // BACKGROUND DATABASE SYNC: Perform database operations in background
+      _syncCompletionToDatabase(habitId, date, count, originalHabit, habitIndex);
+      
+    } catch (e) {
+      _error = 'Failed to update habit completion: $e';
+      notifyListeners();
+      debugPrint('❌ Error updating habit completion: $e');
+    }
+  }
+  
+  /// Sync completion changes to database in background
+  /// 
+  /// This method handles the actual database operations after the optimistic UI update.
+  /// If the database operation fails, it will rollback the UI changes.
+  Future<void> _syncCompletionToDatabase(
+    String habitId, 
+    DateTime date, 
+    int count, 
+    Habit originalHabit, 
+    int habitIndex
+  ) async {
+    try {
+      final currentCount = originalHabit.getCompletionCount(date);
       final difference = count - currentCount;
       
       if (difference > 0) {
-        // Add completions
-        for (int i = 0; i < difference; i++) {
-          await _habitRepository.addHabitCompletion(habitId, date);
-        }
+        // Add completions using batch operation
+        await _habitRepository.addMultipleCompletions(habitId, date, difference);
       } else if (difference < 0) {
         // Remove completions
         for (int i = 0; i < -difference; i++) {
@@ -186,21 +225,28 @@ class HabitState extends ChangeNotifier {
         }
       }
       
-      // Update local state by reloading the habit from database
-      final updatedHabit = await _habitRepository.getHabitById(habitId);
-      if (updatedHabit != null) {
-        _habits[habitIndex] = updatedHabit;
-        notifyListeners();
-        debugPrint('✅ Updated habit completion: $habitId on ${date.toIso8601String().split('T')[0]} = $count');
-      }
+      debugPrint('✅ Database sync successful: $habitId on ${date.toIso8601String().split('T')[0]} = $count');
     } catch (e) {
-      _error = 'Failed to update habit completion: $e';
+      debugPrint('❌ Database sync failed for $habitId: $e');
+      _rollbackOptimisticUpdate(habitId, originalHabit, habitIndex);
+    }
+  }
+  
+  /// Rollback optimistic UI update when database sync fails
+  /// 
+  /// This method reverts the UI changes if the database operation failed.
+  void _rollbackOptimisticUpdate(String habitId, Habit originalHabit, int habitIndex) {
+    try {
+      _habits[habitIndex] = originalHabit;
       notifyListeners();
-      debugPrint('❌ Error updating habit completion: $e');
+      _error = 'Failed to sync completion to database. Changes have been reverted.';
+      debugPrint('🔄 Rolled back optimistic update for habit $habitId');
+    } catch (e) {
+      debugPrint('❌ Error during rollback for habit $habitId: $e');
     }
   }
 
-  /// Reset all completions for a habit on a specific date
+  /// Reset all completions for a habit on a specific date with optimistic updates
   /// This completely removes all completion records for that day
   Future<void> resetAllCompletionsForDate(String habitId, DateTime date) async {
     try {
@@ -211,20 +257,44 @@ class HabitState extends ChangeNotifier {
         return;
       }
       
-      // Call repository method to remove all completions for this date
-      await _habitRepository.removeAllCompletionsForDate(habitId, date);
+      final originalHabit = _habits[habitIndex];
+      final currentCount = originalHabit.getCompletionCount(date);
       
-      // Update local state by reloading the habit from database
-      final updatedHabit = await _habitRepository.getHabitById(habitId);
-      if (updatedHabit != null) {
-        _habits[habitIndex] = updatedHabit;
-        notifyListeners();
-        debugPrint('🔄 Reset all completions for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+      if (currentCount == 0) {
+        debugPrint('📝 No completions to reset for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+        return;
       }
+      
+      // OPTIMISTIC UI UPDATE: Update UI immediately
+      final optimisticHabit = originalHabit.markCompleted(date, 0);
+      _habits[habitIndex] = optimisticHabit;
+      notifyListeners(); // Instant UI update
+      
+      debugPrint('⚡ Optimistic reset: $habitId on ${date.toIso8601String().split('T')[0]} = 0');
+      
+      // BACKGROUND DATABASE SYNC: Perform database operations in background
+      _syncResetToDatabase(habitId, date, originalHabit, habitIndex);
+      
     } catch (e) {
       _error = 'Failed to reset habit completions: $e';
       notifyListeners();
       debugPrint('❌ Error resetting habit completions: $e');
+    }
+  }
+  
+  /// Sync reset operation to database in background
+  Future<void> _syncResetToDatabase(
+    String habitId, 
+    DateTime date, 
+    Habit originalHabit, 
+    int habitIndex
+  ) async {
+    try {
+      await _habitRepository.removeAllCompletionsForDate(habitId, date);
+      debugPrint('✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]}');
+    } catch (e) {
+      debugPrint('❌ Database reset failed for $habitId: $e');
+      _rollbackOptimisticUpdate(habitId, originalHabit, habitIndex);
     }
   }
 

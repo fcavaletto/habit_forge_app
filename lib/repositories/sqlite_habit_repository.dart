@@ -181,14 +181,21 @@ class SqliteHabitRepository {
     }
   }
   
-  /// Add a completion for a habit on a specific date
-  Future<void> addHabitCompletion(String habitId, DateTime date) async {
+  /// Add multiple completions for a habit on a specific date (batch operation)
+  /// 
+  /// This is an optimized version that adds multiple completions in a single transaction
+  /// instead of multiple individual calls. This reduces database operations significantly.
+  Future<void> addMultipleCompletions(String habitId, DateTime date, int count) async {
+    if (count <= 0) {
+      debugPrint('📝 No completions to add for habit $habitId');
+      return;
+    }
+    
     try {
       final normalizedDate = DateTime(date.year, date.month, date.day);
       final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
-      final completionTimestamp = TimezoneUtils.toUtcTimestampSeconds(date);
       
-      // Get current habit to get the goal
+      // Get current habit to get the goal (only once, not per completion)
       final habit = await getHabitById(habitId);
       if (habit == null) {
         debugPrint('❌ Habit not found: $habitId');
@@ -204,43 +211,55 @@ class SqliteHabitRepository {
         );
         
         if (existingRecord.isNotEmpty) {
-          // Increment existing count
+          // Increment existing count by the batch amount
           await txn.update(
             'habit_completions',
             {
-              'completion_count': (existingRecord.first['completion_count'] as int) + 1,
-              'goal_at_completion': habit.targetGoal, // Update goal in case it changed
+              'completion_count': (existingRecord.first['completion_count'] as int) + count,
+              'goal_at_completion': habit.targetGoal,
             },
             where: 'habit_id = ? AND completion_date = ?',
             whereArgs: [habitId, dateTimestamp],
           );
         } else {
-          // Insert new record
+          // Insert new record with batch count
           await txn.insert(
             'habit_completions',
             {
               'habit_id': habitId,
               'completion_date': dateTimestamp,
-              'completion_count': 1,
+              'completion_count': count,
               'goal_at_completion': habit.targetGoal,
             },
           );
         }
         
-        // Add timestamp record
-        await txn.insert(
-          'habit_completion_timestamps',
-          {
-            'habit_id': habitId,
-            'completion_timestamp': completionTimestamp,
-          },
-        );
+        // Add multiple timestamp records (one per completion)
+        for (int i = 0; i < count; i++) {
+          final completionTimestamp = TimezoneUtils.toUtcTimestampSeconds(date);
+          await txn.insert(
+            'habit_completion_timestamps',
+            {
+              'habit_id': habitId,
+              'completion_timestamp': completionTimestamp,
+            },
+          );
+        }
       });
       
-      debugPrint('✅ Added completion for habit $habitId on ${date.toIso8601String()} (timestamp: $completionTimestamp)');
+      debugPrint('✅ Added $count completions for habit $habitId on ${date.toIso8601String()} (batch operation)');
     } catch (e) {
-      debugPrint('❌ Error adding habit completion: $e');
+      debugPrint('❌ Error adding multiple habit completions: $e');
+      rethrow;
     }
+  }
+  
+  /// Add a completion for a habit on a specific date (legacy method)
+  /// 
+  /// This method is kept for backward compatibility but should be replaced
+  /// with addMultipleCompletions for better performance.
+  Future<void> addHabitCompletion(String habitId, DateTime date) async {
+    await addMultipleCompletions(habitId, date, 1);
   }
   
   /// Remove a completion for a habit on a specific date
