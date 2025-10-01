@@ -6,6 +6,7 @@ import '../repositories/sqlite_habit_repository.dart';
 import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import '../services/virtual_date_service.dart';
+import '../services/completion_cache_service.dart';
 import '../utils/data_freshness.dart';
 import '../utils/date_range_utils.dart';
 import '../utils/performance_monitor.dart';
@@ -50,6 +51,7 @@ import '../utils/performance_monitor.dart';
 class HabitState extends ChangeNotifier {
   final SqliteHabitRepository _habitRepository;
   final SettingsRepository _settingsRepository;
+  final CompletionCacheService _completionCache = CompletionCacheService();
 
   List<Habit> _habits = [];
   bool _isLoading = false;
@@ -129,6 +131,10 @@ class HabitState extends ChangeNotifier {
       debugPrint('📱 HabitProvider: Loading habits from storage...');
       // Fetch fresh data from repository layer
       _habits = await _habitRepository.getActiveHabits();
+      
+      // Warm cache with completion data for current date
+      await _warmCompletionCache();
+      
       // Update timestamp for freshness tracking
       _lastLoadTime = DateTime.now();
 
@@ -218,11 +224,15 @@ class HabitState extends ChangeNotifier {
       if (difference > 0) {
         // Add completions using batch operation
         await _habitRepository.addMultipleCompletions(habitId, date, difference);
+        // Invalidate cache for this habit and date
+        _completionCache.invalidateCompletion(habitId, date);
       } else if (difference < 0) {
         // Remove completions
         for (int i = 0; i < -difference; i++) {
           await _habitRepository.removeHabitCompletion(habitId, date);
         }
+        // Invalidate cache for this habit and date
+        _completionCache.invalidateCompletion(habitId, date);
       }
       
       debugPrint('✅ Database sync successful: $habitId on ${date.toIso8601String().split('T')[0]} = $count');
@@ -291,11 +301,81 @@ class HabitState extends ChangeNotifier {
   ) async {
     try {
       await _habitRepository.removeAllCompletionsForDate(habitId, date);
+      
+      // Invalidate cache for this habit and date
+      _completionCache.invalidateCompletion(habitId, date);
+      
       debugPrint('✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]}');
     } catch (e) {
       debugPrint('❌ Database reset failed for $habitId: $e');
       _rollbackOptimisticUpdate(habitId, originalHabit, habitIndex);
     }
+  }
+
+  /// Get completion count with intelligent caching
+  /// 
+  /// This method first checks the cache for completion data. If not found,
+  /// it loads from the database and caches the result for future use.
+  /// This dramatically reduces database queries for completion data.
+  Future<int> getCachedCompletionCount(String habitId, DateTime date) async {
+    // First, try to get from cache
+    final cachedCount = _completionCache.getCompletionCount(habitId, date);
+    if (cachedCount != null) {
+      return cachedCount;
+    }
+    
+    // Cache miss - load from database
+    debugPrint('📅 Cache miss - loading completion count from database for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+    
+    try {
+      // Get the habit to access its completion data
+      final habit = _habits.firstWhere((h) => h.id == habitId);
+      final count = habit.getCompletionCount(date);
+      
+      // Cache the result for future use
+      _completionCache.cacheCompletionCount(habitId, date, count);
+      
+      return count;
+    } catch (e) {
+      debugPrint('❌ Error getting cached completion count: $e');
+      return 0;
+    }
+  }
+
+  /// Warm completion cache with current date data
+  /// 
+  /// This method pre-loads completion data for all habits on the current date
+  /// to improve performance and reduce database queries.
+  Future<void> _warmCompletionCache() async {
+    try {
+      final currentDate = _selectedDate;
+      debugPrint('🔥 Warming completion cache for ${_habits.length} habits on ${currentDate.toIso8601String().split('T')[0]}');
+      
+      for (final habit in _habits) {
+        final count = habit.getCompletionCount(currentDate);
+        _completionCache.cacheCompletionCount(habit.id, currentDate, count);
+      }
+      
+      debugPrint('🔥 Cache warmed with ${_habits.length} completion records');
+    } catch (e) {
+      debugPrint('❌ Error warming completion cache: $e');
+    }
+  }
+
+  /// Get completion cache statistics for monitoring
+  Map<String, dynamic> getCompletionCacheStats() {
+    return _completionCache.getCacheStats();
+  }
+
+  /// Clear completion cache (useful for debugging or memory management)
+  void clearCompletionCache() {
+    _completionCache.clearCache();
+    debugPrint('🗑️ Completion cache cleared');
+  }
+
+  /// Clean up expired cache entries
+  void cleanupExpiredCacheEntries() {
+    _completionCache.cleanupExpiredEntries();
   }
 
   /// Load hourly completion data for histogram analysis
