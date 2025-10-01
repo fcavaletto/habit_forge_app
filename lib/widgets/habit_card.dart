@@ -8,9 +8,42 @@ import 'segmented_progress_ring.dart';
 
 /// Smart completion button that adapts its appearance and behavior
 /// based on the habit's goal and current completion state.
+///
+/// This button provides a unified interface for habit completion that:
+/// - Shows different icons based on completion state (add/check)
+/// - Displays progress rings for multi-completion habits (goal > 1)
+/// - Handles incremental completion and reset functionality
+/// - Provides comprehensive accessibility support
+/// - Adapts colors and transparency based on completion state
+///
+/// The button automatically determines its state and behavior:
+/// - **Empty**: No completions today - shows add icon, calls onIncrement
+/// - **In Progress**: Some completions but goal not met - shows add icon, calls onIncrement
+/// - **Completed**: Goal achieved - shows check icon, calls onDecrement (reset)
 class SmartCompletionButton extends StatelessWidget {
+  // Constants for button dimensions and styling
+  static const double _buttonSize = 48.0;
+  static const double _completedIconSize = 28.0;
+  static const double _defaultIconSize = 24.0;
+  static const double _emptyAlpha = 0.3;
+  static const double _completedAlpha = 1.0;
+  
+  // Progress ring constants
+  static const double _progressRingSize = 48.0;
+  static const double _progressStrokeWidth = 8.0;
+  static const double _progressGapSize = 8.0;
+  static const double _progressStartAngleOffset = 15.0;
+  static const double _segmentAlpha = 0.9;
+  static const double _emptySegmentAlpha = 0.4;
+  static const int _maxSegmentedGoal = 12;
+
+  /// The habit this button represents
   final Habit habit;
+  
+  /// Callback when completion count should be incremented
   final VoidCallback? onIncrement;
+  
+  /// Callback when completion count should be decremented (reset)
   final VoidCallback? onDecrement;
 
   const SmartCompletionButton({
@@ -22,11 +55,12 @@ class SmartCompletionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get current completion state
     final todayCount = habit.getCompletionCount(VirtualDateService().currentDate);
     final isCompleted = habit.isGoalAchieved(VirtualDateService().currentDate);
     final habitColor = Theme.of(context).colorScheme.habitColor(habit.colorIndex);
 
-    // Determine button state
+    // Determine button state based on completion
     final buttonState = _getButtonState(todayCount, isCompleted);
 
     return Semantics(
@@ -36,8 +70,8 @@ class SmartCompletionButton extends StatelessWidget {
       child: GestureDetector(
         onTap: () => _handleButtonPress(todayCount, isCompleted),
         child: Container(
-          width: 48,
-          height: 48,
+          width: _buttonSize,
+          height: _buttonSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: _getButtonColor(habitColor, buttonState),
@@ -45,13 +79,14 @@ class SmartCompletionButton extends StatelessWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Progress circle for multi-completion habits (goal > 1)
+              // Progress ring for multi-completion habits (goal > 1)
+              // Only show when not completed to avoid visual clutter
               if (habit.targetGoal > 1 && buttonState != ButtonState.completed) ...[
                 SizedBox.expand(
                   child: _buildProgressIndicator(todayCount, habitColor, context),
                 ),
               ],
-              // Main icon
+              // Main action icon (add or check)
               Icon(
                 _getButtonIcon(buttonState),
                 color: Colors.white,
@@ -64,17 +99,33 @@ class SmartCompletionButton extends StatelessWidget {
     );
   }
 
+  /// Determines the current button state based on completion count and goal achievement.
+  /// 
+  /// Returns:
+  /// - [ButtonState.empty] when no completions today
+  /// - [ButtonState.completed] when goal is fully achieved
+  /// - [ButtonState.inProgress] when partially completed
   ButtonState _getButtonState(int todayCount, bool isCompleted) {
     if (todayCount == 0) return ButtonState.empty;
     if (isCompleted) return ButtonState.completed;
     return ButtonState.inProgress;
   }
 
+  /// Returns the button background color with appropriate transparency.
+  /// 
+  /// Completed buttons are fully opaque, while empty/in-progress buttons
+  /// are semi-transparent to indicate they're interactive.
   Color _getButtonColor(Color habitColor, ButtonState state) {
-    final alpha = (state == ButtonState.empty || state == ButtonState.inProgress) ? 0.3 : 1.0;
+    final alpha = (state == ButtonState.empty || state == ButtonState.inProgress) 
+        ? _emptyAlpha 
+        : _completedAlpha;
     return habitColor.withValues(alpha: alpha);
   }
 
+  /// Returns the appropriate icon for the current button state.
+  /// 
+  /// - Empty/In Progress: Add icon (Icons.add)
+  /// - Completed: Check icon (Icons.check)
   IconData _getButtonIcon(ButtonState state) {
     switch (state) {
       case ButtonState.empty:
@@ -85,10 +136,19 @@ class SmartCompletionButton extends StatelessWidget {
     }
   }
 
+  /// Returns the appropriate icon size for the current button state.
+  /// 
+  /// Completed buttons use a larger icon to emphasize the achievement.
   double _getIconSize(ButtonState state) {
-    return state == ButtonState.completed ? 28 : 24;
+    return state == ButtonState.completed ? _completedIconSize : _defaultIconSize;
   }
 
+  /// Generates an accessibility label describing the current completion state.
+  /// 
+  /// Provides screen readers with context about:
+  /// - The habit name
+  /// - Current completion count vs goal
+  /// - Available action (add or reset)
   String _getAccessibilityLabel(int todayCount, bool isCompleted) {
     if (todayCount == 0) {
       return 'Add first completion for ${habit.name}';
@@ -99,6 +159,9 @@ class SmartCompletionButton extends StatelessWidget {
     return '${habit.name}: $todayCount of ${habit.targetGoal} completions - tap to add';
   }
 
+  /// Generates an accessibility hint explaining what will happen when tapped.
+  /// 
+  /// Provides additional context for screen readers about the button's action.
   String _getAccessibilityHint(int todayCount, bool isCompleted) {
     if (todayCount == 0) {
       return 'Tap to add your first completion today';
@@ -109,6 +172,12 @@ class SmartCompletionButton extends StatelessWidget {
     return 'Tap to add another completion';
   }
 
+  /// Handles button press events based on current completion state.
+  /// 
+  /// Behavior:
+  /// - Empty state: Calls [onIncrement] to add first completion
+  /// - Completed state: Calls [onDecrement] to reset all completions
+  /// - In progress state: Calls [onIncrement] to add another completion
   void _handleButtonPress(int todayCount, bool isCompleted) {
     if (todayCount == 0) {
       // Add first completion
@@ -122,20 +191,26 @@ class SmartCompletionButton extends StatelessWidget {
     }
   }
 
-  /// Build the appropriate progress indicator based on goal size
+  /// Builds the appropriate progress indicator based on goal size.
+  /// 
+  /// For goals ≤ 12: Uses [SegmentedProgressRing] with individual segments
+  /// For goals > 12: Uses [CircularProgressIndicator] for smooth progress
+  /// 
+  /// The segmented ring provides clear visual feedback for smaller goals,
+  /// while the smooth indicator is more appropriate for larger goals where
+  /// individual segments would be too small to be meaningful.
   Widget _buildProgressIndicator(int todayCount, Color habitColor, BuildContext context) {
-    // Use segmented ring for goals ≤ 12, smooth ring for higher goals
-    if (habit.targetGoal <= 12) {
+    if (habit.targetGoal <= _maxSegmentedGoal) {
       return SegmentedProgressRing(
         completed: todayCount,
         goal: habit.targetGoal,
-        segmentColor: habitColor.withValues(alpha: 0.9),
-        emptyColor: habitColor.withValues(alpha: 0.4),
-        backgroundColor: Theme.of(context).colorScheme.surface, // Card background color
-        strokeWidth: 8,              // Thicker ring (was 4)
-        size: 48,
-        gapSize: 8.0,                // Gap between segments
-        startAngleOffset: 15.0,      // Start 10° from top
+        segmentColor: habitColor.withValues(alpha: _segmentAlpha),
+        emptyColor: habitColor.withValues(alpha: _emptySegmentAlpha),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        strokeWidth: _progressStrokeWidth,
+        size: _progressRingSize,
+        gapSize: _progressGapSize,
+        startAngleOffset: _progressStartAngleOffset,
       );
     } else {
       // Fall back to smooth circular progress indicator for higher goals
@@ -149,10 +224,18 @@ class SmartCompletionButton extends StatelessWidget {
   }
 }
 
+/// Represents the different states of the completion button.
+/// 
+/// These states determine the button's appearance, behavior, and accessibility labels.
 enum ButtonState {
-  empty,        // No completions
-  inProgress,   // Some completions, not complete
-  completed,    // Goal achieved
+  /// No completions today - shows add icon, semi-transparent background
+  empty,
+  
+  /// Some completions but goal not achieved - shows add icon, semi-transparent background
+  inProgress,
+  
+  /// Goal fully achieved - shows check icon, fully opaque background
+  completed,
 }
 
 /// Interactive card widget displaying a habit with progress visualization
