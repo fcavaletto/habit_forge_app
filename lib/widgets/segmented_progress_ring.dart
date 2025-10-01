@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 /// A custom progress ring widget that displays progress as segmented chunks
 /// 
@@ -136,7 +137,7 @@ class _SegmentedProgressPainter extends CustomPainter {
       );
     }
     
-    // Draw each segment individually
+    // Draw each segment as a complete arc (no gaps)
     for (int i = 0; i < goal; i++) {
       // Calculate start angle for this segment
       final segmentStartAngle = startAngleRad + (i * (segmentAngle + gapAngleRad));
@@ -152,14 +153,61 @@ class _SegmentedProgressPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.butt; // Sharp edges like cuts
       
-      // Draw the arc segment
+      // Draw the complete arc segment (including where gaps will be)
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         segmentStartAngle,
-        segmentAngle,
+        segmentAngle + gapAngleRad, // Include gap area in segment
         false, // Don't fill the arc
         paint,
       );
+    }
+    
+    // Draw rectangular gap fillers to create clean rectangular gaps
+    if (backgroundColor != null && gapSize > 0) {
+      final gapPaint = Paint()
+        ..color = backgroundColor!
+        ..style = PaintingStyle.fill;
+      
+      for (int i = 0; i < goal; i++) {
+        // Calculate the center angle of the gap
+        final gapCenterAngle = startAngleRad + (i * (segmentAngle + gapAngleRad)) + segmentAngle + (gapAngleRad / 2);
+        
+        // Calculate gap endpoints
+        final innerRadius = radius - strokeWidth / 2;
+        final outerRadius = radius + strokeWidth / 2;
+        
+        // Convert angle to coordinates
+        final cosAngle = math.cos(gapCenterAngle);
+        final sinAngle = math.sin(gapCenterAngle);
+        
+        // Calculate gap width (perpendicular to radius)
+        final gapWidth = gapAngleRad * radius;
+        
+        // Create rectangular gap path
+        final gapPath = Path();
+        
+        // Calculate the four corners of the rectangular gap
+        final innerStartX = center.dx + innerRadius * cosAngle - (gapWidth / 2) * sinAngle;
+        final innerStartY = center.dy + innerRadius * sinAngle + (gapWidth / 2) * cosAngle;
+        final innerEndX = center.dx + innerRadius * cosAngle + (gapWidth / 2) * sinAngle;
+        final innerEndY = center.dy + innerRadius * sinAngle - (gapWidth / 2) * cosAngle;
+        
+        final outerStartX = center.dx + outerRadius * cosAngle - (gapWidth / 2) * sinAngle;
+        final outerStartY = center.dy + outerRadius * sinAngle + (gapWidth / 2) * cosAngle;
+        final outerEndX = center.dx + outerRadius * cosAngle + (gapWidth / 2) * sinAngle;
+        final outerEndY = center.dy + outerRadius * sinAngle - (gapWidth / 2) * cosAngle;
+        
+        // Create rectangular path
+        gapPath.moveTo(innerStartX, innerStartY);
+        gapPath.lineTo(outerStartX, outerStartY);
+        gapPath.lineTo(outerEndX, outerEndY);
+        gapPath.lineTo(innerEndX, innerEndY);
+        gapPath.close();
+        
+        // Draw the rectangular gap
+        canvas.drawPath(gapPath, gapPaint);
+      }
     }
   }
 
