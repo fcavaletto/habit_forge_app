@@ -48,7 +48,7 @@ class SmartCompletionButton extends StatelessWidget {
               // Progress circle for multi-completion habits (goal > 1)
               if (habit.targetGoal > 1 && buttonState != ButtonState.completed) ...[
                 SizedBox.expand(
-                  child: _buildProgressIndicator(todayCount, habitColor),
+                  child: _buildProgressIndicator(todayCount, habitColor, context),
                 ),
               ],
               // Main icon
@@ -123,7 +123,7 @@ class SmartCompletionButton extends StatelessWidget {
   }
 
   /// Build the appropriate progress indicator based on goal size
-  Widget _buildProgressIndicator(int todayCount, Color habitColor) {
+  Widget _buildProgressIndicator(int todayCount, Color habitColor, BuildContext context) {
     // Use segmented ring for goals ≤ 12, smooth ring for higher goals
     if (habit.targetGoal <= 12) {
       return SegmentedProgressRing(
@@ -131,6 +131,7 @@ class SmartCompletionButton extends StatelessWidget {
         goal: habit.targetGoal,
         segmentColor: habitColor.withValues(alpha: 0.9),
         emptyColor: habitColor.withValues(alpha: 0.4),
+        backgroundColor: Theme.of(context).colorScheme.surface, // Card background color
         strokeWidth: 8,              // Thicker ring (was 4)
         size: 48,
         gapSize: 8.0,                // Gap between segments

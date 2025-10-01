@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 /// - No animations for instant visual feedback
 /// - Uses existing habit colors from theme
 /// - Customizable separators between segments
+/// - Background ring to hide underlying button color in gaps
 class SegmentedProgressRing extends StatelessWidget {
   /// Number of completed segments
   final int completed;
@@ -24,6 +25,9 @@ class SegmentedProgressRing extends StatelessWidget {
   
   /// Color for empty segments
   final Color emptyColor;
+  
+  /// Color for the background ring (typically card background color)
+  final Color? backgroundColor;
   
   /// Thickness of the ring segments
   final double strokeWidth;
@@ -45,6 +49,7 @@ class SegmentedProgressRing extends StatelessWidget {
     required this.goal,
     required this.segmentColor,
     required this.emptyColor,
+    this.backgroundColor,
     this.strokeWidth = 8.0,
     this.size = 48.0,
     this.gapSize = 6.0,
@@ -67,6 +72,7 @@ class SegmentedProgressRing extends StatelessWidget {
           goal: goal,
           segmentColor: segmentColor,
           emptyColor: emptyColor,
+          backgroundColor: backgroundColor,
           strokeWidth: strokeWidth,
           gapSize: gapSize,
           startAngleOffset: startAngleOffset,
@@ -82,6 +88,7 @@ class _SegmentedProgressPainter extends CustomPainter {
   final int goal;
   final Color segmentColor;
   final Color emptyColor;
+  final Color? backgroundColor;
   final double strokeWidth;
   final double gapSize;
   final double startAngleOffset;
@@ -91,6 +98,7 @@ class _SegmentedProgressPainter extends CustomPainter {
     required this.goal,
     required this.segmentColor,
     required this.emptyColor,
+    this.backgroundColor,
     required this.strokeWidth,
     required this.gapSize,
     required this.startAngleOffset,
@@ -109,6 +117,24 @@ class _SegmentedProgressPainter extends CustomPainter {
     final totalGapAngle = goal * gapAngleRad;
     final availableAngle = (2 * 3.14159) - totalGapAngle;
     final segmentAngle = availableAngle / goal;
+    
+    // Draw background ring first if backgroundColor is provided
+    if (backgroundColor != null) {
+      final backgroundPaint = Paint()
+        ..color = backgroundColor!
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.butt;
+      
+      // Draw a complete background ring
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        0,
+        2 * 3.14159, // Full circle
+        false,
+        backgroundPaint,
+      );
+    }
     
     // Draw each segment individually
     for (int i = 0; i < goal; i++) {
@@ -143,6 +169,7 @@ class _SegmentedProgressPainter extends CustomPainter {
            oldDelegate.goal != goal ||
            oldDelegate.segmentColor != segmentColor ||
            oldDelegate.emptyColor != emptyColor ||
+           oldDelegate.backgroundColor != backgroundColor ||
            oldDelegate.strokeWidth != strokeWidth ||
            oldDelegate.gapSize != gapSize ||
            oldDelegate.startAngleOffset != startAngleOffset;
