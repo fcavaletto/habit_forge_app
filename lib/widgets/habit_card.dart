@@ -31,11 +31,14 @@ class SmartCompletionButton extends StatelessWidget {
   // Progress ring constants
   static const double _progressRingSize = 48.0;
   static const double _progressStrokeWidth = 8.0;
-  static const double _progressGapSize = 8.0;
   static const double _progressStartAngleOffset = 15.0;
   static const double _segmentAlpha = 0.9;
   static const double _emptySegmentAlpha = 0.4;
   static const int _maxSegmentedGoal = 12;
+  
+  // Dynamic gap size formula constants
+  static const double _baseGapSize = 9.2;
+  static const double _gapSizeReductionFactor = 0.6;
 
   /// The habit this button represents
   final Habit habit;
@@ -191,6 +194,17 @@ class SmartCompletionButton extends StatelessWidget {
     }
   }
 
+  /// Calculates the dynamic gap size based on the habit's goal.
+  /// 
+  /// Uses the formula: GapSize = 9.2 - 0.6 * HabitGoal
+  /// This ensures that:
+  /// - Habits with smaller goals have larger gaps (more visual separation)
+  /// - Habits with larger goals have smaller gaps (more segments visible)
+  /// - The gap size scales appropriately with the number of segments
+  double _calculateDynamicGapSize() {
+    return _baseGapSize - (_gapSizeReductionFactor * habit.targetGoal);
+  }
+
   /// Builds the appropriate progress indicator based on goal size.
   /// 
   /// For goals ≤ 12: Uses [SegmentedProgressRing] with individual segments
@@ -209,7 +223,7 @@ class SmartCompletionButton extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.surface,
         strokeWidth: _progressStrokeWidth,
         size: _progressRingSize,
-        gapSize: _progressGapSize,
+        gapSize: _calculateDynamicGapSize(),
         startAngleOffset: _progressStartAngleOffset,
       );
     } else {
