@@ -7,6 +7,7 @@ import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import '../services/virtual_date_service.dart';
 import '../services/completion_cache_service.dart';
+import '../services/habit_metadata_cache_service.dart';
 import '../utils/data_freshness.dart';
 import '../utils/date_range_utils.dart';
 import '../utils/performance_monitor.dart';
@@ -52,6 +53,7 @@ class HabitState extends ChangeNotifier {
   final SqliteHabitRepository _habitRepository;
   final SettingsRepository _settingsRepository;
   final CompletionCacheService _completionCache = CompletionCacheService();
+  final HabitMetadataCacheService _metadataCache = HabitMetadataCacheService();
 
   List<Habit> _habits = [];
   bool _isLoading = false;
@@ -135,6 +137,9 @@ class HabitState extends ChangeNotifier {
       // Warm cache with completion data for current date
       await _warmCompletionCache();
       
+      // Warm cache with metadata for all habits
+      await _warmMetadataCache();
+      
       // Update timestamp for freshness tracking
       _lastLoadTime = DateTime.now();
 
@@ -156,6 +161,11 @@ class HabitState extends ChangeNotifier {
       if (result.success && result.savedHabit != null) {
         // Add to local state directly
         _habits.insert(0, result.savedHabit!); // Add at the beginning
+        
+        // Cache the new habit metadata
+        final metadata = HabitMetadata.fromHabit(result.savedHabit!);
+        _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
+        
         notifyListeners();
       }
       return result;
@@ -248,7 +258,7 @@ class HabitState extends ChangeNotifier {
   void _rollbackOptimisticUpdate(String habitId, Habit originalHabit, int habitIndex) {
     try {
       _habits[habitIndex] = originalHabit;
-      notifyListeners();
+        notifyListeners();
       _error = 'Failed to sync completion to database. Changes have been reverted.';
       debugPrint('🔄 Rolled back optimistic update for habit $habitId');
     } catch (e) {
@@ -362,9 +372,74 @@ class HabitState extends ChangeNotifier {
     }
   }
 
+  /// Get habit metadata with intelligent caching
+  /// 
+  /// This method first checks the cache for habit metadata. If not found,
+  /// it loads from the database and caches the result for future use.
+  /// This dramatically reduces database queries for habit properties.
+  Future<HabitMetadata?> getCachedHabitMetadata(String habitId) async {
+    // First, try to get from cache
+    final cachedMetadata = _metadataCache.getHabitMetadata(habitId);
+    if (cachedMetadata != null) {
+      return cachedMetadata;
+    }
+    
+    // Cache miss - load from database
+    debugPrint('📅 Metadata cache miss - loading habit metadata from database for habit $habitId');
+    
+    try {
+      // Get the habit from local state (which should have all metadata)
+      final habit = _habits.firstWhere((h) => h.id == habitId);
+      final metadata = HabitMetadata.fromHabit(habit);
+      
+      // Cache the result for future use
+      _metadataCache.cacheHabitMetadata(habitId, metadata);
+      
+      return metadata;
+    } catch (e) {
+      debugPrint('❌ Error getting cached habit metadata: $e');
+      return null;
+    }
+  }
+
+  /// Warm metadata cache with all habit metadata
+  /// 
+  /// This method pre-loads metadata for all habits to improve performance
+  /// and reduce database queries for habit properties.
+  Future<void> _warmMetadataCache() async {
+    try {
+      debugPrint('🔥 Warming metadata cache for ${_habits.length} habits');
+      
+      await _metadataCache.warmCacheWithHabits(_habits);
+      
+      debugPrint('🔥 Metadata cache warmed with ${_habits.length} habit metadata entries');
+    } catch (e) {
+      debugPrint('❌ Error warming metadata cache: $e');
+    }
+  }
+
   /// Get completion cache statistics for monitoring
   Map<String, dynamic> getCompletionCacheStats() {
     return _completionCache.getCacheStats();
+  }
+
+  /// Get metadata cache statistics for monitoring
+  Map<String, dynamic> getMetadataCacheStats() {
+    return _metadataCache.getCacheStats();
+  }
+
+  /// Get combined cache statistics for monitoring
+  Map<String, dynamic> getAllCacheStats() {
+    final completionStats = _completionCache.getCacheStats();
+    final metadataStats = _metadataCache.getCacheStats();
+    
+    return {
+      'completionCache': completionStats,
+      'metadataCache': metadataStats,
+      'totalCacheSize': (completionStats['cacheSize'] as int) + (metadataStats['cacheSize'] as int),
+      'totalCacheHits': (completionStats['cacheHits'] as int) + (metadataStats['cacheHits'] as int),
+      'totalCacheMisses': (completionStats['cacheMisses'] as int) + (metadataStats['cacheMisses'] as int),
+    };
   }
 
   /// Clear completion cache (useful for debugging or memory management)
@@ -373,9 +448,16 @@ class HabitState extends ChangeNotifier {
     debugPrint('🗑️ Completion cache cleared');
   }
 
+  /// Clear metadata cache (useful for debugging or memory management)
+  void clearMetadataCache() {
+    _metadataCache.clearCache();
+    debugPrint('🗑️ Metadata cache cleared');
+  }
+
   /// Clean up expired cache entries
   void cleanupExpiredCacheEntries() {
     _completionCache.cleanupExpiredEntries();
+    _metadataCache.cleanupExpiredEntries();
   }
 
   /// Load hourly completion data for histogram analysis
@@ -477,6 +559,10 @@ class HabitState extends ChangeNotifier {
       await _habitRepository.deleteHabit(habitId);
       // Update local state directly
       _habits.removeWhere((habit) => habit.id == habitId);
+      
+      // Invalidate metadata cache for deleted habit
+      _metadataCache.invalidateHabit(habitId);
+      
       notifyListeners();
     } catch (e) {
       _error = 'Failed to delete habit: $e';
@@ -491,6 +577,11 @@ class HabitState extends ChangeNotifier {
       if (result.success && result.savedHabit != null) {
         // Add the unarchived habit to local state
         _habits.insert(0, result.savedHabit!);
+        
+        // Cache the new habit metadata
+        final metadata = HabitMetadata.fromHabit(result.savedHabit!);
+        _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
+        
         notifyListeners();
       }
       return result;
