@@ -480,9 +480,9 @@ class SqliteHabitRepository {
     }
   }
 
-  /// Remove oldest completions for a habit on a specific date (LIFO)
+  /// Remove newest completions for a habit on a specific date (LIFO)
   /// 
-  /// This method removes the oldest timestamps while preserving newer ones.
+  /// This method removes the newest timestamps while preserving older ones.
   /// Used when decreasing completion count from a custom modal.
   Future<void> removeOldestCompletions(String habitId, DateTime date, int countToRemove) async {
     if (countToRemove <= 0) {
@@ -521,12 +521,12 @@ class SqliteHabitRepository {
           DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59)
         );
         
-        // Get oldest timestamps to remove (LIFO - Last In, First Out)
-        // We want to remove the oldest timestamps, so we order by completion_timestamp ASC
+        // Get newest timestamps to remove (LIFO - Last In, First Out)
+        // We want to remove the newest timestamps, so we order by completion_timestamp DESC
         final timestampsToRemove = await txn.rawQuery('''
           SELECT id FROM habit_completion_timestamps 
           WHERE habit_id = ? AND completion_timestamp >= ? AND completion_timestamp <= ?
-          ORDER BY completion_timestamp ASC
+          ORDER BY completion_timestamp DESC
           LIMIT ?
         ''', [habitId, startOfDay, endOfDay, countToRemove]);
         
@@ -534,7 +534,7 @@ class SqliteHabitRepository {
           debugPrint('⚠️ Only found ${timestampsToRemove.length} timestamps to remove, requested $countToRemove');
         }
         
-        // Remove the oldest timestamps
+        // Remove the newest timestamps
         for (final timestampRow in timestampsToRemove) {
           await txn.delete(
             'habit_completion_timestamps',
@@ -563,9 +563,9 @@ class SqliteHabitRepository {
         }
       });
       
-      debugPrint('✅ Removed $countToRemove oldest completions for habit $habitId on ${date.toIso8601String()}');
+      debugPrint('✅ Removed $countToRemove newest completions for habit $habitId on ${date.toIso8601String()}');
     } catch (e) {
-      debugPrint('❌ Error removing oldest completions: $e');
+      debugPrint('❌ Error removing newest completions: $e');
       rethrow;
     }
   }

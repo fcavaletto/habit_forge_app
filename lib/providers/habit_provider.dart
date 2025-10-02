@@ -355,10 +355,10 @@ class HabitState extends ChangeNotifier {
         await _habitRepository.addAdditionalCompletions(habitId, date, additionalCount);
         debugPrint('📈 Incremental increase: Added $additionalCount completions ($currentCount → $newCount)');
       } else if (newCount < currentCount) {
-        // DECREASE: Remove oldest completions while preserving newer timestamps
+        // DECREASE: Remove newest completions while preserving older timestamps
         final countToRemove = currentCount - newCount;
         await _habitRepository.removeOldestCompletions(habitId, date, countToRemove);
-        debugPrint('📉 Incremental decrease: Removed $countToRemove completions ($currentCount → $newCount)');
+        debugPrint('📉 Incremental decrease: Removed $countToRemove newest completions ($currentCount → $newCount)');
       }
       // If newCount == currentCount, no database operation needed
       
