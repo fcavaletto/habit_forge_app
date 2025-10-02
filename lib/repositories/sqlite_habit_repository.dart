@@ -406,6 +406,169 @@ class SqliteHabitRepository {
       debugPrint('❌ Error removing all completions for date: $e');
     }
   }
+
+  /// Add additional completions for a habit on a specific date (incremental)
+  /// 
+  /// This method adds new timestamps with the current time while preserving existing ones.
+  /// Used when increasing completion count from a custom modal.
+  Future<void> addAdditionalCompletions(String habitId, DateTime date, int additionalCount) async {
+    if (additionalCount <= 0) {
+      debugPrint('📝 No additional completions to add for habit $habitId');
+      return;
+    }
+    
+    try {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      
+      // Get current habit to get the goal
+      final habit = await getHabitById(habitId);
+      if (habit == null) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
+      
+      await _databaseService.transaction((txn) async {
+        // Update completion count in habit_completions table
+        final existingRecord = await txn.query(
+          'habit_completions',
+          where: 'habit_id = ? AND completion_date = ?',
+          whereArgs: [habitId, dateTimestamp],
+        );
+        
+        if (existingRecord.isNotEmpty) {
+          // Increment existing count
+          await txn.update(
+            'habit_completions',
+            {
+              'completion_count': (existingRecord.first['completion_count'] as int) + additionalCount,
+              'goal_at_completion': habit.targetGoal,
+            },
+            where: 'habit_id = ? AND completion_date = ?',
+            whereArgs: [habitId, dateTimestamp],
+          );
+        } else {
+          // Insert new record (shouldn't happen in normal flow, but handle gracefully)
+          await txn.insert(
+            'habit_completions',
+            {
+              'habit_id': habitId,
+              'completion_date': dateTimestamp,
+              'completion_count': additionalCount,
+              'goal_at_completion': habit.targetGoal,
+            },
+          );
+        }
+        
+        // Add new timestamp records with current time
+        final currentTimestamp = TimezoneUtils.toUtcTimestampSeconds(DateTime.now());
+        for (int i = 0; i < additionalCount; i++) {
+          await txn.insert(
+            'habit_completion_timestamps',
+            {
+              'habit_id': habitId,
+              'completion_timestamp': currentTimestamp,
+            },
+          );
+        }
+      });
+      
+      debugPrint('✅ Added $additionalCount additional completions for habit $habitId on ${date.toIso8601String()}');
+    } catch (e) {
+      debugPrint('❌ Error adding additional completions: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove oldest completions for a habit on a specific date (LIFO)
+  /// 
+  /// This method removes the oldest timestamps while preserving newer ones.
+  /// Used when decreasing completion count from a custom modal.
+  Future<void> removeOldestCompletions(String habitId, DateTime date, int countToRemove) async {
+    if (countToRemove <= 0) {
+      debugPrint('📝 No completions to remove for habit $habitId');
+      return;
+    }
+    
+    try {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      
+      await _databaseService.transaction((txn) async {
+        // Get current completion count
+        final completionRows = await txn.query(
+          'habit_completions',
+          where: 'habit_id = ? AND completion_date = ?',
+          whereArgs: [habitId, dateTimestamp],
+        );
+        
+        if (completionRows.isEmpty) {
+          debugPrint('⚠️ No completion record found for habit $habitId on ${date.toIso8601String()}');
+          return;
+        }
+        
+        final currentCount = completionRows.first['completion_count'] as int;
+        final newCount = currentCount - countToRemove;
+        
+        if (newCount < 0) {
+          debugPrint('⚠️ Cannot remove $countToRemove completions from $currentCount (would result in negative count)');
+          return;
+        }
+        
+        // Calculate the full day range for timestamp operations
+        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(normalizedDate);
+        final endOfDay = TimezoneUtils.toUtcTimestampSeconds(
+          DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59)
+        );
+        
+        // Get oldest timestamps to remove (LIFO - Last In, First Out)
+        // We want to remove the oldest timestamps, so we order by completion_timestamp ASC
+        final timestampsToRemove = await txn.rawQuery('''
+          SELECT id FROM habit_completion_timestamps 
+          WHERE habit_id = ? AND completion_timestamp >= ? AND completion_timestamp <= ?
+          ORDER BY completion_timestamp ASC
+          LIMIT ?
+        ''', [habitId, startOfDay, endOfDay, countToRemove]);
+        
+        if (timestampsToRemove.length < countToRemove) {
+          debugPrint('⚠️ Only found ${timestampsToRemove.length} timestamps to remove, requested $countToRemove');
+        }
+        
+        // Remove the oldest timestamps
+        for (final timestampRow in timestampsToRemove) {
+          await txn.delete(
+            'habit_completion_timestamps',
+            where: 'id = ?',
+            whereArgs: [timestampRow['id']],
+          );
+        }
+        
+        // Update completion count
+        if (newCount > 0) {
+          await txn.update(
+            'habit_completions',
+            {
+              'completion_count': newCount,
+            },
+            where: 'habit_id = ? AND completion_date = ?',
+            whereArgs: [habitId, dateTimestamp],
+          );
+        } else {
+          // Remove completion record if count reaches 0
+          await txn.delete(
+            'habit_completions',
+            where: 'habit_id = ? AND completion_date = ?',
+            whereArgs: [habitId, dateTimestamp],
+          );
+        }
+      });
+      
+      debugPrint('✅ Removed $countToRemove oldest completions for habit $habitId on ${date.toIso8601String()}');
+    } catch (e) {
+      debugPrint('❌ Error removing oldest completions: $e');
+      rethrow;
+    }
+  }
   
   Future<bool> archiveHabit(String habitId) async {
     try {

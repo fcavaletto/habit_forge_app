@@ -347,13 +347,20 @@ class HabitState extends ChangeNotifier {
     int habitIndex
   ) async {
     try {
-      // First, remove all existing completions for this date
-      await _habitRepository.removeAllCompletionsForDate(habitId, date);
+      final currentCount = originalHabit.getCompletionCount(date);
       
-      // Then, add the new completion count
-      if (newCount > 0) {
-        await _habitRepository.addMultipleCompletions(habitId, date, newCount);
+      if (newCount > currentCount) {
+        // INCREASE: Add additional completions while preserving existing timestamps
+        final additionalCount = newCount - currentCount;
+        await _habitRepository.addAdditionalCompletions(habitId, date, additionalCount);
+        debugPrint('📈 Incremental increase: Added $additionalCount completions ($currentCount → $newCount)');
+      } else if (newCount < currentCount) {
+        // DECREASE: Remove oldest completions while preserving newer timestamps
+        final countToRemove = currentCount - newCount;
+        await _habitRepository.removeOldestCompletions(habitId, date, countToRemove);
+        debugPrint('📉 Incremental decrease: Removed $countToRemove completions ($currentCount → $newCount)');
       }
+      // If newCount == currentCount, no database operation needed
       
       // Invalidate cache for this habit and date
       _completionCache.invalidateCompletion(habitId, date);
