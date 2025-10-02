@@ -58,15 +58,7 @@ class DayDetailsDialog {
               ),
               const SizedBox(height: 4),
               if (completionTimes.isNotEmpty) ...[
-                ...completionTimes.map((time) => Padding(
-                  padding: const EdgeInsets.only(left: 8, bottom: 2),
-                  child: Text(
-                    _formatTime(time),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                )),
+                _buildCompletionTimesList(context, completionTimes),
               ] else ...[
                 Text(
                   'No completion times available',
@@ -110,5 +102,63 @@ class DayDetailsDialog {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  /// Build completion times list with scrolling and capping
+  static Widget _buildCompletionTimesList(BuildContext context, List<DateTime> completionTimes) {
+    const int maxDisplayCount = 20; // Cap at 20 items to prevent overflow
+    const double maxListHeight = 200.0; // Maximum height for the scrollable list
+    
+    final totalCount = completionTimes.length;
+    final displayTimes = completionTimes.take(maxDisplayCount).toList();
+    final hasMore = totalCount > maxDisplayCount;
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Show count summary if there are many completions
+        if (hasMore) ...[
+          Text(
+            'Showing first $maxDisplayCount of $totalCount completions:',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+        // Scrollable list of completion times using SingleChildScrollView
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: maxListHeight),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: displayTimes.map((time) => Padding(
+                padding: const EdgeInsets.only(left: 8, bottom: 2),
+                child: Text(
+                  _formatTime(time),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                  ),
+                ),
+              )).toList(),
+            ),
+          ),
+        ),
+        // Show "and X more" message if there are additional completions
+        if (hasMore) ...[
+          const SizedBox(height: 4),
+          Text(
+            '... and ${totalCount - maxDisplayCount} more',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }

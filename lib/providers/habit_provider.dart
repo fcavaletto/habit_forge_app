@@ -301,6 +301,70 @@ class HabitState extends ChangeNotifier {
       debugPrint('❌ Error resetting habit completions: $e');
     }
   }
+
+  /// Set custom completion count for a habit on a specific date
+  /// This method allows setting an exact completion count (including values above goal)
+  Future<void> setCustomCompletionCount(String habitId, DateTime date, int newCount) async {
+    try {
+      // Get current habit to verify it exists
+      final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
+      if (habitIndex < 0) {
+        debugPrint('❌ Habit not found: $habitId');
+        return;
+      }
+      
+      final originalHabit = _habits[habitIndex];
+      final currentCount = originalHabit.getCompletionCount(date);
+      
+      if (currentCount == newCount) {
+        debugPrint('📝 Completion count already set to $newCount for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+        return;
+      }
+      
+      // OPTIMISTIC UI UPDATE: Update UI immediately
+      final optimisticHabit = originalHabit.markCompleted(date, newCount);
+      _habits[habitIndex] = optimisticHabit;
+      notifyListeners(); // Instant UI update
+      
+      debugPrint('⚡ Optimistic custom completion: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount');
+      
+      // BACKGROUND DATABASE SYNC: Perform database operations in background
+      _syncCustomCompletionToDatabase(habitId, date, newCount, originalHabit, habitIndex);
+      
+    } catch (e) {
+      _error = 'Failed to set custom completion count: $e';
+      notifyListeners();
+      debugPrint('❌ Error setting custom completion count: $e');
+    }
+  }
+  
+  /// Sync custom completion operation to database in background
+  Future<void> _syncCustomCompletionToDatabase(
+    String habitId, 
+    DateTime date, 
+    int newCount,
+    Habit originalHabit, 
+    int habitIndex
+  ) async {
+    try {
+      // First, remove all existing completions for this date
+      await _habitRepository.removeAllCompletionsForDate(habitId, date);
+      
+      // Then, add the new completion count
+      if (newCount > 0) {
+        await _habitRepository.addMultipleCompletions(habitId, date, newCount);
+      }
+      
+      // Invalidate cache for this habit and date
+      _completionCache.invalidateCompletion(habitId, date);
+      
+      debugPrint('✅ Database custom completion successful: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount');
+    } catch (e) {
+      // ROLLBACK: Revert optimistic update on database failure
+      _rollbackOptimisticUpdate(habitId, originalHabit, habitIndex);
+      debugPrint('❌ Database custom completion failed, rolled back: $e');
+    }
+  }
   
   /// Sync reset operation to database in background
   Future<void> _syncResetToDatabase(

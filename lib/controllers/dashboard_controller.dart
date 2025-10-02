@@ -165,6 +165,13 @@ class DashboardController {
     }
   }
 
+  /// Set custom completion count for a habit on a specific date
+  /// This is called when user saves a custom completion count from the modal
+  Future<void> onSetCustomCompletionCount(String habitId, DateTime date, int newCount) async {
+    // Set the custom completion count for this habit on the specified date
+    await _appState.habitProvider.setCustomCompletionCount(habitId, date, newCount);
+  }
+
   /// Archive a habit
   Future<void> archiveHabit(BuildContext context, Habit habit) async {
     final success = await _appState.habitProvider.archiveHabit(habit.id);

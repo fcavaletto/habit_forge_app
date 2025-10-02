@@ -13,6 +13,7 @@ import '../screens/calendar_screen.dart';
 import 'stats_screen.dart';
 import '../utils/data_freshness.dart';
 import '../services/virtual_date_service.dart';
+import '../widgets/custom_completion_modal.dart';
 
 /// Dashboard View - Pure UI component for the main habit tracking interface
 ///
@@ -350,6 +351,7 @@ class _DashboardViewState extends State<DashboardView>
         onComplete: () => _onMarkCompleted(habit),
         onIncrement: () => _onIncrementCompletion(habit),
         onDecrement: () => _onCompletionButtonPress(habit),
+        onCustomCompletion: () => _onCustomCompletion(habit),
         onEdit: () => _showHabitDetails(habit),
         onArchive: () => _onArchiveHabit(habit),
         onDelete: () => _onDeleteHabit(habit),
@@ -532,6 +534,26 @@ class _DashboardViewState extends State<DashboardView>
       // Habit is not completed - decrement by 1
       await _onDecrementCompletion(habit);
     }
+  }
+
+  /// Handles custom completion modal for habits with allowExceedGoal flag
+  Future<void> _onCustomCompletion(Habit habit) async {
+    final today = VirtualDateService().currentDate;
+    final currentCount = habit.getCompletionCount(today);
+    
+    await showCustomCompletionModal(
+      context: context,
+      habitName: habit.name,
+      currentCount: currentCount,
+      targetGoal: habit.targetGoal,
+      onSave: (newCount) async {
+        // Delegate to controller for business logic
+        await _controller.onSetCustomCompletionCount(habit.id, today, newCount);
+      },
+      onCancel: () {
+        // Modal was cancelled - no action needed
+      },
+    );
   }
 
   void _showHabitDetails(Habit habit) {
@@ -846,6 +868,7 @@ class _HabitCardWrapper extends StatefulWidget {
   final VoidCallback onComplete;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
+  final VoidCallback onCustomCompletion;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
   final VoidCallback onDelete;
@@ -857,6 +880,7 @@ class _HabitCardWrapper extends StatefulWidget {
     required this.onComplete,
     required this.onIncrement,
     required this.onDecrement,
+    required this.onCustomCompletion,
     required this.onEdit,
     required this.onArchive,
     required this.onDelete,
@@ -915,6 +939,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
               onComplete: widget.onComplete,
               onIncrement: widget.onIncrement,
               onDecrement: widget.onDecrement,
+              onCustomCompletion: widget.onCustomCompletion,
               onEdit: widget.onEdit,
               onArchive: widget.onArchive,
               onDelete: widget.onDelete,
@@ -930,6 +955,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
         onComplete: widget.onComplete,
         onIncrement: widget.onIncrement,
         onDecrement: widget.onDecrement,
+        onCustomCompletion: widget.onCustomCompletion,
         onEdit: widget.onEdit,
         onArchive: widget.onArchive,
         onDelete: widget.onDelete,

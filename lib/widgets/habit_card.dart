@@ -48,12 +48,16 @@ class SmartCompletionButton extends StatelessWidget {
   
   /// Callback when completion count should be decremented (reset)
   final VoidCallback? onDecrement;
+  
+  /// Callback when custom completion modal should be opened (for allowExceedGoal habits)
+  final VoidCallback? onCustomCompletion;
 
   const SmartCompletionButton({
     super.key,
     required this.habit,
     this.onIncrement,
     this.onDecrement,
+    this.onCustomCompletion,
   });
 
   @override
@@ -151,8 +155,12 @@ class SmartCompletionButton extends StatelessWidget {
   /// Provides screen readers with context about:
   /// - The habit name
   /// - Current completion count vs goal
-  /// - Available action (add or reset)
+  /// - Available action (add, reset, or custom completion)
   String _getAccessibilityLabel(int todayCount, bool isCompleted) {
+    if (habit.allowExceedGoal) {
+      return '${habit.name}: $todayCount completions - tap to set custom count';
+    }
+    
     if (todayCount == 0) {
       return 'Add first completion for ${habit.name}';
     }
@@ -166,6 +174,10 @@ class SmartCompletionButton extends StatelessWidget {
   /// 
   /// Provides additional context for screen readers about the button's action.
   String _getAccessibilityHint(int todayCount, bool isCompleted) {
+    if (habit.allowExceedGoal) {
+      return 'Tap to open custom completion dialog';
+    }
+    
     if (todayCount == 0) {
       return 'Tap to add your first completion today';
     }
@@ -178,19 +190,27 @@ class SmartCompletionButton extends StatelessWidget {
   /// Handles button press events based on current completion state.
   /// 
   /// Behavior:
-  /// - Empty state: Calls [onIncrement] to add first completion
-  /// - Completed state: Calls [onDecrement] to reset all completions
-  /// - In progress state: Calls [onIncrement] to add another completion
+  /// - For allowExceedGoal habits: Always opens custom completion modal
+  /// - For standard habits:
+  ///   - Empty state: Calls [onIncrement] to add first completion
+  ///   - Completed state: Calls [onDecrement] to reset all completions
+  ///   - In progress state: Calls [onIncrement] to add another completion
   void _handleButtonPress(int todayCount, bool isCompleted) {
-    if (todayCount == 0) {
-      // Add first completion
-      onIncrement?.call();
-    } else if (isCompleted) {
-      // Reset all completions
-      onDecrement?.call();
+    if (habit.allowExceedGoal) {
+      // For habits that allow exceeding goal, always open custom completion modal
+      onCustomCompletion?.call();
     } else {
-      // Add another completion
-      onIncrement?.call();
+      // Standard behavior for habits that don't allow exceeding goal
+      if (todayCount == 0) {
+        // Add first completion
+        onIncrement?.call();
+      } else if (isCompleted) {
+        // Reset all completions
+        onDecrement?.call();
+      } else {
+        // Add another completion
+        onIncrement?.call();
+      }
     }
   }
 
@@ -283,6 +303,9 @@ class HabitCard extends StatelessWidget {
   /// Callback when completion count should be decremented
   final VoidCallback? onDecrement;
 
+  /// Callback when custom completion modal should be opened (for allowExceedGoal habits)
+  final VoidCallback? onCustomCompletion;
+
   /// Callback for settings/accessibility actions (currently unused)
   final VoidCallback? onSettings;
 
@@ -305,6 +328,7 @@ class HabitCard extends StatelessWidget {
     this.onComplete,
     this.onIncrement,
     this.onDecrement,
+    this.onCustomCompletion,
     this.onSettings,
     this.onArchive,
     this.onDelete,
@@ -404,6 +428,7 @@ class HabitCard extends StatelessWidget {
                         habit: habit,
                         onIncrement: onIncrement,
                         onDecrement: onDecrement,
+                        onCustomCompletion: onCustomCompletion,
                       ),
                     ],
                   ),
