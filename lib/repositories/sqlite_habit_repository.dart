@@ -642,17 +642,17 @@ class SqliteHabitRepository {
           whereArgs: [habitId],
         );
         
-        // Position at bottom (unarchived habits go to bottom)
-        final bottomOrder = await _getNextBottomOrderValue(txn);
+        // Position at top (restored habits go to top)
+        final topOrder = await _getNextTopOrderValue(txn);
         
         // Use INSERT OR REPLACE to handle both new and existing records
         await txn.rawInsert('''
           INSERT OR REPLACE INTO habit_display_order (habit_id, order_value, created_at)
           VALUES (?, ?, ?)
-        ''', [habitId, bottomOrder, TimezoneUtils.getCurrentUtcTimestamp()]);
+        ''', [habitId, topOrder, TimezoneUtils.getCurrentUtcTimestamp()]);
       });
       
-      debugPrint('💾 Unarchived habit $habitId and positioned at bottom');
+      debugPrint('💾 Unarchived habit $habitId and positioned at top');
       return true;
     } catch (e) {
       debugPrint('❌ Error unarchiving habit: $e');

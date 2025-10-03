@@ -882,15 +882,15 @@ class HabitProvider extends HabitState {
     }
   }
 
-  /// Enhanced unarchive with bottom positioning
+  /// Enhanced unarchive with top positioning
   @override
   Future<bool> unarchiveHabit(String habitId) async {
     try {
       final success = await _habitRepository.unarchiveHabit(habitId);
       if (success) {
-        // Reload habits to get unarchived habit at bottom
+        // Reload habits to get unarchived habit at top
         await loadHabits(forceRefresh: true);
-        debugPrint('✅ Unarchived habit $habitId and positioned at bottom');
+        debugPrint('✅ Unarchived habit $habitId and positioned at top');
       }
       return success;
     } catch (e) {
