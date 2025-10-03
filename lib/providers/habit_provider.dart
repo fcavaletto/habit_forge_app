@@ -882,15 +882,30 @@ class HabitProvider extends HabitState {
     }
   }
 
-  /// Enhanced unarchive with top positioning
+  /// Enhanced unarchive with surgical reload for better performance
   @override
   Future<bool> unarchiveHabit(String habitId) async {
     try {
       final success = await _habitRepository.unarchiveHabit(habitId);
       if (success) {
-        // Reload habits to get unarchived habit at top
-        await loadHabits(forceRefresh: true);
-        debugPrint('✅ Unarchived habit $habitId and positioned at top');
+        // Surgical reload: fetch only the restored habit and insert at top
+        final restoredHabit = await _habitRepository.getHabitById(habitId);
+        if (restoredHabit != null) {
+          // Insert at the top of the habits list
+          _habits.insert(0, restoredHabit);
+          
+          // Cache the restored habit metadata
+          final metadata = HabitMetadata.fromHabit(restoredHabit);
+          _metadataCache.cacheHabitMetadata(restoredHabit.id, metadata);
+          
+          // Single, targeted UI update
+          notifyListeners();
+          debugPrint('✅ Unarchived habit $habitId and positioned at top (surgical reload)');
+        } else {
+          // Fallback: if habit not found, do full reload
+          debugPrint('⚠️ Restored habit not found, falling back to full reload');
+          await loadHabits(forceRefresh: true);
+        }
       }
       return success;
     } catch (e) {
