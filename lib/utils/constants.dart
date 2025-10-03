@@ -37,16 +37,10 @@ class AppConstants {
   static const double chartBarWidth = 3.0;
   static const double chartGridSpacing = 20.0;
 
-  // Import/Export
-  static const String exportVersion = '1.0';
-  static const String exportFileExtension = 'json';
-  static const String exportSubject = 'My Habit Data';
-  static const String exportText = 'Habit Forge Data Export';
 
   // Timeouts and Limits
   static const Duration snackbarDuration = Duration(seconds: 4);
   static const Duration loadingTimeout = Duration(seconds: 30);
-  static const int maxImportBatchSize = 50;
 
   // Animation Durations
   static const Duration quickAnimation = Duration(milliseconds: 200);
@@ -56,21 +50,10 @@ class AppConstants {
   // Error Messages
   static const String genericError = 'Something went wrong. Please try again.';
   static const String networkError = 'Network connection failed. Please check your connection.';
-  static const String fileNotFoundError = 'File not found. Please select a valid file.';
-  static const String permissionDeniedError = 'Permission denied. Please grant necessary permissions.';
-  static const String invalidFileFormatError = 'Invalid file format. Please select a valid export file.';
 
-  // Success Messages
-  static const String exportSuccessMessage = 'Data exported successfully';
-  static const String importSuccessMessage = 'Import completed successfully';
   static const String restoreSuccessMessage = 'Habit restored successfully';
   static const String deleteSuccessMessage = 'Habit permanently deleted';
 
-  // Loading Messages
-  static const String loadingMessage = 'Loading...';
-  static const String exportingMessage = 'Exporting data...';
-  static const String importingMessage = 'Importing data...';
-  static const String processingMessage = 'Processing...';
 
   // Navigation Hints
   static const String swipeToNavigateHint = 'Swipe to navigate months';
@@ -139,7 +122,6 @@ class ValidationConstants {
   static const int minHabitDescriptionLength = 0;
   static const int maxHabitDescriptionLength = 200;
   static const int maxStreaksToShow = 1000;
-  static const int maxExportFileSizeMB = 10;
 }
 
 /// Animation and transition constants

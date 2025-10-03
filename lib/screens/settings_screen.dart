@@ -1,15 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
-import '../models/habit.dart';
-import '../providers/habit_provider.dart';
 import '../providers/app_state_provider.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
-import '../utils/constants.dart';
 import 'archive_screen.dart';
 
 /// Settings Screen - Comprehensive app configuration interface
@@ -26,7 +18,6 @@ import 'archive_screen.dart';
 ///
 /// ## Key Features:
 /// - **Theme Management**: Light/dark/system theme switching with persistence
-/// - **Data Operations**: Import/export functionality with validation
 /// - **Sample Data**: Quick generation of test habits for development
 /// - **Archive Access**: Direct navigation to archived habits management
 /// - **User Feedback**: Comprehensive success/error messaging
@@ -40,13 +31,10 @@ import 'archive_screen.dart';
 /// ## User Journey:
 /// 1. **Navigation**: Access via settings icon in dashboard
 /// 2. **Theme Selection**: Choose preferred theme mode
-/// 3. **Data Operations**: Import existing data or export current data
 /// 4. **Archive Management**: Access archived habits for restoration
 /// 5. **Sample Data**: Generate test habits for evaluation
 ///
 /// ## Error Handling:
-/// - **File Operations**: Validates file formats and handles I/O errors
-/// - **Data Validation**: Ensures imported data integrity
 /// - **User Feedback**: Clear error messages with recovery suggestions
 /// - **Graceful Degradation**: Continues operation on non-critical failures
 class SettingsScreen extends StatefulWidget {
@@ -77,183 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
   }
 
-  Future<void> _exportData() async {
-    try {
-      // Show initial progress message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppConstants.exportingMessage)),
-        );
-      }
 
-      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
-      final habits = await habitProvider.repository.getAllHabits();
-      final exportData = {
-        'version': AppConstants.exportVersion,
-        'exportDate': DateTime.now().toIso8601String(),
-        'habits': habits.map((habit) => habit.toJson()).toList(),
-      };
-
-      final directory = await getApplicationDocumentsDirectory();
-      final fileName = 'habit_forge_export_${DateTime.now().millisecondsSinceEpoch}.json';
-      final file = File('${directory.path}/$fileName');
-
-      await file.writeAsString(jsonEncode(exportData));
-
-      // Try to share with improved error handling
-      try {
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          text: AppConstants.exportText,
-          subject: AppConstants.exportSubject,
-        );
-
-        // Since shareXFiles doesn't provide completion feedback,
-        // we'll show an informative message instead of claiming success
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Export file prepared. Please select "Save to Files" or your preferred app to complete the export.'
-              ),
-              duration: AppConstants.snackbarDuration,
-              action: SnackBarAction(
-                label: 'OK',
-                onPressed: () {
-                  // User acknowledged the message
-                },
-              ),
-            ),
-          );
-        }
-      } catch (shareError) {
-        // If sharing fails, inform user about alternative
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Share failed: ${shareError.toString()}. File saved to app storage.'
-              ),
-              backgroundColor: Theme.of(context).colorScheme.error,
-              duration: AppConstants.snackbarDuration,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Export failed: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    }
-  }
-
-  /// Imports habits from a JSON file with conflict resolution
-  ///
-  /// This method:
-  /// 1. Opens a file picker for JSON files
-  /// 2. Validates the file format
-  /// 3. Imports habits while skipping duplicates
-  /// 4. Provides detailed feedback about import results
-  Future<void> _importData() async {
-    try {
-      // Show initial progress message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppConstants.importingMessage)),
-        );
-      }
-
-      // Capture provider before any async operations
-      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
-
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: [AppConstants.exportFileExtension],
-      );
-
-      if (result == null || result.files.isEmpty || result.files.single.path == null) {
-        // User cancelled the file picker
-        return;
-      }
-
-      final file = File(result.files.single.path!);
-
-      if (!await file.exists()) {
-        throw AppConstants.fileNotFoundError;
-      }
-
-      final content = await file.readAsString();
-      final data = jsonDecode(content) as Map<String, dynamic>;
-
-      // Validate file format
-      if (data['habits'] == null || data['habits'] is! List) {
-        throw AppConstants.invalidFileFormatError;
-      }
-
-      final habitsData = data['habits'] as List<dynamic>;
-      int importedCount = 0;
-      int skippedCount = 0;
-      int errorCount = 0;
-
-      // Process each habit with error handling
-      for (final habitData in habitsData) {
-        if (!mounted) break; // Check if widget is still mounted
-        
-        try {
-          final habit = Habit.fromJson(habitData as Map<String, dynamic>);
-          final saveResult = await habitProvider.repository.saveHabit(habit);
-
-          if (saveResult.success) {
-            importedCount++;
-          } else if (saveResult.errorMessage?.contains('already exists') == true ||
-                     saveResult.conflictingHabit != null) {
-            skippedCount++;
-          } else {
-            errorCount++;
-          }
-        } catch (e) {
-          // Skip invalid habits but count them
-          errorCount++;
-          continue;
-        }
-      }
-
-      // Show detailed results
-      if (mounted) {
-        final message = StringBuffer();
-        message.write('$importedCount imported');
-
-        if (skippedCount > 0) {
-          message.write(', $skippedCount skipped (already exist)');
-        }
-
-        if (errorCount > 0) {
-          message.write(', $errorCount errors');
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Import complete: $message'),
-            duration: AppConstants.snackbarDuration,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Import failed: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    }
-  }
 
   void _navigateToArchive() {
     Navigator.of(context).push(
@@ -619,43 +431,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 32),
-
-          // Data Management Section
-          Text(
-            'Data Management',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _exportData,
-                  icon: const Icon(Icons.download),
-                  label: const Text('Export Data'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _importData,
-                  icon: const Icon(Icons.upload),
-                  label: const Text('Import Data'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-                  ),
-                ),
-              ),
-            ],
-          ),
 
           const SizedBox(height: 32),
 
