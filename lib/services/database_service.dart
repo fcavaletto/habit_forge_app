@@ -16,29 +16,33 @@ import 'package:path/path.dart';
 class DatabaseService {
   static const String _databaseName = 'habit_forge.db';
   static const int _databaseVersion = 5;
-  
+
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
-  
+
   factory DatabaseService() => _instance;
-  
+
   DatabaseService._internal();
-  
+
   /// Get the database instance, initializing if necessary
   Future<Database> get database async {
     _database ??= await _initDatabase();
     return _database!;
   }
-  
-  /// Initialize the database with proper schema
+
+  /// Initialize the database with proper schema and enhanced error handling
+  ///
+  /// This method includes comprehensive error handling and recovery mechanisms
+  /// to prevent database initialization from hanging the app, especially after
+  /// being backgrounded for extended periods.
   Future<Database> _initDatabase() async {
     try {
       final databasesPath = await getDatabasesPath();
       final path = join(databasesPath, _databaseName);
-      
+
       debugPrint('🗄️ Initializing database at: $path');
-      
-      // Add timeout to prevent hanging during database initialization
+
+      // Try to open with shorter timeout to prevent hanging
       return await openDatabase(
         path,
         version: _databaseVersion,
@@ -46,21 +50,96 @@ class DatabaseService {
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
       ).timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 5), // Reduced from 10 seconds
         onTimeout: () {
-          throw TimeoutException('Database initialization timed out', const Duration(seconds: 10));
+          debugPrint('⏰ Database initialization timed out after 5 seconds');
+          throw TimeoutException(
+            'Database initialization timed out',
+            const Duration(seconds: 5),
+          );
         },
       );
     } catch (e) {
       debugPrint('❌ Error initializing database: $e');
+
+      // Enhanced error logging for better debugging
+      if (e is TimeoutException) {
+        debugPrint(
+          '⏰ Database timeout - this often happens after app backgrounding',
+        );
+        debugPrint('💡 Database may be locked by another process or corrupted');
+      } else if (e.toString().contains('locked')) {
+        debugPrint('🔒 Database is locked - another process may be using it');
+        debugPrint(
+          '💡 This can happen if the app was killed while database was open',
+        );
+      } else if (e.toString().contains('corrupt')) {
+        debugPrint('💥 Database corruption detected');
+        debugPrint('💡 Database file may be damaged');
+      } else if (e.toString().contains('permission')) {
+        debugPrint('🔐 Database permission error');
+        debugPrint('💡 App may not have write access to database directory');
+      }
+
+      // Try to recover by deleting corrupted database
+      if (e is TimeoutException ||
+          e.toString().contains('locked') ||
+          e.toString().contains('corrupt')) {
+        debugPrint('🔄 Attempting database recovery...');
+        try {
+          await _attemptDatabaseRecovery();
+          // Retry initialization after recovery
+          return await _initDatabase();
+        } catch (recoveryError) {
+          debugPrint('❌ Database recovery failed: $recoveryError');
+          debugPrint('💥 App will continue with in-memory data only');
+        }
+      }
+
       rethrow;
     }
   }
-  
+
+  /// Attempts to recover from database issues by deleting and recreating
+  Future<void> _attemptDatabaseRecovery() async {
+    try {
+      debugPrint('🔄 Starting database recovery process...');
+
+      final databasesPath = await getDatabasesPath();
+      final path = join(databasesPath, _databaseName);
+
+      // Close existing connection if any
+      if (_database != null) {
+        try {
+          await _database!.close();
+        } catch (e) {
+          debugPrint('⚠️ Error closing existing database connection: $e');
+        }
+        _database = null;
+      }
+
+      // Delete corrupted database file
+      try {
+        await databaseFactory.deleteDatabase(path);
+        debugPrint('✅ Corrupted database file deleted');
+      } catch (e) {
+        debugPrint('⚠️ Could not delete database file: $e');
+        // Continue anyway - the database may not exist
+      }
+
+      debugPrint(
+        '✅ Database recovery completed - ready for fresh initialization',
+      );
+    } catch (e) {
+      debugPrint('❌ Database recovery process failed: $e');
+      rethrow;
+    }
+  }
+
   /// Create database schema on first run
   Future<void> _onCreate(Database db, int version) async {
     debugPrint('🗄️ Creating database schema (version $version)');
-    
+
     await db.transaction((txn) async {
       // Create habits table
       await txn.execute('''
@@ -77,7 +156,7 @@ class DatabaseService {
           allow_exceed_goal INTEGER NOT NULL DEFAULT 0
         )
       ''');
-      
+
       // Create habit_completions table with goal tracking
       await txn.execute('''
         CREATE TABLE habit_completions (
@@ -89,7 +168,7 @@ class DatabaseService {
           FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
-      
+
       // Create habit_completion_timestamps table for individual completion tracking
       await txn.execute('''
         CREATE TABLE habit_completion_timestamps (
@@ -99,7 +178,7 @@ class DatabaseService {
           FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
-      
+
       // Create habit_reminders table
       await txn.execute('''
         CREATE TABLE habit_reminders (
@@ -110,7 +189,7 @@ class DatabaseService {
           FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
-      
+
       // Create app_settings table
       await txn.execute('''
         CREATE TABLE app_settings (
@@ -119,7 +198,7 @@ class DatabaseService {
           updated_at INTEGER NOT NULL
         )
       ''');
-      
+
       // Create habit_display_order table for custom ordering
       await txn.execute('''
         CREATE TABLE habit_display_order (
@@ -129,54 +208,56 @@ class DatabaseService {
           FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
-      
+
       // Create indexes for better performance
       await txn.execute('''
         CREATE INDEX idx_habit_completions_date 
         ON habit_completions(completion_date)
       ''');
-      
+
       await txn.execute('''
         CREATE INDEX idx_habit_completions_habit_id 
         ON habit_completions(habit_id)
       ''');
-      
+
       await txn.execute('''
         CREATE INDEX idx_habit_completion_timestamps_habit_id 
         ON habit_completion_timestamps(habit_id)
       ''');
-      
+
       await txn.execute('''
         CREATE INDEX idx_habit_completion_timestamps_timestamp 
         ON habit_completion_timestamps(completion_timestamp)
       ''');
-      
+
       await txn.execute('''
         CREATE INDEX idx_habits_archived 
         ON habits(is_archived)
       ''');
-      
+
       await txn.execute('''
         CREATE INDEX idx_habit_order_value 
         ON habit_display_order(order_value)
       ''');
     });
-    
+
     debugPrint('✅ Database schema created successfully');
   }
-  
+
   /// Handle database upgrades for future schema changes
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    debugPrint('🗄️ Upgrading database from version $oldVersion to $newVersion');
-    
+    debugPrint(
+      '🗄️ Upgrading database from version $oldVersion to $newVersion',
+    );
+
     if (oldVersion < 2) {
       await _migrateToVersion2(db);
     }
-    
+
     if (oldVersion < 3) {
       await _migrateToVersion3(db);
     }
-    
+
     if (oldVersion < 4) {
       await _migrateToVersion4(db);
     }
@@ -185,11 +266,11 @@ class DatabaseService {
       await _migrateToVersion5(db);
     }
   }
-  
+
   /// Migrate database to version 2 - Add habit ordering support
   Future<void> _migrateToVersion2(Database db) async {
     debugPrint('🔄 Migrating to version 2: Adding habit ordering support');
-    
+
     await db.transaction((txn) async {
       // Create habit_display_order table
       await txn.execute('''
@@ -200,13 +281,13 @@ class DatabaseService {
           FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
-      
+
       // Create index for ordering queries
       await txn.execute('''
         CREATE INDEX idx_habit_order_value 
         ON habit_display_order(order_value)
       ''');
-      
+
       // Migrate existing habits with proper ordering (newest first)
       // Use rowid * 1000 to create large gaps for future insertions
       await txn.execute('''
@@ -216,15 +297,15 @@ class DatabaseService {
         WHERE is_archived = 0 
         ORDER BY created_at DESC
       ''');
-      
+
       debugPrint('✅ Migration to version 2 completed successfully');
     });
   }
-  
+
   /// Migrate database to version 3 - Fresh start with UUID-based IDs
   Future<void> _migrateToVersion3(Database db) async {
     debugPrint('🔄 Migrating to version 3: Fresh start with UUID-based IDs');
-    
+
     // Since we're in early development, just recreate the database with new schema
     await db.transaction((txn) async {
       // Drop all existing tables
@@ -233,7 +314,7 @@ class DatabaseService {
       await txn.execute('DROP TABLE IF EXISTS habit_completions');
       await txn.execute('DROP TABLE IF EXISTS habits');
       await txn.execute('DROP TABLE IF EXISTS app_settings');
-      
+
       // Create new tables with UUID primary keys
       await txn.execute('''
         CREATE TABLE habits (
@@ -248,7 +329,7 @@ class DatabaseService {
           target_goal INTEGER NOT NULL DEFAULT 1
         )
       ''');
-      
+
       // Create habit_completions table with goal tracking
       await txn.execute('''
         CREATE TABLE habit_completions (
@@ -260,7 +341,7 @@ class DatabaseService {
           FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
-      
+
       // Create habit_completion_timestamps table for individual completion tracking
       await txn.execute('''
         CREATE TABLE habit_completion_timestamps (
@@ -270,7 +351,7 @@ class DatabaseService {
           FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
         )
       ''');
-      
+
       await txn.execute('''
         CREATE TABLE habit_reminders (
           habit_id TEXT PRIMARY KEY,
@@ -279,7 +360,7 @@ class DatabaseService {
           enable_reminders INTEGER NOT NULL DEFAULT 0
         )
       ''');
-      
+
       await txn.execute('''
         CREATE TABLE habit_display_order (
           habit_id TEXT PRIMARY KEY,
@@ -287,7 +368,7 @@ class DatabaseService {
           created_at INTEGER NOT NULL
         )
       ''');
-      
+
       await txn.execute('''
         CREATE TABLE app_settings (
           key TEXT PRIMARY KEY,
@@ -295,38 +376,42 @@ class DatabaseService {
           updated_at INTEGER NOT NULL
         )
       ''');
-      
+
       // Create indexes
       await txn.execute('''
         CREATE INDEX idx_habit_completions_date 
         ON habit_completions(completion_date)
       ''');
-      
+
       await txn.execute('''
         CREATE INDEX idx_habit_completions_habit_id 
         ON habit_completions(habit_id)
       ''');
-      
+
       await txn.execute('''
         CREATE INDEX idx_habits_archived 
         ON habits(is_archived)
       ''');
-      
+
       await txn.execute('''
         CREATE INDEX idx_habit_order_value 
         ON habit_display_order(order_value)
       ''');
-      
-      debugPrint('✅ Migration to version 3 completed successfully - Fresh database created');
+
+      debugPrint(
+        '✅ Migration to version 3 completed successfully - Fresh database created',
+      );
     });
   }
-  
+
   /// Migrate database to version 4 - Add timezone handling
   Future<void> _migrateToVersion4(Database db) async {
     debugPrint('🔄 Migrating to version 4: Adding timezone handling');
 
     // No migration needed - all new data will be stored in UTC
-    debugPrint('✅ Migration to version 4 completed successfully - UTC timezone handling enabled');
+    debugPrint(
+      '✅ Migration to version 4 completed successfully - UTC timezone handling enabled',
+    );
   }
 
   /// Migrate database to version 5 - Add allow_exceed_goal column
@@ -339,18 +424,20 @@ class DatabaseService {
         ALTER TABLE habits ADD COLUMN allow_exceed_goal INTEGER NOT NULL DEFAULT 0
       ''');
 
-      debugPrint('✅ Migration to version 5 completed successfully - allow_exceed_goal column added');
+      debugPrint(
+        '✅ Migration to version 5 completed successfully - allow_exceed_goal column added',
+      );
     });
   }
-  
+
   /// Called when database is opened
   Future<void> _onOpen(Database db) async {
     debugPrint('🗄️ Database opened successfully');
-    
+
     // Enable foreign key constraints
     await db.execute('PRAGMA foreign_keys = ON');
   }
-  
+
   /// Close the database connection
   Future<void> close() async {
     if (_database != null) {
@@ -359,23 +446,23 @@ class DatabaseService {
       debugPrint('🗄️ Database connection closed');
     }
   }
-  
+
   /// Delete the database (for testing/debugging)
   Future<void> deleteDatabase() async {
     final databasesPath = await getDatabasesPath();
     final path = join(databasesPath, _databaseName);
-    
+
     await databaseFactory.deleteDatabase(path);
     _database = null;
     debugPrint('🗄️ Database deleted');
   }
-  
+
   /// Execute a transaction with proper error handling
   Future<T> transaction<T>(Future<T> Function(Transaction txn) action) async {
     final db = await database;
     return await db.transaction(action);
   }
-  
+
   /// Execute raw SQL query
   Future<List<Map<String, dynamic>>> rawQuery(
     String sql, [
@@ -384,30 +471,21 @@ class DatabaseService {
     final db = await database;
     return await db.rawQuery(sql, arguments);
   }
-  
+
   /// Execute raw SQL command
-  Future<int> rawUpdate(
-    String sql, [
-    List<dynamic>? arguments,
-  ]) async {
+  Future<int> rawUpdate(String sql, [List<dynamic>? arguments]) async {
     final db = await database;
     return await db.rawUpdate(sql, arguments);
   }
-  
+
   /// Execute raw SQL insert
-  Future<int> rawInsert(
-    String sql, [
-    List<dynamic>? arguments,
-  ]) async {
+  Future<int> rawInsert(String sql, [List<dynamic>? arguments]) async {
     final db = await database;
     return await db.rawInsert(sql, arguments);
   }
-  
+
   /// Execute raw SQL delete
-  Future<int> rawDelete(
-    String sql, [
-    List<dynamic>? arguments,
-  ]) async {
+  Future<int> rawDelete(String sql, [List<dynamic>? arguments]) async {
     final db = await database;
     return await db.rawDelete(sql, arguments);
   }

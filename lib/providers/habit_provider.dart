@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 import '../services/virtual_date_service.dart';
 import '../services/completion_cache_service.dart';
 import '../services/habit_metadata_cache_service.dart';
+import '../services/persistent_cache_service.dart';
 import '../utils/data_freshness.dart';
 import '../utils/date_range_utils.dart';
 import '../utils/performance_monitor.dart';
@@ -54,6 +55,7 @@ class HabitState extends ChangeNotifier {
   final SettingsRepository _settingsRepository;
   final CompletionCacheService _completionCache = CompletionCacheService();
   final HabitMetadataCacheService _metadataCache = HabitMetadataCacheService();
+  final PersistentCacheService _persistentCache = PersistentCacheService();
 
   List<Habit> _habits = [];
   bool _isLoading = false;
@@ -63,8 +65,10 @@ class HabitState extends ChangeNotifier {
   bool _isSortingMode = false;
   int _reorderCount = 0; // Track reorder operations for normalization
   DateTime _selectedDate = DateTime.now(); // Selected date for filtering
-  TimeOfDay _selectedTime = TimeOfDay.now(); // Selected time for completion timestamps
-  bool _showAllHabits = false; // Whether to show all habits or just today's habits
+  TimeOfDay _selectedTime =
+      TimeOfDay.now(); // Selected time for completion timestamps
+  bool _showAllHabits =
+      false; // Whether to show all habits or just today's habits
 
   HabitState(this._habitRepository, this._settingsRepository);
 
@@ -73,17 +77,19 @@ class HabitState extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime? get lastLoadTime => _lastLoadTime;
-  bool get isDataFresh => _lastLoadTime != null && 
-    !DataFreshness.isDataStale(_lastLoadTime!);
-  bool get needsRefresh => _lastLoadTime == null ||
-    DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
+  bool get isDataFresh =>
+      _lastLoadTime != null && !DataFreshness.isDataStale(_lastLoadTime!);
+  bool get needsRefresh =>
+      _lastLoadTime == null ||
+      DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
   bool get isSortingMode => _isSortingMode;
   DateTime get selectedDate => _selectedDate;
   TimeOfDay get selectedTime => _selectedTime;
   bool get isShowingAllHabits => _showAllHabits;
-  
+
   /// Get habits filtered based on current filter mode (all habits or date-filtered)
-  List<Habit> get filteredHabits => _showAllHabits ? _habits : getHabitsForDate(_selectedDate);
+  List<Habit> get filteredHabits =>
+      _showAllHabits ? _habits : getHabitsForDate(_selectedDate);
 
   /// Get habits filtered by completion status for a specific date
   List<Habit> getHabitsForDate(DateTime date) {
@@ -133,19 +139,21 @@ class HabitState extends ChangeNotifier {
       debugPrint('📱 HabitProvider: Loading habits from storage...');
       // Fetch fresh data from repository layer
       _habits = await _habitRepository.getActiveHabits();
-      
+
       // Warm cache with completion data for current date
       await _warmCompletionCache();
-      
+
       // Warm cache with metadata for all habits
       await _warmMetadataCache();
-      
+
       // Update timestamp for freshness tracking
       _lastLoadTime = DateTime.now();
 
       _isLoading = false;
       notifyListeners();
-      debugPrint('📱 HabitProvider: Loaded ${_habits.length} habits at $_lastLoadTime');
+      debugPrint(
+        '📱 HabitProvider: Loaded ${_habits.length} habits at $_lastLoadTime',
+      );
     } catch (e) {
       _isLoading = false;
       _error = 'Failed to load habits: $e';
@@ -161,11 +169,19 @@ class HabitState extends ChangeNotifier {
       if (result.success && result.savedHabit != null) {
         // Add to local state directly
         _habits.insert(0, result.savedHabit!); // Add at the beginning
-        
+
         // Cache the new habit metadata
         final metadata = HabitMetadata.fromHabit(result.savedHabit!);
         _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
-        
+
+        // Update persistent cache
+        try {
+          await _persistentCache.updateHabit(result.savedHabit!);
+        } catch (e) {
+          debugPrint('⚠️ Failed to update persistent cache for new habit: $e');
+          // Don't fail the operation if cache update fails
+        }
+
         notifyListeners();
       }
       return result;
@@ -175,11 +191,15 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Update habit completion count with optimistic UI updates
-  /// 
+  ///
   /// This method updates the UI immediately (optimistic) and then syncs
   /// to the database in the background. If the database sync fails,
   /// the UI will be rolled back to the previous state.
-  Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
+  Future<void> updateHabitCompletion(
+    String habitId,
+    DateTime date,
+    int count,
+  ) async {
     try {
       // Get current habit to check existing completion count
       final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
@@ -187,53 +207,66 @@ class HabitState extends ChangeNotifier {
         debugPrint('❌ Habit not found: $habitId');
         return;
       }
-      
+
       final originalHabit = _habits[habitIndex];
       final currentCount = originalHabit.getCompletionCount(date);
-      
+
       // Calculate the difference
       final difference = count - currentCount;
-      
+
       if (difference == 0) {
-        debugPrint('📝 No change needed for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+        debugPrint(
+          '📝 No change needed for habit $habitId on ${date.toIso8601String().split('T')[0]}',
+        );
         return;
       }
-      
+
       // OPTIMISTIC UI UPDATE: Update UI immediately
       final optimisticHabit = originalHabit.markCompleted(date, count);
       _habits[habitIndex] = optimisticHabit;
       notifyListeners(); // Instant UI update
-      
-      debugPrint('⚡ Optimistic update: $habitId on ${date.toIso8601String().split('T')[0]} = $count');
-      
+
+      debugPrint(
+        '⚡ Optimistic update: $habitId on ${date.toIso8601String().split('T')[0]} = $count',
+      );
+
       // BACKGROUND DATABASE SYNC: Perform database operations in background
-      _syncCompletionToDatabase(habitId, date, count, originalHabit, habitIndex);
-      
+      _syncCompletionToDatabase(
+        habitId,
+        date,
+        count,
+        originalHabit,
+        habitIndex,
+      );
     } catch (e) {
       _error = 'Failed to update habit completion: $e';
       notifyListeners();
       debugPrint('❌ Error updating habit completion: $e');
     }
   }
-  
+
   /// Sync completion changes to database in background
-  /// 
+  ///
   /// This method handles the actual database operations after the optimistic UI update.
   /// If the database operation fails, it will rollback the UI changes.
   Future<void> _syncCompletionToDatabase(
-    String habitId, 
-    DateTime date, 
-    int count, 
-    Habit originalHabit, 
-    int habitIndex
+    String habitId,
+    DateTime date,
+    int count,
+    Habit originalHabit,
+    int habitIndex,
   ) async {
     try {
       final currentCount = originalHabit.getCompletionCount(date);
       final difference = count - currentCount;
-      
+
       if (difference > 0) {
         // Add completions using batch operation
-        await _habitRepository.addMultipleCompletions(habitId, date, difference);
+        await _habitRepository.addMultipleCompletions(
+          habitId,
+          date,
+          difference,
+        );
         // Invalidate cache for this habit and date
         _completionCache.invalidateCompletion(habitId, date);
       } else if (difference < 0) {
@@ -244,22 +277,37 @@ class HabitState extends ChangeNotifier {
         // Invalidate cache for this habit and date
         _completionCache.invalidateCompletion(habitId, date);
       }
-      
-      debugPrint('✅ Database sync successful: $habitId on ${date.toIso8601String().split('T')[0]} = $count');
+
+      // Update persistent cache
+      try {
+        await _persistentCache.updateCompletion(habitId, date, count);
+      } catch (e) {
+        debugPrint('⚠️ Failed to update persistent cache for completion: $e');
+        // Don't fail the operation if cache update fails
+      }
+
+      debugPrint(
+        '✅ Database sync successful: $habitId on ${date.toIso8601String().split('T')[0]} = $count',
+      );
     } catch (e) {
       debugPrint('❌ Database sync failed for $habitId: $e');
       _rollbackOptimisticUpdate(habitId, originalHabit, habitIndex);
     }
   }
-  
+
   /// Rollback optimistic UI update when database sync fails
-  /// 
+  ///
   /// This method reverts the UI changes if the database operation failed.
-  void _rollbackOptimisticUpdate(String habitId, Habit originalHabit, int habitIndex) {
+  void _rollbackOptimisticUpdate(
+    String habitId,
+    Habit originalHabit,
+    int habitIndex,
+  ) {
     try {
       _habits[habitIndex] = originalHabit;
-        notifyListeners();
-      _error = 'Failed to sync completion to database. Changes have been reverted.';
+      notifyListeners();
+      _error =
+          'Failed to sync completion to database. Changes have been reverted.';
       debugPrint('🔄 Rolled back optimistic update for habit $habitId');
     } catch (e) {
       debugPrint('❌ Error during rollback for habit $habitId: $e');
@@ -276,25 +324,28 @@ class HabitState extends ChangeNotifier {
         debugPrint('❌ Habit not found: $habitId');
         return;
       }
-      
+
       final originalHabit = _habits[habitIndex];
       final currentCount = originalHabit.getCompletionCount(date);
-      
+
       if (currentCount == 0) {
-        debugPrint('📝 No completions to reset for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+        debugPrint(
+          '📝 No completions to reset for habit $habitId on ${date.toIso8601String().split('T')[0]}',
+        );
         return;
       }
-      
+
       // OPTIMISTIC UI UPDATE: Update UI immediately
       final optimisticHabit = originalHabit.markCompleted(date, 0);
       _habits[habitIndex] = optimisticHabit;
       notifyListeners(); // Instant UI update
-      
-      debugPrint('⚡ Optimistic reset: $habitId on ${date.toIso8601String().split('T')[0]} = 0');
-      
+
+      debugPrint(
+        '⚡ Optimistic reset: $habitId on ${date.toIso8601String().split('T')[0]} = 0',
+      );
+
       // BACKGROUND DATABASE SYNC: Perform database operations in background
       _syncResetToDatabase(habitId, date, originalHabit, habitIndex);
-      
     } catch (e) {
       _error = 'Failed to reset habit completions: $e';
       notifyListeners();
@@ -304,7 +355,11 @@ class HabitState extends ChangeNotifier {
 
   /// Set custom completion count for a habit on a specific date
   /// This method allows setting an exact completion count (including values above goal)
-  Future<void> setCustomCompletionCount(String habitId, DateTime date, int newCount) async {
+  Future<void> setCustomCompletionCount(
+    String habitId,
+    DateTime date,
+    int newCount,
+  ) async {
     try {
       // Get current habit to verify it exists
       final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
@@ -312,81 +367,106 @@ class HabitState extends ChangeNotifier {
         debugPrint('❌ Habit not found: $habitId');
         return;
       }
-      
+
       final originalHabit = _habits[habitIndex];
       final currentCount = originalHabit.getCompletionCount(date);
-      
+
       if (currentCount == newCount) {
-        debugPrint('📝 Completion count already set to $newCount for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+        debugPrint(
+          '📝 Completion count already set to $newCount for habit $habitId on ${date.toIso8601String().split('T')[0]}',
+        );
         return;
       }
-      
+
       // OPTIMISTIC UI UPDATE: Update UI immediately
       final optimisticHabit = originalHabit.markCompleted(date, newCount);
       _habits[habitIndex] = optimisticHabit;
       notifyListeners(); // Instant UI update
-      
-      debugPrint('⚡ Optimistic custom completion: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount');
-      
+
+      debugPrint(
+        '⚡ Optimistic custom completion: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount',
+      );
+
       // BACKGROUND DATABASE SYNC: Perform database operations in background
-      _syncCustomCompletionToDatabase(habitId, date, newCount, originalHabit, habitIndex);
-      
+      _syncCustomCompletionToDatabase(
+        habitId,
+        date,
+        newCount,
+        originalHabit,
+        habitIndex,
+      );
     } catch (e) {
       _error = 'Failed to set custom completion count: $e';
       notifyListeners();
       debugPrint('❌ Error setting custom completion count: $e');
     }
   }
-  
+
   /// Sync custom completion operation to database in background
   Future<void> _syncCustomCompletionToDatabase(
-    String habitId, 
-    DateTime date, 
+    String habitId,
+    DateTime date,
     int newCount,
-    Habit originalHabit, 
-    int habitIndex
+    Habit originalHabit,
+    int habitIndex,
   ) async {
     try {
       final currentCount = originalHabit.getCompletionCount(date);
-      
+
       if (newCount > currentCount) {
         // INCREASE: Add additional completions while preserving existing timestamps
         final additionalCount = newCount - currentCount;
-        await _habitRepository.addAdditionalCompletions(habitId, date, additionalCount);
-        debugPrint('📈 Incremental increase: Added $additionalCount completions ($currentCount → $newCount)');
+        await _habitRepository.addAdditionalCompletions(
+          habitId,
+          date,
+          additionalCount,
+        );
+        debugPrint(
+          '📈 Incremental increase: Added $additionalCount completions ($currentCount → $newCount)',
+        );
       } else if (newCount < currentCount) {
         // DECREASE: Remove newest completions while preserving older timestamps
         final countToRemove = currentCount - newCount;
-        await _habitRepository.removeOldestCompletions(habitId, date, countToRemove);
-        debugPrint('📉 Incremental decrease: Removed $countToRemove newest completions ($currentCount → $newCount)');
+        await _habitRepository.removeOldestCompletions(
+          habitId,
+          date,
+          countToRemove,
+        );
+        debugPrint(
+          '📉 Incremental decrease: Removed $countToRemove newest completions ($currentCount → $newCount)',
+        );
       }
       // If newCount == currentCount, no database operation needed
-      
+
       // Invalidate cache for this habit and date
       _completionCache.invalidateCompletion(habitId, date);
-      
-      debugPrint('✅ Database custom completion successful: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount');
+
+      debugPrint(
+        '✅ Database custom completion successful: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount',
+      );
     } catch (e) {
       // ROLLBACK: Revert optimistic update on database failure
       _rollbackOptimisticUpdate(habitId, originalHabit, habitIndex);
       debugPrint('❌ Database custom completion failed, rolled back: $e');
     }
   }
-  
+
   /// Sync reset operation to database in background
   Future<void> _syncResetToDatabase(
-    String habitId, 
-    DateTime date, 
-    Habit originalHabit, 
-    int habitIndex
+    String habitId,
+    DateTime date,
+    Habit originalHabit,
+    int habitIndex,
   ) async {
     try {
       await _habitRepository.removeAllCompletionsForDate(habitId, date);
-      
+
       // Invalidate cache for this habit and date
       _completionCache.invalidateCompletion(habitId, date);
-      
-      debugPrint('✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]}');
+
+      debugPrint(
+        '✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]}',
+      );
     } catch (e) {
       debugPrint('❌ Database reset failed for $habitId: $e');
       _rollbackOptimisticUpdate(habitId, originalHabit, habitIndex);
@@ -394,7 +474,7 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Get completion count with intelligent caching
-  /// 
+  ///
   /// This method first checks the cache for completion data. If not found,
   /// it loads from the database and caches the result for future use.
   /// This dramatically reduces database queries for completion data.
@@ -404,18 +484,20 @@ class HabitState extends ChangeNotifier {
     if (cachedCount != null) {
       return cachedCount;
     }
-    
+
     // Cache miss - load from database
-    debugPrint('📅 Cache miss - loading completion count from database for habit $habitId on ${date.toIso8601String().split('T')[0]}');
-    
+    debugPrint(
+      '📅 Cache miss - loading completion count from database for habit $habitId on ${date.toIso8601String().split('T')[0]}',
+    );
+
     try {
       // Get the habit to access its completion data
       final habit = _habits.firstWhere((h) => h.id == habitId);
       final count = habit.getCompletionCount(date);
-      
+
       // Cache the result for future use
       _completionCache.cacheCompletionCount(habitId, date, count);
-      
+
       return count;
     } catch (e) {
       debugPrint('❌ Error getting cached completion count: $e');
@@ -424,19 +506,21 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Warm completion cache with current date data
-  /// 
+  ///
   /// This method pre-loads completion data for all habits on the current date
   /// to improve performance and reduce database queries.
   Future<void> _warmCompletionCache() async {
     try {
       final currentDate = _selectedDate;
-      debugPrint('🔥 Warming completion cache for ${_habits.length} habits on ${currentDate.toIso8601String().split('T')[0]}');
-      
+      debugPrint(
+        '🔥 Warming completion cache for ${_habits.length} habits on ${currentDate.toIso8601String().split('T')[0]}',
+      );
+
       for (final habit in _habits) {
         final count = habit.getCompletionCount(currentDate);
         _completionCache.cacheCompletionCount(habit.id, currentDate, count);
       }
-      
+
       debugPrint('🔥 Cache warmed with ${_habits.length} completion records');
     } catch (e) {
       debugPrint('❌ Error warming completion cache: $e');
@@ -444,7 +528,7 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Get habit metadata with intelligent caching
-  /// 
+  ///
   /// This method first checks the cache for habit metadata. If not found,
   /// it loads from the database and caches the result for future use.
   /// This dramatically reduces database queries for habit properties.
@@ -454,18 +538,20 @@ class HabitState extends ChangeNotifier {
     if (cachedMetadata != null) {
       return cachedMetadata;
     }
-    
+
     // Cache miss - load from database
-    debugPrint('📅 Metadata cache miss - loading habit metadata from database for habit $habitId');
-    
+    debugPrint(
+      '📅 Metadata cache miss - loading habit metadata from database for habit $habitId',
+    );
+
     try {
       // Get the habit from local state (which should have all metadata)
       final habit = _habits.firstWhere((h) => h.id == habitId);
       final metadata = HabitMetadata.fromHabit(habit);
-      
+
       // Cache the result for future use
       _metadataCache.cacheHabitMetadata(habitId, metadata);
-      
+
       return metadata;
     } catch (e) {
       debugPrint('❌ Error getting cached habit metadata: $e');
@@ -474,16 +560,18 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Warm metadata cache with all habit metadata
-  /// 
+  ///
   /// This method pre-loads metadata for all habits to improve performance
   /// and reduce database queries for habit properties.
   Future<void> _warmMetadataCache() async {
     try {
       debugPrint('🔥 Warming metadata cache for ${_habits.length} habits');
-      
+
       await _metadataCache.warmCacheWithHabits(_habits);
-      
-      debugPrint('🔥 Metadata cache warmed with ${_habits.length} habit metadata entries');
+
+      debugPrint(
+        '🔥 Metadata cache warmed with ${_habits.length} habit metadata entries',
+      );
     } catch (e) {
       debugPrint('❌ Error warming metadata cache: $e');
     }
@@ -503,13 +591,19 @@ class HabitState extends ChangeNotifier {
   Map<String, dynamic> getAllCacheStats() {
     final completionStats = _completionCache.getCacheStats();
     final metadataStats = _metadataCache.getCacheStats();
-    
+
     return {
       'completionCache': completionStats,
       'metadataCache': metadataStats,
-      'totalCacheSize': (completionStats['cacheSize'] as int) + (metadataStats['cacheSize'] as int),
-      'totalCacheHits': (completionStats['cacheHits'] as int) + (metadataStats['cacheHits'] as int),
-      'totalCacheMisses': (completionStats['cacheMisses'] as int) + (metadataStats['cacheMisses'] as int),
+      'totalCacheSize':
+          (completionStats['cacheSize'] as int) +
+          (metadataStats['cacheSize'] as int),
+      'totalCacheHits':
+          (completionStats['cacheHits'] as int) +
+          (metadataStats['cacheHits'] as int),
+      'totalCacheMisses':
+          (completionStats['cacheMisses'] as int) +
+          (metadataStats['cacheMisses'] as int),
     };
   }
 
@@ -537,39 +631,57 @@ class HabitState extends ChangeNotifier {
   /// @param timeRange The time range for analysis ("Last 7 Days", "Last 30 Days", "Total")
   /// @param currentDate The current virtual date for calculations (deprecated - now uses VirtualDateService)
   /// @return HourlyHistogramData with completion distribution
-  Future<HourlyHistogramData> loadHourlyData(String habitId, String timeRange, DateTime currentDate) async {
+  Future<HourlyHistogramData> loadHourlyData(
+    String habitId,
+    String timeRange,
+    DateTime currentDate,
+  ) async {
     return await PerformanceMonitor.monitorOperation(
       'loadHourlyData($timeRange)',
       () async {
         try {
           // Always use virtual date service for consistency
           final virtualDate = VirtualDateService().currentDate;
-          debugPrint('📅 [HabitProvider] Loading hourly data for $timeRange using virtual date: ${virtualDate.toIso8601String()}');
-          
+          debugPrint(
+            '📅 [HabitProvider] Loading hourly data for $timeRange using virtual date: ${virtualDate.toIso8601String()}',
+          );
+
           Map<int, int> hourlyCompletions;
           DateRange dateRange;
-          
+
           switch (timeRange) {
             case 'Last 7 Days':
               dateRange = DateRangeUtils.getLast7Days(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, dateRange.start, dateRange.end);
+              hourlyCompletions = await _habitRepository.getHourlyCompletions(
+                habitId,
+                dateRange.start,
+                dateRange.end,
+              );
               break;
             case 'Last 30 Days':
               dateRange = DateRangeUtils.getLast30Days(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              hourlyCompletions = await _habitRepository.getHourlyCompletions(habitId, dateRange.start, dateRange.end);
+              hourlyCompletions = await _habitRepository.getHourlyCompletions(
+                habitId,
+                dateRange.start,
+                dateRange.end,
+              );
               break;
-        case 'Total':
-          dateRange = DateRangeUtils.getTotal(virtualDate);
-          hourlyCompletions = await _habitRepository.getTotalHourlyCompletions(habitId);
-          break;
+            case 'Total':
+              dateRange = DateRangeUtils.getTotal(virtualDate);
+              hourlyCompletions = await _habitRepository
+                  .getTotalHourlyCompletions(habitId);
+              break;
             default:
               throw ArgumentError('Invalid time range: $timeRange');
           }
-          
-          final totalCompletions = hourlyCompletions.values.fold(0, (sum, count) => sum + count);
-          
+
+          final totalCompletions = hourlyCompletions.values.fold(
+            0,
+            (sum, count) => sum + count,
+          );
+
           final data = HourlyHistogramData(
             hourlyCompletions: hourlyCompletions,
             totalCompletions: totalCompletions,
@@ -577,8 +689,10 @@ class HabitState extends ChangeNotifier {
             endDate: dateRange.end,
             timeRange: timeRange,
           );
-          
-          debugPrint('📊 [HabitProvider] Loaded hourly data for $habitId: $totalCompletions total completions across ${data.activeHours.length} hours');
+
+          debugPrint(
+            '📊 [HabitProvider] Loaded hourly data for $habitId: $totalCompletions total completions across ${data.activeHours.length} hours',
+          );
           return data;
         } catch (e) {
           debugPrint('❌ [HabitProvider] Error loading hourly data: $e');
@@ -597,6 +711,15 @@ class HabitState extends ChangeNotifier {
         final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
         if (habitIndex >= 0) {
           _habits.removeAt(habitIndex); // Remove from active habits list
+          
+          // Update persistent cache
+          try {
+            await _persistentCache.removeHabit(habitId);
+          } catch (e) {
+            debugPrint('⚠️ Failed to remove archived habit from persistent cache: $e');
+            // Don't fail the operation if cache update fails
+          }
+          
           notifyListeners();
         }
       }
@@ -615,6 +738,14 @@ class HabitState extends ChangeNotifier {
       if (success) {
         // Reload habits to get the unarchived habit back
         await loadHabits();
+        
+        // Update persistent cache with fresh data
+        try {
+          await _persistentCache.saveHabits(_habits);
+        } catch (e) {
+          debugPrint('⚠️ Failed to update persistent cache after unarchiving: $e');
+          // Don't fail the operation if cache update fails
+        }
       }
       return success;
     } catch (e) {
@@ -630,10 +761,18 @@ class HabitState extends ChangeNotifier {
       await _habitRepository.deleteHabit(habitId);
       // Update local state directly
       _habits.removeWhere((habit) => habit.id == habitId);
-      
+
       // Invalidate metadata cache for deleted habit
       _metadataCache.invalidateHabit(habitId);
-      
+
+      // Update persistent cache
+      try {
+        await _persistentCache.removeHabit(habitId);
+      } catch (e) {
+        debugPrint('⚠️ Failed to remove habit from persistent cache: $e');
+        // Don't fail the operation if cache update fails
+      }
+
       notifyListeners();
     } catch (e) {
       _error = 'Failed to delete habit: $e';
@@ -642,17 +781,23 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Overwrite archived habit
-  Future<HabitSaveResult> overwriteArchivedHabit(String archivedHabitId, Habit newHabit) async {
+  Future<HabitSaveResult> overwriteArchivedHabit(
+    String archivedHabitId,
+    Habit newHabit,
+  ) async {
     try {
-      final result = await _habitRepository.overwriteArchivedHabit(archivedHabitId, newHabit);
+      final result = await _habitRepository.overwriteArchivedHabit(
+        archivedHabitId,
+        newHabit,
+      );
       if (result.success && result.savedHabit != null) {
         // Add the unarchived habit to local state
         _habits.insert(0, result.savedHabit!);
-        
+
         // Cache the new habit metadata
         final metadata = HabitMetadata.fromHabit(result.savedHabit!);
         _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
-        
+
         notifyListeners();
       }
       return result;
@@ -681,9 +826,17 @@ class HabitState extends ChangeNotifier {
   /// @param iconName The icon name to check
   /// @param excludeHabitId Optional habit ID to exclude from check (for editing)
   /// @return true if a duplicate exists, false otherwise
-  Future<bool> hasDuplicateHabit(String name, String iconName, {String? excludeHabitId}) async {
+  Future<bool> hasDuplicateHabit(
+    String name,
+    String iconName, {
+    String? excludeHabitId,
+  }) async {
     try {
-      return await _habitRepository.hasDuplicateHabit(name, iconName, excludeHabitId: excludeHabitId);
+      return await _habitRepository.hasDuplicateHabit(
+        name,
+        iconName,
+        excludeHabitId: excludeHabitId,
+      );
     } catch (e) {
       debugPrint('❌ Error checking for duplicate habit: $e');
       return false; // Fail safe - allow creation if check fails
@@ -699,9 +852,17 @@ class HabitState extends ChangeNotifier {
   /// @param newName The new name for the habit
   /// @param newIconName The new icon name for the habit
   /// @return true if the update is safe (no duplicates), false otherwise
-  Future<bool> canUpdateHabit(String habitId, String newName, String newIconName) async {
+  Future<bool> canUpdateHabit(
+    String habitId,
+    String newName,
+    String newIconName,
+  ) async {
     try {
-      return await _habitRepository.canUpdateHabit(habitId, newName, newIconName);
+      return await _habitRepository.canUpdateHabit(
+        habitId,
+        newName,
+        newIconName,
+      );
     } catch (e) {
       debugPrint('❌ Error checking if habit can be updated: $e');
       return false; // Fail safe - prevent update if check fails
@@ -739,16 +900,16 @@ class HabitState extends ChangeNotifier {
   /// Get total completion percentage for today across all habits
   double getTodayCompletionRate() {
     if (_habits.isEmpty) return 0.0;
-    
+
     double totalCompletionPercentage = 0.0;
     final today = VirtualDateService().currentDate;
-    
+
     for (final habit in _habits) {
       final count = habit.getCompletionCount(today);
       final percentage = (count / habit.targetGoal).clamp(0.0, 1.0);
       totalCompletionPercentage += percentage;
     }
-    
+
     return totalCompletionPercentage / _habits.length;
   }
 }
@@ -757,7 +918,8 @@ class HabitState extends ChangeNotifier {
 class HabitProvider extends HabitState {
   final SqliteHabitRepository _repository;
 
-  HabitProvider(super.habitRepository, super.settingsRepository) : _repository = habitRepository;
+  HabitProvider(super.habitRepository, super.settingsRepository)
+    : _repository = habitRepository;
 
   // Factory method for easy creation with SQLite repository
   factory HabitProvider.create() {
@@ -766,19 +928,164 @@ class HabitProvider extends HabitState {
     final settingsRepository = SettingsRepository(databaseService);
     return HabitProvider(sqliteRepository, settingsRepository);
   }
-  
-  // Initialize the provider
+
+  // Initialize the provider with persistent cache and enhanced error handling
   Future<void> initialize() async {
-    debugPrint('🗄️ Initializing database...');
-    final databaseService = DatabaseService();
-    await databaseService.database; // Pre-open database
-    debugPrint('✅ Database initialized');
+    try {
+      debugPrint('🚀 Starting HabitProvider initialization with persistent cache...');
 
-    await loadHabitFilterSetting();
+      // Initialize persistent cache service
+      await _persistentCache.initialize();
 
-    debugPrint('📱 HabitProvider: Loading habits during initialization...');
-    await _performLoad(false);
-    debugPrint('✅ HabitProvider: Initialization complete with ${_habits.length} habits');
+      // Try to load from persistent cache first (fast path)
+      if (await _persistentCache.hasValidCache()) {
+        debugPrint('📱 Loading habits from persistent cache...');
+        final cachedHabits = await _persistentCache.loadHabits();
+        
+        if (cachedHabits.isNotEmpty) {
+          _habits = cachedHabits;
+          _isLoading = false;
+          _lastLoadTime = DateTime.now();
+          notifyListeners();
+          
+          debugPrint('✅ Loaded ${_habits.length} habits from persistent cache');
+          
+          // Load fresh data in background
+          _refreshInBackground();
+          return;
+        }
+      }
+
+      debugPrint('📱 No valid cache found, loading from database...');
+
+      // Initialize database with timeout and recovery
+      final databaseService = DatabaseService();
+      await databaseService.database.timeout(
+        const Duration(seconds: 2), // Very short timeout
+        onTimeout: () {
+          debugPrint('⏰ Database initialization timed out after 2 seconds');
+          throw TimeoutException(
+            'Database initialization timed out',
+            const Duration(seconds: 2),
+          );
+        },
+      );
+
+      debugPrint('✅ Database initialized successfully');
+
+      // Load settings with timeout
+      await loadHabitFilterSetting().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          debugPrint('⚠️ Settings loading timed out - using defaults');
+          // Don't throw - continue with default settings
+        },
+      );
+
+      debugPrint('📱 HabitProvider: Loading habits from database...');
+
+      // Load habits with timeout and recovery
+      await _performLoadWithRecovery(false);
+
+      // Save to persistent cache for next startup
+      if (_habits.isNotEmpty) {
+        try {
+          await _persistentCache.saveHabits(_habits);
+          debugPrint('✅ Saved ${_habits.length} habits to persistent cache');
+        } catch (e) {
+          debugPrint('⚠️ Failed to save habits to persistent cache: $e');
+          // Don't fail initialization if cache save fails
+        }
+      }
+
+      debugPrint(
+        '✅ HabitProvider: Initialization complete with ${_habits.length} habits',
+      );
+    } catch (e) {
+      debugPrint('❌ HabitProvider initialization failed: $e');
+
+      // Enhanced error logging
+      if (e is TimeoutException) {
+        debugPrint('⏰ HabitProvider timeout - database may be slow to respond');
+        debugPrint('💡 This often happens after app backgrounding');
+      } else if (e.toString().contains('database')) {
+        debugPrint('🗄️ Database error in HabitProvider');
+        debugPrint('💡 Database may be corrupted or locked');
+      }
+
+      // Try to load from cache as fallback
+      try {
+        final cachedHabits = await _persistentCache.loadHabits();
+        if (cachedHabits.isNotEmpty) {
+          _habits = cachedHabits;
+          _isLoading = false;
+          _lastLoadTime = DateTime.now();
+          notifyListeners();
+          debugPrint('✅ Fallback: Loaded ${_habits.length} habits from cache');
+          return;
+        }
+      } catch (cacheError) {
+        debugPrint('❌ Cache fallback also failed: $cacheError');
+      }
+
+      // Don't rethrow - continue with empty state
+      debugPrint('🔄 Continuing with empty habit list');
+      
+      // Ensure we have a valid state even if initialization fails
+      _isLoading = false;
+      _habits = [];
+      notifyListeners();
+    }
+  }
+
+  /// Refresh habits in background after loading from cache
+  Future<void> _refreshInBackground() async {
+    try {
+      debugPrint('🔄 Refreshing habits in background...');
+      
+      // Load fresh data from database
+      await _performLoadWithRecovery(false);
+      
+      // Update cache with fresh data
+      if (_habits.isNotEmpty) {
+        await _persistentCache.saveHabits(_habits);
+        debugPrint('✅ Background refresh complete, cache updated');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Background refresh failed: $e');
+      // Don't notify listeners - keep showing cached data
+    }
+  }
+
+  /// Performs habit loading with recovery mechanisms
+  Future<void> _performLoadWithRecovery(bool showLoading) async {
+    try {
+      await _performLoad(showLoading);
+    } catch (e) {
+      debugPrint('❌ Habit loading failed: $e');
+
+      // Try recovery mechanisms
+      if (e.toString().contains('database') || e is TimeoutException) {
+        debugPrint('🔄 Attempting habit loading recovery...');
+
+        try {
+          // Wait a bit and try again
+          await Future.delayed(const Duration(milliseconds: 500));
+          await _performLoad(showLoading);
+          debugPrint('✅ Habit loading recovery successful');
+          return;
+        } catch (recoveryError) {
+          debugPrint('❌ Habit loading recovery failed: $recoveryError');
+        }
+      }
+
+      // If all recovery attempts fail, continue with empty state
+      debugPrint('🔄 Continuing with empty habit list after recovery failure');
+      if (showLoading) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
   }
 
   // Getter to access repository for complex operations
@@ -817,17 +1124,20 @@ class HabitProvider extends HabitState {
       final draggedHabit = _habits.firstWhere((h) => h.id == draggedId);
       _habits.removeWhere((h) => h.id == draggedId);
       _habits.insert(newPosition, draggedHabit);
-      
-      debugPrint('🔄 Optimistically reordered habit $draggedId to position $newPosition');
+
+      debugPrint(
+        '🔄 Optimistically reordered habit $draggedId to position $newPosition',
+      );
       notifyListeners();
 
       // Perform actual reordering in database
       await _habitRepository.reorderHabits(draggedId, newPosition);
       debugPrint('✅ Successfully reordered habit $draggedId in database');
-      
+
       // Increment reorder counter and normalize if needed
       _reorderCount++;
-      if (_reorderCount >= 10) { // Normalize every 10 reorders
+      if (_reorderCount >= 10) {
+        // Normalize every 10 reorders
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
         await _habitRepository.normalizeOrderValues();
         _reorderCount = 0;
@@ -845,28 +1155,39 @@ class HabitProvider extends HabitState {
 
   /// Reorder habits with filtering context - handles filtered views correctly
   Future<void> reorderHabitsInContext(
-    String draggedId, 
-    int newPosition, 
-    List<String> visibleHabitIds
+    String draggedId,
+    int newPosition,
+    List<String> visibleHabitIds,
   ) async {
     try {
-      debugPrint('🔄 Reordering habit $draggedId to position $newPosition in filtered context');
-      
+      debugPrint(
+        '🔄 Reordering habit $draggedId to position $newPosition in filtered context',
+      );
+
       // Optimistic update - move habit in local list immediately
       final draggedHabit = _habits.firstWhere((h) => h.id == draggedId);
       _habits.removeWhere((h) => h.id == draggedId);
       _habits.insert(newPosition, draggedHabit);
-      
-      debugPrint('🔄 Optimistically reordered habit $draggedId to position $newPosition in context');
+
+      debugPrint(
+        '🔄 Optimistically reordered habit $draggedId to position $newPosition in context',
+      );
       notifyListeners();
 
       // Perform actual reordering in database with context
-      await _habitRepository.reorderHabitsInContext(draggedId, newPosition, visibleHabitIds);
-      debugPrint('✅ Successfully reordered habit $draggedId in database with context');
-      
+      await _habitRepository.reorderHabitsInContext(
+        draggedId,
+        newPosition,
+        visibleHabitIds,
+      );
+      debugPrint(
+        '✅ Successfully reordered habit $draggedId in database with context',
+      );
+
       // Increment reorder counter and normalize if needed
       _reorderCount++;
-      if (_reorderCount >= 10) { // Normalize every 10 reorders
+      if (_reorderCount >= 10) {
+        // Normalize every 10 reorders
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
         await _habitRepository.normalizeOrderValues();
         _reorderCount = 0;
@@ -893,17 +1214,21 @@ class HabitProvider extends HabitState {
         if (restoredHabit != null) {
           // Insert at the top of the habits list
           _habits.insert(0, restoredHabit);
-          
+
           // Cache the restored habit metadata
           final metadata = HabitMetadata.fromHabit(restoredHabit);
           _metadataCache.cacheHabitMetadata(restoredHabit.id, metadata);
-          
+
           // Single, targeted UI update
           notifyListeners();
-          debugPrint('✅ Unarchived habit $habitId and positioned at top (surgical reload)');
+          debugPrint(
+            '✅ Unarchived habit $habitId and positioned at top (surgical reload)',
+          );
         } else {
           // Fallback: if habit not found, do full reload
-          debugPrint('⚠️ Restored habit not found, falling back to full reload');
+          debugPrint(
+            '⚠️ Restored habit not found, falling back to full reload',
+          );
           await loadHabits(forceRefresh: true);
         }
       }
@@ -920,10 +1245,10 @@ class HabitProvider extends HabitState {
   void updateSelectedDate(DateTime newDate) {
     if (_selectedDate != newDate) {
       _selectedDate = newDate;
-      
+
       // Update the virtual date service to make this the "current date" for the entire app
       VirtualDateService().setVirtualDate(newDate);
-      
+
       notifyListeners();
       debugPrint('📅 Selected date updated to: ${_formatDate(newDate)}');
     }
@@ -943,7 +1268,9 @@ class HabitProvider extends HabitState {
     if (_showAllHabits != showAll) {
       _showAllHabits = showAll;
       notifyListeners();
-      debugPrint('🔄 Habit filter changed to: ${showAll ? 'All Habits' : 'Today\'s Habits'}');
+      debugPrint(
+        '🔄 Habit filter changed to: ${showAll ? 'All Habits' : 'Today\'s Habits'}',
+      );
       // Save the filter preference
       saveHabitFilterSetting();
     }
@@ -959,7 +1286,9 @@ class HabitProvider extends HabitState {
       );
 
       _showAllHabits = settingValue == 'all';
-      debugPrint('📊 Habit filter setting loaded: ${_showAllHabits ? 'All Habits' : 'Today\'s Habits'}');
+      debugPrint(
+        '📊 Habit filter setting loaded: ${_showAllHabits ? 'All Habits' : 'Today\'s Habits'}',
+      );
     } catch (e) {
       debugPrint('❌ Error loading habit filter setting: $e');
       // Fallback to default (Today's Habits)
@@ -972,7 +1301,10 @@ class HabitProvider extends HabitState {
     try {
       debugPrint('📊 Saving habit filter setting to storage...');
       final settingValue = _showAllHabits ? 'all' : 'today';
-      final success = await _settingsRepository.saveSetting('habit_filter_mode', settingValue);
+      final success = await _settingsRepository.saveSetting(
+        'habit_filter_mode',
+        settingValue,
+      );
 
       if (success) {
         debugPrint('📊 Habit filter setting saved: $settingValue');
@@ -988,8 +1320,20 @@ class HabitProvider extends HabitState {
   String _formatDate(DateTime date) {
     // Simply show the actual date in a readable format
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
   }
 

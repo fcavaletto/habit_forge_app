@@ -65,7 +65,16 @@ class AppState extends ChangeNotifier {
   final StreakSettingsProvider _streakSettingsProvider;
   final DateProvider _dateProvider;
 
-  AppState(this._habitProvider, this._notificationProvider, this._themeProvider, this._completionCountProvider, this._extendedColorPaletteProvider, this._proSubscriptionProvider, this._streakSettingsProvider, this._dateProvider) {
+  AppState(
+    this._habitProvider,
+    this._notificationProvider,
+    this._themeProvider,
+    this._completionCountProvider,
+    this._extendedColorPaletteProvider,
+    this._proSubscriptionProvider,
+    this._streakSettingsProvider,
+    this._dateProvider,
+  ) {
     // Listen to changes in child providers
     _habitProvider.addListener(() {
       debugPrint('🔗 AppState received notification from HabitProvider');
@@ -80,19 +89,27 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     });
     _completionCountProvider.addListener(() {
-      debugPrint('🔗 AppState received notification from CompletionCountProvider');
+      debugPrint(
+        '🔗 AppState received notification from CompletionCountProvider',
+      );
       notifyListeners();
     });
     _extendedColorPaletteProvider.addListener(() {
-      debugPrint('🔗 AppState received notification from ExtendedColorPaletteProvider');
+      debugPrint(
+        '🔗 AppState received notification from ExtendedColorPaletteProvider',
+      );
       notifyListeners();
     });
     _proSubscriptionProvider.addListener(() {
-      debugPrint('🔗 AppState received notification from ProSubscriptionProvider');
+      debugPrint(
+        '🔗 AppState received notification from ProSubscriptionProvider',
+      );
       notifyListeners();
     });
     _streakSettingsProvider.addListener(() {
-      debugPrint('🔗 AppState received notification from StreakSettingsProvider');
+      debugPrint(
+        '🔗 AppState received notification from StreakSettingsProvider',
+      );
       notifyListeners();
     });
     _dateProvider.addListener(() {
@@ -118,21 +135,28 @@ class AppState extends ChangeNotifier {
   ThemeMode get themeMode => _themeProvider.themeMode;
 
   // Completion count provider access
-  CompletionCountProvider get completionCountProvider => _completionCountProvider;
+  CompletionCountProvider get completionCountProvider =>
+      _completionCountProvider;
   bool get showCompletionCount => _completionCountProvider.showCompletionCount;
 
   // Extended color palette provider access
-  ExtendedColorPaletteProvider get extendedColorPaletteProvider => _extendedColorPaletteProvider;
-  bool get isExtendedColorPalette => _extendedColorPaletteProvider.isExtendedMode;
+  ExtendedColorPaletteProvider get extendedColorPaletteProvider =>
+      _extendedColorPaletteProvider;
+  bool get isExtendedColorPalette =>
+      _extendedColorPaletteProvider.isExtendedMode;
 
   // Pro subscription provider access
-  ProSubscriptionProvider get proSubscriptionProvider => _proSubscriptionProvider;
-  bool get isProSubscriptionActive => _proSubscriptionProvider.isProSubscriptionActive;
+  ProSubscriptionProvider get proSubscriptionProvider =>
+      _proSubscriptionProvider;
+  bool get isProSubscriptionActive =>
+      _proSubscriptionProvider.isProSubscriptionActive;
 
   // Streak settings provider access
   StreakSettingsProvider get streakSettingsProvider => _streakSettingsProvider;
-  bool get isActiveDaysStreakEnabled => _streakSettingsProvider.isActiveDaysStreakEnabled;
-  String get streakCalculationMode => _streakSettingsProvider.streakCalculationMode;
+  bool get isActiveDaysStreakEnabled =>
+      _streakSettingsProvider.isActiveDaysStreakEnabled;
+  String get streakCalculationMode =>
+      _streakSettingsProvider.streakCalculationMode;
 
   // Date provider access
   DateProvider get dateProvider => _dateProvider;
@@ -141,10 +165,21 @@ class AppState extends ChangeNotifier {
   DateTime? get virtualDate => _dateProvider.virtualDate;
 
   // Combined loading state
-  bool get isLoading => _habitProvider.isLoading || _notificationProvider.isLoading;
+  bool get isLoading =>
+      _habitProvider.isLoading || _notificationProvider.isLoading;
 
   // Combined error state
   String? get error => _habitProvider.error ?? _notificationProvider.error;
+
+  // Initialization state tracking
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+  
+  /// Force set initialization state (for emergency bypass)
+  void setInitialized(bool value) {
+    _isInitialized = value;
+    notifyListeners();
+  }
 
   // Data freshness access
   DateTime? get lastDataLoadTime => _habitProvider.lastLoadTime;
@@ -177,51 +212,98 @@ class AppState extends ChangeNotifier {
   /// graceful degradation and continued operation.
   Future<void> initialize() async {
     try {
-      debugPrint('🚀 Starting optimized app initialization...');
-      
-      // PHASE 1: Initialize core services (habits + theme)
+      debugPrint(
+        '🚀 Starting optimized app initialization with shorter timeouts...',
+      );
+
+      // PHASE 1: Initialize core services (habits + theme) with shorter timeouts
       debugPrint('📱 Phase 1: Initializing core services (habits + theme)...');
-      
-      // Initialize habit provider (this loads filter setting)
+
+      // Initialize habit provider with reduced timeout
       await _habitProvider.initialize().timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 8), // Reduced from 15 seconds
         onTimeout: () {
-          throw TimeoutException('Habit provider initialization timed out', const Duration(seconds: 15));
+          debugPrint(
+            '⚠️ Habit provider initialization timed out - continuing with empty state',
+          );
+          throw TimeoutException(
+            'Habit provider initialization timed out',
+            const Duration(seconds: 8),
+          );
         },
       );
-      
-      // Load theme (habits are already loaded during habitProvider.initialize())
+
+      // Load theme with shorter timeout
       await _themeProvider.loadThemeMode().timeout(
-        const Duration(seconds: 5),
+        const Duration(seconds: 3), // Reduced from 5 seconds
         onTimeout: () {
-          throw TimeoutException('Theme loading timed out', const Duration(seconds: 5));
+          debugPrint('⚠️ Theme loading timed out - using default theme');
+          throw TimeoutException(
+            'Theme loading timed out',
+            const Duration(seconds: 3),
+          );
         },
       );
-      
+
       debugPrint('✅ Phase 1 complete: Habits and theme loaded');
-      
-      // PHASE 2: Initialize secondary services in parallel
+
+      // PHASE 2: Initialize secondary services in parallel with shorter timeout
       debugPrint('🔧 Phase 2: Initializing secondary services...');
-      
-      await Future.wait([
-        _notificationProvider.initialize(),
-        _completionCountProvider.loadCompletionCountSetting(),
-        _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
-        _proSubscriptionProvider.loadProSubscriptionSetting(),
-        _streakSettingsProvider.loadStreakSetting(),
-      ]).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          debugPrint('⚠️ Secondary services initialization timed out - continuing with core functionality');
-          // Return empty list to satisfy Future.wait return type
-          return <void>[];
-        },
-      );
-      
+
+      try {
+        await Future.wait([
+          _notificationProvider.initialize(),
+          _completionCountProvider.loadCompletionCountSetting(),
+          _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
+          _proSubscriptionProvider.loadProSubscriptionSetting(),
+          _streakSettingsProvider.loadStreakSetting(),
+        ]).timeout(
+          const Duration(seconds: 8), // Reduced from 15 seconds
+          onTimeout: () {
+            debugPrint(
+              '⚠️ Secondary services initialization timed out - continuing with core functionality',
+            );
+            return <void>[];
+          },
+        );
+
+        debugPrint('✅ Phase 2 complete: Secondary services loaded');
+      } catch (e) {
+        debugPrint('⚠️ Secondary services failed to load: $e');
+        debugPrint('🔄 Continuing with core functionality only');
+        // Don't rethrow - continue with core services
+      }
+
       debugPrint('✅ App initialization completed successfully');
+      _isInitialized = true;
+      notifyListeners();
     } catch (e) {
       debugPrint('❌ App state initialization failed: $e');
-      rethrow;
+
+      // Log specific error types for better debugging
+      if (e is TimeoutException) {
+        debugPrint(
+          '⏰ Initialization timeout detected - services may be slow to respond',
+        );
+        debugPrint(
+          '💡 This often happens after the app has been backgrounded for extended periods',
+        );
+      } else if (e.toString().contains('database')) {
+        debugPrint('🗄️ Database-related error during initialization');
+        debugPrint('💡 Database may be locked or corrupted');
+      } else if (e.toString().contains('permission')) {
+        debugPrint('🔐 Permission-related error during initialization');
+        debugPrint('💡 App may need to request permissions again');
+      } else if (e.toString().contains('network')) {
+        debugPrint('🌐 Network-related error during initialization');
+        debugPrint('💡 Check network connectivity');
+      }
+
+      _isInitialized = false;
+      notifyListeners();
+
+      // Don't rethrow - let app continue with minimal state
+      debugPrint('🔄 App will continue with minimal functionality');
     }
   }
 
@@ -253,13 +335,13 @@ class AppState extends ChangeNotifier {
   /// - Recovery from error states
   Future<void> refreshAllData({bool forceRefresh = false}) async {
     debugPrint('🔄 AppState: Refreshing all data, forceRefresh: $forceRefresh');
-    
+
     await Future.wait([
       _habitProvider.loadHabits(forceRefresh: forceRefresh),
       // Note: NotificationProvider doesn't have a refresh method yet
       // This can be added later if needed
     ]);
-    
+
     debugPrint('✅ AppState: All data refreshed');
   }
 
@@ -278,7 +360,16 @@ class AppState extends ChangeNotifier {
 
 /// Provider for AppState
 class AppStateProvider extends AppState {
-  AppStateProvider(super.habitProvider, super.notificationProvider, super.themeProvider, super.completionCountProvider, super.extendedColorPaletteProvider, super.proSubscriptionProvider, super.streakSettingsProvider, super.dateProvider);
+  AppStateProvider(
+    super.habitProvider,
+    super.notificationProvider,
+    super.themeProvider,
+    super.completionCountProvider,
+    super.extendedColorPaletteProvider,
+    super.proSubscriptionProvider,
+    super.streakSettingsProvider,
+    super.dateProvider,
+  );
 
   // Factory method for easy creation with SQLite repository
   factory AppStateProvider.create() {
@@ -289,12 +380,23 @@ class AppStateProvider extends AppState {
     final settingsRepository = SettingsRepository(databaseService);
     final themeProvider = ThemeProvider(settingsRepository);
     final completionCountProvider = CompletionCountProvider(settingsRepository);
-    final extendedColorPaletteProvider = ExtendedColorPaletteProvider(settingsRepository);
+    final extendedColorPaletteProvider = ExtendedColorPaletteProvider(
+      settingsRepository,
+    );
     final proSubscriptionProvider = ProSubscriptionProvider(settingsRepository);
     final streakSettingsProvider = StreakSettingsProvider(settingsRepository);
     final dateProvider = DateProvider();
 
-    return AppStateProvider(habitProvider, notificationProvider, themeProvider, completionCountProvider, extendedColorPaletteProvider, proSubscriptionProvider, streakSettingsProvider, dateProvider);
+    return AppStateProvider(
+      habitProvider,
+      notificationProvider,
+      themeProvider,
+      completionCountProvider,
+      extendedColorPaletteProvider,
+      proSubscriptionProvider,
+      streakSettingsProvider,
+      dateProvider,
+    );
   }
 
   static Future<AppStateProvider> preload() async {
@@ -304,7 +406,16 @@ class AppStateProvider extends AppState {
   }
 
   Future<void> preloadCore() async {
-    await _habitProvider.initialize();
-    await _themeProvider.loadThemeMode();
+    try {
+      await _habitProvider.initialize();
+      await _themeProvider.loadThemeMode();
+      _isInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Core preload failed: $e');
+      _isInitialized = false;
+      notifyListeners();
+      // Don't rethrow - let app continue with minimal state
+    }
   }
 }

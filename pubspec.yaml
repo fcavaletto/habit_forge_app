@@ -61,6 +61,9 @@ dependencies:
   # UUID generation for unique identifiers
   uuid: ^4.1.0
 
+  # Persistent storage for caching
+  shared_preferences: ^2.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
