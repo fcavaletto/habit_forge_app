@@ -12,12 +12,18 @@ import 'dart:convert';
 /// - **Data Integrity**: Includes hash for corruption detection
 /// - **Size Tracking**: Monitors cache size and habit count
 /// - **Migration Support**: Enables smooth cache format migrations
+/// - **Date-Aware Caching**: Tracks the date when cache was created for day-change detection
 class CacheMetadata {
   /// App version when cache was created
   final String version;
   
   /// When the cache was created
   final DateTime cachedAt;
+  
+  /// The date when the cache was created (for day-change detection)
+  /// This is normalized to the start of the day (00:00:00) to enable
+  /// accurate day boundary comparisons
+  final DateTime cacheDate;
   
   /// Hash of the cached data for integrity checking
   final String dataHash;
@@ -34,6 +40,7 @@ class CacheMetadata {
   const CacheMetadata({
     required this.version,
     required this.cachedAt,
+    required this.cacheDate,
     required this.dataHash,
     required this.habitCount,
     required this.lastModified,
@@ -42,9 +49,20 @@ class CacheMetadata {
 
   /// Create CacheMetadata from JSON
   factory CacheMetadata.fromJson(Map<String, dynamic> json) {
+    // Handle backward compatibility: if cacheDate is missing, use cachedAt as fallback
+    DateTime cacheDate;
+    if (json.containsKey('cacheDate')) {
+      cacheDate = DateTime.parse(json['cacheDate'] as String);
+    } else {
+      // Fallback to cachedAt for backward compatibility
+      final cachedAt = DateTime.parse(json['cachedAt'] as String);
+      cacheDate = DateTime(cachedAt.year, cachedAt.month, cachedAt.day);
+    }
+    
     return CacheMetadata(
       version: json['version'] as String,
       cachedAt: DateTime.parse(json['cachedAt'] as String),
+      cacheDate: cacheDate,
       dataHash: json['dataHash'] as String,
       habitCount: json['habitCount'] as int,
       lastModified: DateTime.parse(json['lastModified'] as String),
@@ -57,6 +75,7 @@ class CacheMetadata {
     return {
       'version': version,
       'cachedAt': cachedAt.toIso8601String(),
+      'cacheDate': cacheDate.toIso8601String(),
       'dataHash': dataHash,
       'habitCount': habitCount,
       'lastModified': lastModified.toIso8601String(),
@@ -96,10 +115,23 @@ class CacheMetadata {
     return DateTime.now().difference(lastModified) > maxStaleness;
   }
 
+  /// Check if cache is from a different day than current date
+  /// 
+  /// This method compares the cache date with the current date to determine
+  /// if the cache was created on a different day. This is used for day-change
+  /// detection to ensure fresh data is loaded when a new day starts.
+  bool get isFromDifferentDay {
+    final now = DateTime.now();
+    final currentDate = DateTime(now.year, now.month, now.day);
+    final cacheDateNormalized = DateTime(cacheDate.year, cacheDate.month, cacheDate.day);
+    return !cacheDateNormalized.isAtSameMomentAs(currentDate);
+  }
+
   /// Create a copy with updated values
   CacheMetadata copyWith({
     String? version,
     DateTime? cachedAt,
+    DateTime? cacheDate,
     String? dataHash,
     int? habitCount,
     DateTime? lastModified,
@@ -108,6 +140,7 @@ class CacheMetadata {
     return CacheMetadata(
       version: version ?? this.version,
       cachedAt: cachedAt ?? this.cachedAt,
+      cacheDate: cacheDate ?? this.cacheDate,
       dataHash: dataHash ?? this.dataHash,
       habitCount: habitCount ?? this.habitCount,
       lastModified: lastModified ?? this.lastModified,
@@ -118,7 +151,7 @@ class CacheMetadata {
   @override
   String toString() {
     return 'CacheMetadata(version: $version, cachedAt: $cachedAt, '
-           'dataHash: $dataHash, habitCount: $habitCount, '
+           'cacheDate: $cacheDate, dataHash: $dataHash, habitCount: $habitCount, '
            'lastModified: $lastModified, cacheFormatVersion: $cacheFormatVersion)';
   }
 
@@ -128,6 +161,7 @@ class CacheMetadata {
     return other is CacheMetadata &&
         other.version == version &&
         other.cachedAt == cachedAt &&
+        other.cacheDate == cacheDate &&
         other.dataHash == dataHash &&
         other.habitCount == habitCount &&
         other.lastModified == lastModified &&
@@ -139,6 +173,7 @@ class CacheMetadata {
     return Object.hash(
       version,
       cachedAt,
+      cacheDate,
       dataHash,
       habitCount,
       lastModified,
