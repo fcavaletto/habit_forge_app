@@ -975,8 +975,6 @@ class HabitProvider extends HabitState {
           
           debugPrint('✅ Loaded ${_habits.length} habits from persistent cache');
           
-          // Load fresh data in background
-          _refreshInBackground();
           return;
         }
       }
@@ -1063,24 +1061,6 @@ class HabitProvider extends HabitState {
     }
   }
 
-  /// Refresh habits in background after loading from cache
-  Future<void> _refreshInBackground() async {
-    try {
-      debugPrint('🔄 Refreshing habits in background...');
-      
-      // Load fresh data from database
-      await _performLoadWithRecovery(false);
-      
-      // Update cache with fresh data
-      if (_habits.isNotEmpty) {
-        await _persistentCache.saveHabits(_habits);
-        debugPrint('✅ Background refresh complete, cache updated');
-      }
-    } catch (e) {
-      debugPrint('⚠️ Background refresh failed: $e');
-      // Don't notify listeners - keep showing cached data
-    }
-  }
 
   /// Performs habit loading with recovery mechanisms
   Future<void> _performLoadWithRecovery(bool showLoading) async {
