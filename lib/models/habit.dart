@@ -684,6 +684,7 @@ class Habit {
           : null,
       'enableReminders': enableReminders,
       'isArchived': isArchived,
+      'orderValue': orderValue, // Include order value for persistence
       'frequencyDays': frequencyDays,
       'targetGoal': targetGoal,
       'allowExceedGoal': allowExceedGoal,
@@ -727,6 +728,7 @@ class Habit {
       reminderTime: reminderTime,
       enableReminders: json['enableReminders'] as bool? ?? false, // Default disabled
       isArchived: json['isArchived'] as bool? ?? false, // Default to not archived
+      orderValue: json['orderValue'] as double?, // Load order value (nullable for backward compatibility)
       frequencyDays: (json['frequencyDays'] as Map<String, dynamic>?)?.map(
         (key, value) => MapEntry(key, value as int),
       ) ?? defaultFrequencyDays, // Default to every day

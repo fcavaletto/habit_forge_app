@@ -174,13 +174,8 @@ class HabitState extends ChangeNotifier {
         final metadata = HabitMetadata.fromHabit(result.savedHabit!);
         _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
 
-        // Update persistent cache
-        try {
-          await _persistentCache.updateHabit(result.savedHabit!);
-        } catch (e) {
-          debugPrint('⚠️ Failed to update persistent cache for new habit: $e');
-          // Don't fail the operation if cache update fails
-        }
+        // Update persistent cache immediately after database operation
+        await _updateHabitInCache(result.savedHabit!);
 
         notifyListeners();
       }
@@ -278,13 +273,8 @@ class HabitState extends ChangeNotifier {
         _completionCache.invalidateCompletion(habitId, date);
       }
 
-      // Update persistent cache
-      try {
-        await _persistentCache.updateCompletion(habitId, date, count);
-      } catch (e) {
-        debugPrint('⚠️ Failed to update persistent cache for completion: $e');
-        // Don't fail the operation if cache update fails
-      }
+      // Update persistent cache immediately after database operation
+      await _updateCompletionInCache(habitId, date, count);
 
       debugPrint(
         '✅ Database sync successful: $habitId on ${date.toIso8601String().split('T')[0]} = $count',
@@ -441,6 +431,9 @@ class HabitState extends ChangeNotifier {
       // Invalidate cache for this habit and date
       _completionCache.invalidateCompletion(habitId, date);
 
+      // Update persistent cache immediately after database operation
+      await _updateCompletionInCache(habitId, date, newCount);
+
       debugPrint(
         '✅ Database custom completion successful: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount',
       );
@@ -463,6 +456,9 @@ class HabitState extends ChangeNotifier {
 
       // Invalidate cache for this habit and date
       _completionCache.invalidateCompletion(habitId, date);
+
+      // Update persistent cache immediately after database operation
+      await _updateCompletionInCache(habitId, date, 0);
 
       debugPrint(
         '✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]}',
@@ -712,13 +708,8 @@ class HabitState extends ChangeNotifier {
         if (habitIndex >= 0) {
           _habits.removeAt(habitIndex); // Remove from active habits list
           
-          // Update persistent cache
-          try {
-            await _persistentCache.removeHabit(habitId);
-          } catch (e) {
-            debugPrint('⚠️ Failed to remove archived habit from persistent cache: $e');
-            // Don't fail the operation if cache update fails
-          }
+          // Update persistent cache immediately after database operation
+          await _updateCacheAfterDatabaseOperation();
           
           notifyListeners();
         }
@@ -739,13 +730,8 @@ class HabitState extends ChangeNotifier {
         // Reload habits to get the unarchived habit back
         await loadHabits();
         
-        // Update persistent cache with fresh data
-        try {
-          await _persistentCache.saveHabits(_habits);
-        } catch (e) {
-          debugPrint('⚠️ Failed to update persistent cache after unarchiving: $e');
-          // Don't fail the operation if cache update fails
-        }
+        // Update persistent cache immediately after database operation
+        await _updateCacheAfterDatabaseOperation();
       }
       return success;
     } catch (e) {
@@ -765,13 +751,8 @@ class HabitState extends ChangeNotifier {
       // Invalidate metadata cache for deleted habit
       _metadataCache.invalidateHabit(habitId);
 
-      // Update persistent cache
-      try {
-        await _persistentCache.removeHabit(habitId);
-      } catch (e) {
-        debugPrint('⚠️ Failed to remove habit from persistent cache: $e');
-        // Don't fail the operation if cache update fails
-      }
+      // Update persistent cache immediately after database operation
+      await _updateCacheAfterDatabaseOperation();
 
       notifyListeners();
     } catch (e) {
@@ -797,6 +778,9 @@ class HabitState extends ChangeNotifier {
         // Cache the new habit metadata
         final metadata = HabitMetadata.fromHabit(result.savedHabit!);
         _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
+
+        // Update persistent cache immediately after database operation
+        await _updateHabitInCache(result.savedHabit!);
 
         notifyListeners();
       }
@@ -911,6 +895,47 @@ class HabitState extends ChangeNotifier {
     }
 
     return totalCompletionPercentage / _habits.length;
+  }
+
+  /// Update cache immediately after successful database operation
+  /// 
+  /// This method ensures the persistent cache is updated with the current
+  /// habit state after any database modification. It's designed to be
+  /// non-critical - if cache update fails, the operation continues.
+  Future<void> _updateCacheAfterDatabaseOperation() async {
+    try {
+      await _persistentCache.saveHabits(_habits);
+      debugPrint('✅ Cache updated after database operation');
+    } catch (e) {
+      debugPrint('⚠️ Cache update failed (non-critical): $e');
+      // Don't fail the operation - cache is not critical
+    }
+  }
+
+  /// Update specific habit in cache after database operation
+  /// 
+  /// This method updates a single habit in the cache, which is more
+  /// efficient than updating the entire cache for single habit changes.
+  Future<void> _updateHabitInCache(Habit habit) async {
+    try {
+      await _persistentCache.updateHabit(habit);
+      debugPrint('✅ Habit ${habit.id} updated in cache');
+    } catch (e) {
+      debugPrint('⚠️ Habit cache update failed (non-critical): $e');
+    }
+  }
+
+  /// Update completion in cache after database operation
+  /// 
+  /// This method updates completion data for a specific habit and date
+  /// in the cache, maintaining cache consistency.
+  Future<void> _updateCompletionInCache(String habitId, DateTime date, int count) async {
+    try {
+      await _persistentCache.updateCompletion(habitId, date, count);
+      debugPrint('✅ Completion updated in cache for $habitId');
+    } catch (e) {
+      debugPrint('⚠️ Completion cache update failed (non-critical): $e');
+    }
   }
 }
 
@@ -1103,6 +1128,7 @@ class HabitProvider extends HabitState {
     }
   }
 
+
   /// Enter sorting mode for habit reordering
   void enterSortingMode() {
     _isSortingMode = true;
@@ -1134,6 +1160,9 @@ class HabitProvider extends HabitState {
       await _habitRepository.reorderHabits(draggedId, newPosition);
       debugPrint('✅ Successfully reordered habit $draggedId in database');
 
+      // Update persistent cache immediately after database operation
+      await _updateCacheAfterDatabaseOperation();
+
       // Increment reorder counter and normalize if needed
       _reorderCount++;
       if (_reorderCount >= 10) {
@@ -1143,6 +1172,8 @@ class HabitProvider extends HabitState {
         _reorderCount = 0;
         // Reload habits to get normalized order values
         await loadHabits(forceRefresh: true);
+        // Update cache after normalization
+        await _updateCacheAfterDatabaseOperation();
       }
     } catch (e) {
       // Rollback on error - reload habits from database
@@ -1184,6 +1215,9 @@ class HabitProvider extends HabitState {
         '✅ Successfully reordered habit $draggedId in database with context',
       );
 
+      // Update persistent cache immediately after database operation
+      await _updateCacheAfterDatabaseOperation();
+
       // Increment reorder counter and normalize if needed
       _reorderCount++;
       if (_reorderCount >= 10) {
@@ -1193,6 +1227,8 @@ class HabitProvider extends HabitState {
         _reorderCount = 0;
         // Reload habits to get normalized order values
         await loadHabits(forceRefresh: true);
+        // Update cache after normalization
+        await _updateCacheAfterDatabaseOperation();
       }
     } catch (e) {
       // Rollback on error - reload habits from database
@@ -1219,6 +1255,9 @@ class HabitProvider extends HabitState {
           final metadata = HabitMetadata.fromHabit(restoredHabit);
           _metadataCache.cacheHabitMetadata(restoredHabit.id, metadata);
 
+          // Update persistent cache immediately after database operation
+          await _updateHabitInCache(restoredHabit);
+
           // Single, targeted UI update
           notifyListeners();
           debugPrint(
@@ -1230,6 +1269,8 @@ class HabitProvider extends HabitState {
             '⚠️ Restored habit not found, falling back to full reload',
           );
           await loadHabits(forceRefresh: true);
+          // Update cache after full reload
+          await _updateCacheAfterDatabaseOperation();
         }
       }
       return success;

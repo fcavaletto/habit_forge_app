@@ -90,7 +90,14 @@ class PersistentCacheService {
       final List<dynamic> decoded = jsonDecode(habitsJson);
       final habits = decoded.map((json) => Habit.fromJson(json)).toList();
       
-      debugPrint('✅ Loaded ${habits.length} habits from persistent cache');
+      // Sort habits by orderValue (DESC) to maintain proper order
+      habits.sort((a, b) {
+        final aOrder = a.orderValue ?? 0.0;
+        final bOrder = b.orderValue ?? 0.0;
+        return bOrder.compareTo(aOrder); // DESC order (highest first)
+      });
+      
+      debugPrint('✅ Loaded ${habits.length} habits from persistent cache (sorted by order)');
       return habits;
     } catch (e) {
       debugPrint('❌ Error loading habits from cache: $e');
@@ -108,8 +115,16 @@ class PersistentCacheService {
     try {
       await _ensureInitialized();
       
+      // Sort habits by orderValue (DESC) before saving to maintain proper order
+      final sortedHabits = List<Habit>.from(habits);
+      sortedHabits.sort((a, b) {
+        final aOrder = a.orderValue ?? 0.0;
+        final bOrder = b.orderValue ?? 0.0;
+        return bOrder.compareTo(aOrder); // DESC order (highest first)
+      });
+      
       // Check cache size limit
-      final habitsJson = jsonEncode(habits.map((h) => h.toJson()).toList());
+      final habitsJson = jsonEncode(sortedHabits.map((h) => h.toJson()).toList());
       if (habitsJson.length > _maxCacheSizeBytes) {
         debugPrint('⚠️ Cache size exceeds limit, compressing data');
         await _compressCache(habits);
@@ -121,7 +136,7 @@ class PersistentCacheService {
         version: _getAppVersion(),
         cachedAt: DateTime.now(),
         dataHash: _generateDataHash(habitsJson),
-        habitCount: habits.length,
+        habitCount: sortedHabits.length,
         lastModified: DateTime.now(),
       );
       
@@ -132,7 +147,7 @@ class PersistentCacheService {
       // Create backup
       await _prefs!.setString(_backupKey, habitsJson);
       
-      debugPrint('✅ Saved ${habits.length} habits to persistent cache');
+      debugPrint('✅ Saved ${sortedHabits.length} habits to persistent cache (sorted by order)');
     } catch (e) {
       debugPrint('❌ Error saving habits to cache: $e');
       rethrow;
