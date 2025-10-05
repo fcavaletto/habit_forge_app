@@ -40,7 +40,7 @@ class CompletionChart extends StatelessWidget {
                 LineChartData(
                   gridData: FlGridData(
                     show: true,
-                    horizontalInterval: 0.2, // Show lines at 20%, 40%, 60%, 80%
+                    horizontalInterval: 0.2, // Show lines at 20%, 40%, 60%, 80%, 100%
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
                         color: colorScheme.outline.withValues(alpha: 0.3),
@@ -60,11 +60,23 @@ class CompletionChart extends StatelessWidget {
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 30,
+                        interval: 0.2, // Show labels at 0%, 20%, 40%, 60%, 80%, 100%
                         getTitlesWidget: (value, meta) {
-                          return Text(
-                            '${(value * 100).toInt()}%',
-                            style: const TextStyle(fontSize: 10),
-                          );
+                          // Show labels for 0%, 20%, 40%, 60%, 80%, 100%
+                          // Use tolerance for floating point comparison
+                          const tolerance = 0.01;
+                          if ((value - 0.0).abs() < tolerance || 
+                              (value - 0.2).abs() < tolerance || 
+                              (value - 0.4).abs() < tolerance || 
+                              (value - 0.6).abs() < tolerance || 
+                              (value - 0.8).abs() < tolerance || 
+                              (value - 1.0).abs() < tolerance) {
+                            return Text(
+                              '${(value * 100).toInt()}%',
+                              style: const TextStyle(fontSize: 10),
+                            );
+                          }
+                          return const SizedBox.shrink(); // Hide other labels
                         },
                       ),
                     ),
@@ -99,7 +111,7 @@ class CompletionChart extends StatelessWidget {
                     ),
                   ],
                   minY: 0,
-                  maxY: 1,
+                  maxY: 1.05, // Increased from 1.0 to provide 5% padding above 100%
                   lineTouchData: LineTouchData(
                     touchTooltipData: LineTouchTooltipData(
                       getTooltipItems: (touchedSpots) {
