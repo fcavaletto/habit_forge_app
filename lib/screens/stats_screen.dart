@@ -36,6 +36,7 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen> {
   String _selectedTimeRange = 'Last 30 Days';
+  String _selectedCompletionTimeRange = AppConstants.defaultCompletionTimeRange;
   HourlyHistogramData? _hourlyData;
   bool _isLoadingHourlyData = false;
   String? _hourlyDataError;
@@ -140,8 +141,18 @@ class _StatsScreenState extends State<StatsScreen> {
 
                     // Completion Rate Chart
                   CompletionChart(
-                    completionData: _getLast30DaysData(completions, currentDate),
+                    completionData: _getCompletionDataForRange(
+                      _selectedCompletionTimeRange,
+                      completions,
+                      currentDate,
+                    ),
                     currentDate: currentDate,
+                    timeRange: _selectedCompletionTimeRange,
+                    onTimeRangeChanged: (newRange) {
+                      setState(() {
+                        _selectedCompletionTimeRange = newRange;
+                      });
+                    },
                   ),
                   const SizedBox(height: 24),
 
@@ -380,15 +391,14 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  /// Calculates completion rate data points for the last 30 days
+  /// Calculates completion rate data points for the last 7 days
   ///
   /// Returns a list of double values representing daily completion rates.
   /// Each value represents the completion percentage for that day (0.0 to 1.0).
-  /// The chart shows daily completion percentage based on the habit's target goal.
-  List<double> _getLast30DaysData(Map<DateTime, CompletionRecord> completions, DateTime currentDate) {
+  List<double> _getLast7DaysCompletionData(Map<DateTime, CompletionRecord> completions, DateTime currentDate) {
     final data = <double>[];
 
-    for (int i = AppConstants.chartDaysCount - 1; i >= 0; i--) {
+    for (int i = 6; i >= 0; i--) {
       final date = currentDate.subtract(Duration(days: i));
       final record = completions[DateTime(date.year, date.month, date.day)];
       final rate = record != null 
@@ -398,6 +408,65 @@ class _StatsScreenState extends State<StatsScreen> {
     }
 
     return data;
+  }
+
+  /// Calculates completion rate data points for the last 30 days
+  ///
+  /// Returns a list of double values representing daily completion rates.
+  /// Each value represents the completion percentage for that day (0.0 to 1.0).
+  List<double> _getLast30DaysCompletionData(Map<DateTime, CompletionRecord> completions, DateTime currentDate) {
+    final data = <double>[];
+
+    for (int i = 29; i >= 0; i--) {
+      final date = currentDate.subtract(Duration(days: i));
+      final record = completions[DateTime(date.year, date.month, date.day)];
+      final rate = record != null 
+          ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0)
+          : 0.0;
+      data.add(rate);
+    }
+
+    return data;
+  }
+
+  /// Calculates completion rate data points for the last 365 days
+  ///
+  /// Returns a list of double values representing daily completion rates.
+  /// Each value represents the completion percentage for that day (0.0 to 1.0).
+  /// Missing days are set to 0.0.
+  List<double> _getLast365DaysCompletionData(Map<DateTime, CompletionRecord> completions, DateTime currentDate) {
+    final data = <double>[];
+
+    for (int i = 364; i >= 0; i--) {
+      final date = currentDate.subtract(Duration(days: i));
+      final record = completions[DateTime(date.year, date.month, date.day)];
+      final rate = record != null 
+          ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0)
+          : 0.0;
+      data.add(rate);
+    }
+
+    return data;
+  }
+
+  /// Gets completion data for the selected time range
+  ///
+  /// Returns completion rate data based on the currently selected time range.
+  List<double> _getCompletionDataForRange(
+    String timeRange,
+    Map<DateTime, CompletionRecord> completions,
+    DateTime currentDate,
+  ) {
+    switch (timeRange) {
+      case 'Last 7 Days':
+        return _getLast7DaysCompletionData(completions, currentDate);
+      case 'Last 30 Days':
+        return _getLast30DaysCompletionData(completions, currentDate);
+      case 'Last 365 Days':
+        return _getLast365DaysCompletionData(completions, currentDate);
+      default:
+        return _getLast30DaysCompletionData(completions, currentDate);
+    }
   }
 
   /// Calculates last 7 days completion data

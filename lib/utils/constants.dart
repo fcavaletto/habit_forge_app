@@ -37,6 +37,14 @@ class AppConstants {
   static const double chartBarWidth = 3.0;
   static const double chartGridSpacing = 20.0;
 
+  // Completion Chart Time Ranges
+  static const List<String> completionChartTimeRanges = [
+    'Last 7 Days',
+    'Last 30 Days',
+    'Last 365 Days',
+  ];
+  static const String defaultCompletionTimeRange = 'Last 30 Days';
+
 
   // Timeouts and Limits
   static const Duration snackbarDuration = Duration(seconds: 4);
