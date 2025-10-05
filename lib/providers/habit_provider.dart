@@ -902,13 +902,43 @@ class HabitState extends ChangeNotifier {
   /// This method ensures the persistent cache is updated with the current
   /// habit state after any database modification. It's designed to be
   /// non-critical - if cache update fails, the operation continues.
+  /// 
+  /// Features:
+  /// - Retry mechanism for transient failures
+  /// - Graceful degradation on persistent failures
+  /// - Comprehensive error logging
+  /// - Data validation before cache operations
   Future<void> _updateCacheAfterDatabaseOperation() async {
-    try {
-      await _persistentCache.saveHabits(_habits);
-      debugPrint('✅ Cache updated after database operation');
-    } catch (e) {
-      debugPrint('⚠️ Cache update failed (non-critical): $e');
-      // Don't fail the operation - cache is not critical
+    if (_habits.isEmpty) {
+      debugPrint('⚠️ Skipping cache update - no habits to cache');
+      return;
+    }
+
+    const maxRetries = 3;
+    const retryDelay = Duration(milliseconds: 100);
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Validate data before caching
+        if (!_validateHabitsForCaching()) {
+          debugPrint('❌ Cache update skipped - data validation failed');
+          return;
+        }
+
+        await _persistentCache.saveHabits(_habits);
+        debugPrint('✅ Cache updated after database operation (attempt $attempt)');
+        return;
+      } catch (e) {
+        debugPrint('⚠️ Cache update attempt $attempt failed: $e');
+        
+        if (attempt == maxRetries) {
+          debugPrint('❌ Cache update failed after $maxRetries attempts - operation continues');
+          _logCacheError('_updateCacheAfterDatabaseOperation', e);
+        } else {
+          // Wait before retry
+          await Future.delayed(retryDelay * attempt);
+        }
+      }
     }
   }
 
@@ -916,12 +946,43 @@ class HabitState extends ChangeNotifier {
   /// 
   /// This method updates a single habit in the cache, which is more
   /// efficient than updating the entire cache for single habit changes.
+  /// 
+  /// Features:
+  /// - Retry mechanism for transient failures
+  /// - Habit validation before caching
+  /// - Graceful degradation on failures
+  /// - Comprehensive error logging
   Future<void> _updateHabitInCache(Habit habit) async {
-    try {
-      await _persistentCache.updateHabit(habit);
-      debugPrint('✅ Habit ${habit.id} updated in cache');
-    } catch (e) {
-      debugPrint('⚠️ Habit cache update failed (non-critical): $e');
+    if (habit.id.isEmpty) {
+      debugPrint('❌ Skipping cache update - habit has empty ID');
+      return;
+    }
+
+    const maxRetries = 3;
+    const retryDelay = Duration(milliseconds: 100);
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Validate habit before caching
+        if (!_validateHabitForCaching(habit)) {
+          debugPrint('❌ Cache update skipped - habit validation failed');
+          return;
+        }
+
+        await _persistentCache.updateHabit(habit);
+        debugPrint('✅ Habit ${habit.id} updated in cache (attempt $attempt)');
+        return;
+      } catch (e) {
+        debugPrint('⚠️ Habit cache update attempt $attempt failed: $e');
+        
+        if (attempt == maxRetries) {
+          debugPrint('❌ Habit cache update failed after $maxRetries attempts - operation continues');
+          _logCacheError('_updateHabitInCache', e, habitId: habit.id);
+        } else {
+          // Wait before retry
+          await Future.delayed(retryDelay * attempt);
+        }
+      }
     }
   }
 
@@ -929,12 +990,209 @@ class HabitState extends ChangeNotifier {
   /// 
   /// This method updates completion data for a specific habit and date
   /// in the cache, maintaining cache consistency.
+  /// 
+  /// Features:
+  /// - Retry mechanism for transient failures
+  /// - Input validation before caching
+  /// - Graceful degradation on failures
+  /// - Comprehensive error logging
   Future<void> _updateCompletionInCache(String habitId, DateTime date, int count) async {
+    if (habitId.isEmpty) {
+      debugPrint('❌ Skipping completion cache update - empty habit ID');
+      return;
+    }
+
+    if (count < 0) {
+      debugPrint('❌ Skipping completion cache update - negative count: $count');
+      return;
+    }
+
+    const maxRetries = 3;
+    const retryDelay = Duration(milliseconds: 100);
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await _persistentCache.updateCompletion(habitId, date, count);
+        debugPrint('✅ Completion updated in cache for $habitId (attempt $attempt)');
+        return;
+      } catch (e) {
+        debugPrint('⚠️ Completion cache update attempt $attempt failed: $e');
+        
+        if (attempt == maxRetries) {
+          debugPrint('❌ Completion cache update failed after $maxRetries attempts - operation continues');
+          _logCacheError('_updateCompletionInCache', e, habitId: habitId);
+        } else {
+          // Wait before retry
+          await Future.delayed(retryDelay * attempt);
+        }
+      }
+    }
+  }
+
+  /// Validate habits list before caching operations
+  /// 
+  /// Ensures data integrity and prevents caching of invalid data.
+  bool _validateHabitsForCaching() {
     try {
-      await _persistentCache.updateCompletion(habitId, date, count);
-      debugPrint('✅ Completion updated in cache for $habitId');
+      if (_habits.isEmpty) {
+        debugPrint('⚠️ Validation: Empty habits list');
+        return false;
+      }
+
+      // Check for duplicate IDs
+      final ids = _habits.map((h) => h.id).toList();
+      final uniqueIds = ids.toSet();
+      if (ids.length != uniqueIds.length) {
+        debugPrint('❌ Validation: Duplicate habit IDs detected');
+        return false;
+      }
+
+      // Check for empty IDs
+      if (ids.any((id) => id.isEmpty)) {
+        debugPrint('❌ Validation: Empty habit IDs detected');
+        return false;
+      }
+
+      // Check for null habits (this check is actually unnecessary in Dart with null safety)
+      // if (_habits.any((habit) => habit == null)) {
+      //   debugPrint('❌ Validation: Null habits detected');
+      //   return false;
+      // }
+
+      debugPrint('✅ Validation: Habits list is valid for caching');
+      return true;
     } catch (e) {
-      debugPrint('⚠️ Completion cache update failed (non-critical): $e');
+      debugPrint('❌ Validation: Error validating habits: $e');
+      return false;
+    }
+  }
+
+  /// Validate individual habit before caching operations
+  /// 
+  /// Ensures habit data integrity and prevents caching of invalid habits.
+  bool _validateHabitForCaching(Habit habit) {
+    try {
+      if (habit.id.isEmpty) {
+        debugPrint('❌ Validation: Habit has empty ID');
+        return false;
+      }
+
+      if (habit.name.isEmpty) {
+        debugPrint('❌ Validation: Habit has empty name');
+        return false;
+      }
+
+      if (habit.targetGoal <= 0) {
+        debugPrint('❌ Validation: Habit has invalid target goal: ${habit.targetGoal}');
+        return false;
+      }
+
+      debugPrint('✅ Validation: Habit ${habit.id} is valid for caching');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Validation: Error validating habit: $e');
+      return false;
+    }
+  }
+
+  /// Log cache errors with context for debugging
+  /// 
+  /// Provides comprehensive error logging for troubleshooting cache issues.
+  void _logCacheError(String operation, dynamic error, {String? habitId}) {
+    final timestamp = DateTime.now().toIso8601String();
+    final context = habitId != null ? ' (Habit: $habitId)' : '';
+    
+    debugPrint('''
+❌ CACHE ERROR LOG [$timestamp]
+Operation: $operation$context
+Error: $error
+Habits Count: ${_habits.length}
+Cache Service: ${_persistentCache.runtimeType}
+    ''');
+  }
+
+
+
+
+  /// Get cache health statistics for monitoring
+  /// 
+  /// Provides comprehensive statistics about cache performance and health.
+  Map<String, dynamic> getCacheHealthStats() {
+    return {
+      'habitsCount': _habits.length,
+      'lastLoadTime': _lastLoadTime?.toIso8601String(),
+      'isDataFresh': isDataFresh,
+      'needsRefresh': needsRefresh,
+      'cacheServiceType': _persistentCache.runtimeType.toString(),
+      'hasValidCache': _persistentCache.hasValidCache(),
+    };
+  }
+
+  /// Perform cache health check
+  /// 
+  /// This method performs a comprehensive health check of the cache system
+  /// and reports any issues found.
+  Future<Map<String, dynamic>> performCacheHealthCheck() async {
+    final healthReport = <String, dynamic>{
+      'timestamp': DateTime.now().toIso8601String(),
+      'overallHealth': 'healthy',
+      'issues': <String>[],
+      'recommendations': <String>[],
+    };
+
+    try {
+      // Check if cache service is accessible
+      if (!await _persistentCache.hasValidCache()) {
+        healthReport['issues'].add('Cache service not accessible');
+        healthReport['overallHealth'] = 'warning';
+      }
+
+      // Check data freshness
+      if (!isDataFresh) {
+        healthReport['issues'].add('Data is stale');
+        healthReport['overallHealth'] = 'warning';
+        healthReport['recommendations'].add('Refresh data from database');
+      }
+
+      // Check habits data integrity
+      if (!_validateHabitsForCaching()) {
+        healthReport['issues'].add('Habits data integrity issues detected');
+        healthReport['overallHealth'] = 'critical';
+        healthReport['recommendations'].add('Reload habits from database');
+      }
+
+      debugPrint('🔍 Cache health check completed: ${healthReport['overallHealth']}');
+      return healthReport;
+
+    } catch (e) {
+      healthReport['overallHealth'] = 'error';
+      healthReport['issues'].add('Health check failed: $e');
+      debugPrint('❌ Cache health check failed: $e');
+      return healthReport;
+    }
+  }
+
+  /// Recover from cache issues
+  /// 
+  /// This method attempts to recover from various cache issues and restore
+  /// normal operation.
+  Future<bool> recoverFromCacheIssues() async {
+    try {
+      debugPrint('🔄 Attempting cache recovery...');
+      
+      // Reload habits from database
+      await loadHabits(forceRefresh: true);
+      
+      // Update cache with fresh data
+      await _updateCacheAfterDatabaseOperation();
+      
+      debugPrint('✅ Cache recovery completed successfully');
+      return true;
+      
+    } catch (e) {
+      debugPrint('❌ Cache recovery failed: $e');
+      _logCacheError('recoverFromCacheIssues', e);
+      return false;
     }
   }
 }
