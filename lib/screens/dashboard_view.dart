@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
 import '../providers/habit_provider.dart';
@@ -64,6 +65,7 @@ class _DashboardViewState extends State<DashboardView>
   late DashboardController _controller;
   late AppState _appState;
   DateTime? _lastResumeTime;
+  Timer? _clockTimer;
 
   @override
   void initState() {
@@ -71,13 +73,32 @@ class _DashboardViewState extends State<DashboardView>
     WidgetsBinding.instance.addObserver(this);
     _appState = context.read<AppState>();
     _controller = DashboardController(_appState);
+    _startClockTimer();
     // No need to load initial data - AppState already loaded it during initialization
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _clockTimer?.cancel();
     super.dispose();
+  }
+
+  /// Start the clock timer to update the display every second when not overridden
+  void _startClockTimer() {
+    _clockTimer?.cancel();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && !_appState.isTimeOverridden) {
+        setState(() {
+          // Force rebuild to update the clock display
+        });
+      }
+    });
+  }
+
+  /// Restart the clock timer based on current override state
+  void _restartClockTimer() {
+    _startClockTimer();
   }
 
   @override
@@ -397,9 +418,16 @@ class _DashboardViewState extends State<DashboardView>
           },
         ),
         const SizedBox(height: 12),
-        // Time selector
+        // Time selector (conditional based on setting)
         Consumer<AppState>(
           builder: (context, appState, child) {
+            if (!appState.showTimeOverride) {
+              return const SizedBox.shrink(); // Hide when setting is off
+            }
+            // Restart timer when override state changes
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _restartClockTimer();
+            });
             return _buildTimeSelector(appState);
           },
         ),
@@ -666,17 +694,23 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  /// Build the time selector widget
+  /// Build the time selector widget with dynamic states
   Widget _buildTimeSelector(AppState appState) {
-    final selectedTime = appState.habitProvider.selectedTime;
+    final isTimeOverridden = appState.isTimeOverridden;
+    final currentTime = appState.currentTime;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: isTimeOverridden 
+            ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.1)
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: isTimeOverridden 
+              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
+              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          width: isTimeOverridden ? 2 : 1,
         ),
       ),
       child: Row(
@@ -684,7 +718,9 @@ class _DashboardViewState extends State<DashboardView>
           Icon(
             Icons.access_time,
             size: 20,
-            color: Theme.of(context).colorScheme.primary,
+            color: isTimeOverridden 
+                ? Theme.of(context).colorScheme.error
+                : Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -692,29 +728,50 @@ class _DashboardViewState extends State<DashboardView>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Completion Time',
+                  isTimeOverridden ? 'Time set at:' : 'Current Time',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: isTimeOverridden 
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _formatTime(selectedTime),
+                  _formatTime(currentTime),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
+                    color: isTimeOverridden 
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
             ),
           ),
+          if (isTimeOverridden) ...[
+            // Turn Off button (outlined style to stand out)
+            OutlinedButton(
+              onPressed: () => appState.resetTimeOverride(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+                side: BorderSide(color: Theme.of(context).colorScheme.error),
+                minimumSize: const Size(80, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: const Text('TURN OFF'),
+            ),
+            const SizedBox(width: 8),
+          ],
+          // Edit button
           IconButton(
             onPressed: () => _showTimePicker(appState),
             icon: Icon(
               Icons.edit,
-              color: Theme.of(context).colorScheme.primary,
+              color: isTimeOverridden 
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.primary,
             ),
-            tooltip: 'Select Time',
+            tooltip: isTimeOverridden ? 'Change Override Time' : 'Set Time Override',
           ),
         ],
       ),
@@ -777,10 +834,10 @@ class _DashboardViewState extends State<DashboardView>
 
   /// Show time picker dialog
   Future<void> _showTimePicker(AppState appState) async {
-    final selectedTime = appState.habitProvider.selectedTime;
+    final currentTime = appState.currentTime;
     final pickedTime = await showTimePicker(
       context: context,
-      initialTime: selectedTime,
+      initialTime: currentTime,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -793,9 +850,9 @@ class _DashboardViewState extends State<DashboardView>
       },
     );
 
-    if (pickedTime != null && pickedTime != selectedTime) {
-      appState.habitProvider.updateSelectedTime(pickedTime);
-      debugPrint('🕐 Time changed to: ${_formatTime(pickedTime)}');
+    if (pickedTime != null && pickedTime != currentTime) {
+      appState.setTimeOverride(pickedTime);
+      debugPrint('🕐 Time override set to: ${_formatTime(pickedTime)}');
     }
   }
 

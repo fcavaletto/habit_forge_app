@@ -114,4 +114,15 @@ class SettingsRepository {
       return {};
     }
   }
+
+  /// Save boolean setting for time override visibility
+  Future<bool> saveShowTimeOverride(bool show) async {
+    return await saveSetting('show_time_override', show.toString());
+  }
+
+  /// Get boolean setting for time override visibility
+  Future<bool> getShowTimeOverride() async {
+    final value = await getSettingWithDefault('show_time_override', 'false');
+    return value.toLowerCase() == 'true';
+  }
 }

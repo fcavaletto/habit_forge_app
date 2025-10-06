@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../services/notification_service.dart';
 import '../services/database_service.dart';
+import '../services/virtual_time_service.dart';
 import '../repositories/settings_repository.dart';
 import 'habit_provider.dart';
 import 'notification_provider.dart';
@@ -64,6 +65,8 @@ class AppState extends ChangeNotifier {
   final ProSubscriptionProvider _proSubscriptionProvider;
   final StreakSettingsProvider _streakSettingsProvider;
   final DateProvider _dateProvider;
+  final VirtualTimeService _virtualTimeService = VirtualTimeService();
+  final SettingsRepository _settingsRepository;
 
   AppState(
     this._habitProvider,
@@ -74,6 +77,7 @@ class AppState extends ChangeNotifier {
     this._proSubscriptionProvider,
     this._streakSettingsProvider,
     this._dateProvider,
+    this._settingsRepository,
   ) {
     // Listen to changes in child providers
     _habitProvider.addListener(() {
@@ -163,6 +167,16 @@ class AppState extends ChangeNotifier {
   DateTime get currentDate => _dateProvider.currentDate;
   bool get isVirtualMode => _dateProvider.isVirtualMode;
   DateTime? get virtualDate => _dateProvider.virtualDate;
+
+  // Time provider access
+  VirtualTimeService get virtualTimeService => _virtualTimeService;
+  TimeOfDay get currentTime => _virtualTimeService.currentTime;
+  bool get isTimeOverridden => _virtualTimeService.isTimeOverridden;
+  TimeOfDay? get virtualTime => _virtualTimeService.virtualTime;
+
+  // Settings access
+  bool _showTimeOverride = false;
+  bool get showTimeOverride => _showTimeOverride;
 
   // Combined loading state
   bool get isLoading =>
@@ -257,6 +271,7 @@ class AppState extends ChangeNotifier {
           _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
           _proSubscriptionProvider.loadProSubscriptionSetting(),
           _streakSettingsProvider.loadStreakSetting(),
+          loadTimeOverrideSetting(),
         ]).timeout(
           const Duration(seconds: 8), // Reduced from 15 seconds
           onTimeout: () {
@@ -311,6 +326,42 @@ class AppState extends ChangeNotifier {
   void clearErrors() {
     _habitProvider.clearError();
     _notificationProvider.clearError();
+  }
+
+  /// Load time override setting from storage
+  Future<void> loadTimeOverrideSetting() async {
+    try {
+      _showTimeOverride = await _settingsRepository.getShowTimeOverride();
+      debugPrint('🕐 Loaded time override setting: $_showTimeOverride');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error loading time override setting: $e');
+      _showTimeOverride = false; // Default to false on error
+    }
+  }
+
+  /// Save time override setting to storage
+  Future<void> saveTimeOverrideSetting(bool show) async {
+    try {
+      await _settingsRepository.saveShowTimeOverride(show);
+      _showTimeOverride = show;
+      debugPrint('🕐 Saved time override setting: $show');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error saving time override setting: $e');
+    }
+  }
+
+  /// Set time override
+  void setTimeOverride(TimeOfDay time) {
+    _virtualTimeService.setTimeOverride(time);
+    notifyListeners();
+  }
+
+  /// Reset time override to system time
+  void resetTimeOverride() {
+    _virtualTimeService.resetToSystemTime();
+    notifyListeners();
   }
 
   /// Refresh all data across all providers with intelligent coordination
@@ -369,6 +420,7 @@ class AppStateProvider extends AppState {
     super.proSubscriptionProvider,
     super.streakSettingsProvider,
     super.dateProvider,
+    super.settingsRepository,
   );
 
   // Factory method for easy creation with SQLite repository
@@ -396,6 +448,7 @@ class AppStateProvider extends AppState {
       proSubscriptionProvider,
       streakSettingsProvider,
       dateProvider,
+      settingsRepository,
     );
   }
 
@@ -409,6 +462,7 @@ class AppStateProvider extends AppState {
     try {
       await _habitProvider.initialize();
       await _themeProvider.loadThemeMode();
+      await loadTimeOverrideSetting();
       _isInitialized = true;
       notifyListeners();
     } catch (e) {

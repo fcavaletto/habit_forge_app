@@ -6,6 +6,7 @@ import '../repositories/sqlite_habit_repository.dart';
 import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import '../services/virtual_date_service.dart';
+import '../services/virtual_time_service.dart';
 import '../services/completion_cache_service.dart';
 import '../services/habit_metadata_cache_service.dart';
 import '../services/persistent_cache_service.dart';
@@ -71,9 +72,9 @@ class HabitState extends ChangeNotifier {
       false; // Whether to show all habits or just today's habits
 
   HabitState(this._habitRepository, this._settingsRepository) {
-    // Initialize with current date from global provider
+    // Initialize with current date and time from global providers
     _selectedDate = VirtualDateService().currentDate;
-    _selectedTime = TimeOfDay.now();
+    _selectedTime = VirtualTimeService().currentTime;
   }
 
   // Getters
@@ -1595,6 +1596,8 @@ class HabitProvider extends HabitState {
   void updateSelectedTime(TimeOfDay newTime) {
     if (_selectedTime != newTime) {
       _selectedTime = newTime;
+      // Also update the virtual time service
+      VirtualTimeService().setTimeOverride(newTime);
       notifyListeners();
       debugPrint('🕐 Selected time updated to: ${_formatTime(newTime)}');
     }
