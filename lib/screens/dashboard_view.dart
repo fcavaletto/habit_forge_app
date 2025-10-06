@@ -981,7 +981,6 @@ class _HabitCardWrapper extends StatefulWidget {
 }
 
 class _HabitCardWrapperState extends State<_HabitCardWrapper> {
-  Habit? _cachedHabit;
   int? _cachedCompletionCount;
   DateTime? _cachedDate;
   bool _isInitialized = false;
@@ -1006,7 +1005,6 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
         }
         
         // Update cache
-        _cachedHabit = widget.habit;
         _cachedCompletionCount = currentCompletionCount;
         _cachedDate = currentDate;
         _isInitialized = true;
