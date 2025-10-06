@@ -49,12 +49,10 @@ class CompletionCacheService {
     if (entry != null && !entry.isExpired) {
       _cacheHits++;
       _moveToEnd(key); // Mark as recently used
-      debugPrint('🎯 Cache HIT: $key = ${entry.completionCount}');
       return entry.completionCount;
     }
     
     _cacheMisses++;
-    debugPrint('❌ Cache MISS: $key');
     return null;
   }
   

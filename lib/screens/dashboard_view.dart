@@ -984,47 +984,36 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
   Habit? _cachedHabit;
   int? _cachedCompletionCount;
   DateTime? _cachedDate;
+  bool _isInitialized = false;
 
   @override
   Widget build(BuildContext context) {
-    return Selector<HabitProvider, ({Habit habit, DateTime selectedDate})>(
-      selector: (context, habitProvider) => (
-        habit: habitProvider.habits.firstWhere(
-          (h) => h.id == widget.habit.id,
-          orElse: () => widget.habit,
-        ),
-        selectedDate: habitProvider.selectedDate,
-      ),
-      builder: (context, data, child) {
-        final updatedHabit = data.habit;
-        final currentDate = data.selectedDate;
+    return Consumer<HabitProvider>(
+      builder: (context, habitProvider, child) {
+        final currentDate = habitProvider.selectedDate;
         
         // Get completion count directly from cache without FutureBuilder
-        final habitProvider = context.read<HabitProvider>();
         final currentCompletionCount = habitProvider.getCachedCompletionCountSync(widget.habit.id, currentDate) ?? 
-            updatedHabit.getCompletionCount(currentDate);
+            widget.habit.getCompletionCount(currentDate);
         
         // Check if this specific habit actually changed
-        final hasChanged = _cachedHabit == null ||
+        final hasChanged = !_isInitialized ||
             _cachedCompletionCount != currentCompletionCount ||
-            _cachedDate != currentDate ||
-            _cachedHabit!.id != updatedHabit.id;
+            _cachedDate != currentDate;
         
         if (!hasChanged) {
-          debugPrint('⏭️ Skipping rebuild: Habit ${widget.habit.id} (${widget.habit.name}) - no change');
           return child!; // Return cached widget
         }
         
         // Update cache
-        _cachedHabit = updatedHabit;
+        _cachedHabit = widget.habit;
         _cachedCompletionCount = currentCompletionCount;
         _cachedDate = currentDate;
-        
-        debugPrint('🎯 True selective rebuild: Habit ${widget.habit.id} (${widget.habit.name}) = $currentCompletionCount');
+        _isInitialized = true;
         
         return HabitCard(
           key: ValueKey(widget.habit.id),
-          habit: updatedHabit,
+          habit: widget.habit,
           onTap: widget.onTap,
           onComplete: widget.onComplete,
           onIncrement: widget.onIncrement,
