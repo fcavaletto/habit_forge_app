@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import '../models/habit.dart';
 import '../models/habit_result.dart';
 import '../services/database_service.dart';
+import '../services/virtual_date_service.dart';
 import '../utils/timezone_utils.dart';
 
 /// SQLite implementation for habit data operations
@@ -461,7 +462,7 @@ class SqliteHabitRepository {
         }
         
         // Add new timestamp records with current time
-        final currentTimestamp = TimezoneUtils.toUtcTimestampSeconds(DateTime.now());
+        final currentTimestamp = TimezoneUtils.toUtcTimestampSeconds(VirtualDateService().currentDate);
         for (int i = 0; i < additionalCount; i++) {
           await txn.insert(
             'habit_completion_timestamps',
@@ -770,7 +771,7 @@ class SqliteHabitRepository {
   Future<List<Habit>> getHabitsNeedingAttention() async {
     try {
       final habits = await getActiveHabits();
-      final now = DateTime.now();
+      final now = VirtualDateService().currentDate;
       
       return habits.where((habit) {
         // Check for low completion rate

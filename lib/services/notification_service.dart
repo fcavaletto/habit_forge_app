@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../models/habit.dart';
+import 'virtual_date_service.dart';
 
 /// Service for managing local notifications for habit reminders
 ///
@@ -221,7 +222,7 @@ class NotificationService {
       final int notificationId = _getNotificationId(habit.id);
 
       // Check if habit is already completed today
-      final today = DateTime.now();
+      final today = VirtualDateService().currentDate;
       final isCompletedToday = habit.isCompleted(today);
 
       if (isCompletedToday) {

@@ -67,7 +67,7 @@ class DashboardController {
   Future<void> loadHabits() async {
     debugPrint('📱 DashboardController: Loading habits from storage...');
     await _appState.habitProvider.loadHabits();
-    _lastRefreshTime = DateTime.now();
+    _lastRefreshTime = VirtualDateService().currentDate;
     debugPrint('📱 DashboardController: Loaded ${habits.length} habits at $_lastRefreshTime');
   }
 

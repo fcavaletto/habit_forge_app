@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../services/virtual_date_service.dart';
 
 /// Date Range Utility Class
 ///
@@ -60,7 +61,7 @@ class DateRangeUtils {
       throw ArgumentError('Date range cannot exceed 365 days: ${endDate.difference(startDate).inDays} days');
     }
     
-    if (startDate.isAfter(DateTime.now())) {
+    if (startDate.isAfter(VirtualDateService().currentDate)) {
       throw ArgumentError('Start date cannot be in the future: ${startDate.toIso8601String()}');
     }
     

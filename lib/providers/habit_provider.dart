@@ -65,13 +65,16 @@ class HabitState extends ChangeNotifier {
   Timer? _refreshTimer;
   bool _isSortingMode = false;
   int _reorderCount = 0; // Track reorder operations for normalization
-  DateTime _selectedDate = DateTime.now(); // Selected date for filtering
-  TimeOfDay _selectedTime =
-      TimeOfDay.now(); // Selected time for completion timestamps
+  late DateTime _selectedDate; // Selected date for filtering
+  late TimeOfDay _selectedTime; // Selected time for completion timestamps
   bool _showAllHabits =
       false; // Whether to show all habits or just today's habits
 
-  HabitState(this._habitRepository, this._settingsRepository);
+  HabitState(this._habitRepository, this._settingsRepository) {
+    // Initialize with current date from global provider
+    _selectedDate = VirtualDateService().currentDate;
+    _selectedTime = TimeOfDay.now();
+  }
 
   // Getters
   List<Habit> get habits => _habits;
@@ -148,7 +151,7 @@ class HabitState extends ChangeNotifier {
       await _warmMetadataCache();
 
       // Update timestamp for freshness tracking
-      _lastLoadTime = DateTime.now();
+      _lastLoadTime = VirtualDateService().currentDate;
 
       _isLoading = false;
       notifyListeners();
@@ -1283,7 +1286,7 @@ class HabitProvider extends HabitState {
         if (cachedHabits.isNotEmpty) {
           _habits = cachedHabits;
           _isLoading = false;
-          _lastLoadTime = DateTime.now();
+          _lastLoadTime = VirtualDateService().currentDate;
           notifyListeners();
           
           debugPrint('✅ Loaded ${_habits.length} habits from persistent cache');
@@ -1355,7 +1358,7 @@ class HabitProvider extends HabitState {
         if (cachedHabits.isNotEmpty) {
           _habits = cachedHabits;
           _isLoading = false;
-          _lastLoadTime = DateTime.now();
+          _lastLoadTime = VirtualDateService().currentDate;
           notifyListeners();
           debugPrint('✅ Fallback: Loaded ${_habits.length} habits from cache');
           return;

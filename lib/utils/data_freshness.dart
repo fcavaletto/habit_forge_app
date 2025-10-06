@@ -2,6 +2,10 @@
 /// 
 /// This utility provides methods to check if data is stale and should be
 /// refreshed based on various criteria like time elapsed and day changes.
+library data_freshness;
+
+import '../services/virtual_date_service.dart';
+
 class DataFreshness {
   /// Default maximum age for data before considering it stale
   static const Duration _defaultMaxAge = Duration(hours: 1);
@@ -13,7 +17,7 @@ class DataFreshness {
   /// Returns true if data is stale and should be refreshed
   static bool isDataStale(DateTime lastLoadTime, {Duration? maxAge}) {
     final maxAgeDuration = maxAge ?? _defaultMaxAge;
-    final timeDifference = DateTime.now().difference(lastLoadTime);
+    final timeDifference = VirtualDateService().currentDate.difference(lastLoadTime);
     return timeDifference > maxAgeDuration;
   }
   
@@ -22,7 +26,7 @@ class DataFreshness {
   /// [lastLoadTime] - When the data was last loaded
   /// Returns true if a new day has started since last load
   static bool isNewDay(DateTime lastLoadTime) {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     final lastLoad = DateTime(lastLoadTime.year, lastLoadTime.month, lastLoadTime.day);
     final today = DateTime(now.year, now.month, now.day);
     return lastLoad.isBefore(today);
@@ -65,7 +69,7 @@ class DataFreshness {
   /// Returns duration until data becomes stale, or Duration.zero if already stale
   static Duration timeUntilStale(DateTime lastLoadTime, {Duration? maxAge}) {
     final maxAgeDuration = maxAge ?? _defaultMaxAge;
-    final timeDifference = DateTime.now().difference(lastLoadTime);
+    final timeDifference = VirtualDateService().currentDate.difference(lastLoadTime);
     final remaining = maxAgeDuration - timeDifference;
     return remaining.isNegative ? Duration.zero : remaining;
   }
@@ -75,7 +79,7 @@ class DataFreshness {
   /// [lastLoadTime] - When the data was last loaded
   /// Returns a string describing how old the data is
   static String getDataAgeDescription(DateTime lastLoadTime) {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     final difference = now.difference(lastLoadTime);
     
     if (difference.inMinutes < 1) {

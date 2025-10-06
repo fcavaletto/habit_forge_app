@@ -5,7 +5,6 @@ import '../widgets/year_grid.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../providers/app_state_provider.dart';
 import '../theme.dart';
-import '../services/virtual_date_service.dart';
 import 'package:provider/provider.dart';
 
 /// Calendar Screen - GitHub-style habit tracking calendar
@@ -35,11 +34,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    // Show last 365 days
-    final now = VirtualDateService().currentDate;
+    _updateDateRange();
+    _loadData();
+  }
+
+  void _updateDateRange() {
+    // Show last 365 days based on current app date
+    final appState = context.read<AppStateProvider>();
+    final now = appState.currentDate;
     _startDate = DateTime(now.year - 1, now.month, now.day + 1);
     _endDate = now;
-    _loadData();
   }
 
   Future<void> _loadData() async {
@@ -75,72 +79,84 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Habit Calendar'),
-        actions: [
-          IconButton(
-            onPressed: _loadData,
-            icon: const Icon(Icons.refresh),
+    return Consumer<AppStateProvider>(
+      builder: (context, appState, child) {
+        // Update date range when virtual date changes
+        final currentDate = appState.currentDate;
+        if (_endDate != currentDate) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _updateDateRange();
+          });
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Habit Calendar'),
+            actions: [
+              IconButton(
+                onPressed: _loadData,
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _habits.isEmpty
-              ? const Center(child: Text('No habits found'))
-              : SafeScrollView(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _habits.length,
-                    itemBuilder: (context, index) {
-                      final habit = _habits[index];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  habit.iconName.toIconData,
-                                  color: _getHabitColor(habit.colorIndex),
-                                  size: 20,
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _habits.isEmpty
+                  ? const Center(child: Text('No habits found'))
+                  : SafeScrollView(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _habits.length,
+                        itemBuilder: (context, index) {
+                          final habit = _habits[index];
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      habit.iconName.toIconData,
+                                      color: _getHabitColor(habit.colorIndex),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      habit.name,
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  habit.name,
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                              ),
+                              Container(
+                                height: 120, // 7 rows * 10px + some padding
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            height: 120, // 7 rows * 10px + some padding
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                                child: YearGrid(
+                                  habit: habit,
+                                  startDate: _startDate,
+                                  endDate: _endDate,
+                                  onCompletionTap: (date, count) => _onCompletionTap(date, count, habit),
+                                  squareSize: 10,
+                                  spacing: 1,
+                                ),
                               ),
-                            ),
-                            child: YearGrid(
-                              habit: habit,
-                              startDate: _startDate,
-                              endDate: _endDate,
-                              onCompletionTap: (date, count) => _onCompletionTap(date, count, habit),
-                              squareSize: 10,
-                              spacing: 1,
-                            ),
-                          ),
-                          if (index < _habits.length - 1) const SizedBox(height: 24),
-                        ],
-                      );
-                    },
-                  ),
-                ),
+                              if (index < _habits.length - 1) const SizedBox(height: 24),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+        );
+      },
     );
   }
 

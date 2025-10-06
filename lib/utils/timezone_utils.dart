@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../services/virtual_date_service.dart';
 
 /// Timezone Utility Service
 ///
@@ -34,7 +35,7 @@ class TimezoneUtils {
   ///
   /// @return Current UTC timestamp in milliseconds since epoch
   static int getCurrentUtcTimestamp() {
-    final utcTimestamp = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final utcTimestamp = VirtualDateService().currentDate.toUtc().millisecondsSinceEpoch;
     debugPrint('🌍 [CURRENT] Current UTC timestamp: $utcTimestamp');
     return utcTimestamp;
   }

@@ -4,6 +4,7 @@ import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
 import '../providers/habit_provider.dart';
 import '../controllers/dashboard_controller.dart';
+import '../services/virtual_date_service.dart';
 import '../widgets/habit_card.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
@@ -12,7 +13,6 @@ import '../screens/add_habit_screen.dart';
 import '../screens/calendar_screen.dart';
 import 'stats_screen.dart';
 import '../utils/data_freshness.dart';
-import '../services/virtual_date_service.dart';
 import '../widgets/custom_completion_modal.dart';
 
 /// Dashboard View - Pure UI component for the main habit tracking interface
@@ -100,7 +100,7 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   void _onAppResumed() {
-    final now = DateTime.now();
+    final now = VirtualDateService().currentDate;
     
     // Skip refresh during initial app startup (when _lastResumeTime is null)
     // Only refresh when app is actually resumed from background
