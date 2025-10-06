@@ -790,7 +790,7 @@ class _DashboardViewState extends State<DashboardView>
                 minimumSize: const Size(80, 36),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
               ),
-              child: const Text('TURN OFF'),
+              child: const Text('RESET'),
             ),
             const SizedBox(width: 8),
           ],
