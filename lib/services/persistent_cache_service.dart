@@ -72,13 +72,6 @@ class PersistentCacheService {
         return [];
       }
       
-      // Check if cache is from a different day (day-change detection)
-      if (metadata.isFromDifferentDay) {
-        debugPrint('📅 Cache is from different day (${metadata.cacheDate.toIso8601String().split('T')[0]}), clearing cache for fresh data');
-        await clearCache();
-        return [];
-      }
-      
       // Validate cache integrity
       if (!await _validateCacheIntegrity(metadata)) {
         debugPrint('⚠️ Cache integrity validation failed, clearing cache');
@@ -142,7 +135,6 @@ class PersistentCacheService {
       final metadata = CacheMetadata(
         version: _getAppVersion(),
         cachedAt: DateTime.now(),
-        cacheDate: DateTime.now(), // Store current date for day-change detection
         dataHash: _generateDataHash(habitsJson),
         habitCount: sortedHabits.length,
         lastModified: DateTime.now(),
@@ -256,13 +248,6 @@ class PersistentCacheService {
         return false;
       }
       
-      // Check if cache is from a different day (day-change detection)
-      if (metadata.isFromDifferentDay) {
-        debugPrint('📅 Cache is from different day (${metadata.cacheDate.toIso8601String().split('T')[0]}), invalidating cache');
-        await clearCache();
-        return false;
-      }
-      
       // Check expiry
       if (metadata.isExpired) {
         debugPrint('⚠️ Cache expired, invalidating cache');
@@ -315,11 +300,9 @@ class PersistentCacheService {
         'maxCacheSize': _maxCacheSizeBytes,
         'habitCount': metadata?.habitCount ?? 0,
         'cachedAt': metadata?.cachedAt.toIso8601String(),
-        'cacheDate': metadata?.cacheDate.toIso8601String(),
         'lastModified': metadata?.lastModified.toIso8601String(),
         'version': metadata?.version,
         'isExpired': metadata?.isExpired ?? true,
-        'isFromDifferentDay': metadata?.isFromDifferentDay ?? true,
         'isVersionMatch': metadata != null ? metadata.isVersionMatch(_getAppVersion()) : false,
         'isFormatCompatible': metadata?.isFormatCompatible ?? false,
       };
