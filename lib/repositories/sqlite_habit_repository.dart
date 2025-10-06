@@ -1231,4 +1231,138 @@ class SqliteHabitRepository {
       rethrow;
     }
   }
+
+  /// Import multiple habits with their completion data in a single transaction
+  ///
+  /// This method efficiently imports multiple habits with large amounts of completion data
+  /// using batch operations and a single transaction for optimal performance.
+  ///
+  /// @param habits List of habits to import
+  /// @param onProgress Optional callback for progress tracking
+  /// @return Number of habits successfully imported
+  Future<int> importHabits(List<Habit> habits, {Function(String habitName, double progress)? onProgress}) async {
+    if (habits.isEmpty) {
+      debugPrint('📥 No habits to import');
+      return 0;
+    }
+
+    debugPrint('📥 Starting bulk import of ${habits.length} habits...');
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      int importedCount = 0;
+      
+      await _databaseService.transaction((txn) async {
+        // Get the next top order value for all habits
+        final topOrder = await _getNextTopOrderValue(txn);
+        
+        for (int i = 0; i < habits.length; i++) {
+          final habit = habits[i];
+          
+          try {
+            // Insert habit
+            await txn.insert('habits', _habitToRow(habit));
+            
+            // Insert ordering record (new habits go to top)
+            await txn.insert('habit_display_order', {
+              'habit_id': habit.id,
+              'order_value': topOrder + (habits.length - i) * 1000.0, // Space them out
+              'created_at': TimezoneUtils.getCurrentUtcTimestamp(),
+            });
+            
+            // Insert reminder if enabled
+            if (habit.enableReminders && habit.reminderTime != null) {
+              await txn.insert('habit_reminders', {
+                'habit_id': habit.id,
+                'reminder_time_hour': habit.reminderTime!.hour,
+                'reminder_time_minute': habit.reminderTime!.minute,
+                'enable_reminders': 1,
+              });
+            }
+            
+            // Batch insert completion records and corresponding timestamps
+            if (habit.completions.isNotEmpty) {
+              final completionRows = habit.completions.entries.map((entry) => {
+                'habit_id': habit.id,
+                'completion_date': TimezoneUtils.toUtcTimestamp(entry.key),
+                'completion_count': entry.value.count,
+                'goal_at_completion': entry.value.goalAtCompletion,
+              }).toList();
+
+              // Use batch insert for better performance
+              for (final row in completionRows) {
+                await txn.insert('habit_completions', row);
+              }
+
+              // Insert one timestamp per completion
+              for (final entry in habit.completions.entries) {
+                final date = entry.key;
+                final count = entry.value.count;
+
+                // Generate timestamps throughout the day (one per completion)
+                for (int j = 0; j < count; j++) {
+                  final hour = 8 + (j * 2) % 12; // Spread throughout day
+                  final minute = (j * 5) % 60;
+                  final completionTime = DateTime(date.year, date.month, date.day, hour, minute);
+
+                  await txn.insert('habit_completion_timestamps', {
+                    'habit_id': habit.id,
+                    'completion_timestamp': TimezoneUtils.toUtcTimestampSeconds(completionTime),
+                  });
+                }
+              }
+            }
+
+            importedCount++;
+            debugPrint('📥 Imported habit ${i + 1}/${habits.length}: ${habit.name}');
+            
+          } catch (e) {
+            debugPrint('❌ Error importing habit ${habit.name}: $e');
+            // Continue with other habits instead of failing the entire import
+          }
+        }
+      });
+      
+      stopwatch.stop();
+      debugPrint('✅ Bulk import completed: $importedCount/${habits.length} habits imported in ${stopwatch.elapsedMilliseconds}ms');
+      
+      return importedCount;
+      
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ Error during bulk import: $e');
+      rethrow;
+    }
+  }
+
+  /// Clear all existing habits and import new ones
+  ///
+  /// This method provides a clean slate for importing sample data by first
+  /// clearing all existing habits and their related data.
+  ///
+  /// @param habits List of habits to import
+  /// @return Number of habits successfully imported
+  Future<int> clearAndImportHabits(List<Habit> habits) async {
+    debugPrint('🗑️ Clearing all existing habits before import...');
+    
+    try {
+      await _databaseService.transaction((txn) async {
+        // Clear all related tables in correct order (respecting foreign keys)
+        await txn.delete('habit_completion_timestamps');
+        await txn.delete('habit_completions');
+        await txn.delete('habit_reminders');
+        await txn.delete('habit_display_order');
+        await txn.delete('habits');
+      });
+      
+      debugPrint('✅ All existing habits cleared');
+      
+      // Now import the new habits
+      return await importHabits(habits);
+      
+    } catch (e) {
+      debugPrint('❌ Error clearing and importing habits: $e');
+      rethrow;
+    }
+  }
 }

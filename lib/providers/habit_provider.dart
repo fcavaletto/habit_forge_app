@@ -9,6 +9,7 @@ import '../services/virtual_date_service.dart';
 import '../services/completion_cache_service.dart';
 import '../services/habit_metadata_cache_service.dart';
 import '../services/persistent_cache_service.dart';
+import '../services/sample_data_generator_service.dart';
 import '../utils/data_freshness.dart';
 import '../utils/date_range_utils.dart';
 import '../utils/performance_monitor.dart';
@@ -850,6 +851,60 @@ class HabitState extends ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Error checking if habit can be updated: $e');
       return false; // Fail safe - prevent update if check fails
+    }
+  }
+
+  /// Import sample habits with historical data
+  ///
+  /// This method imports realistic sample habits with 2 years of completion data
+  /// for testing and demonstration purposes.
+  ///
+  /// @param clearExisting Whether to clear existing habits before import
+  /// @param numberOfHabits Number of sample habits to generate (always 3)
+  /// @param onProgress Optional callback for progress tracking
+  /// @return Number of habits successfully imported
+  Future<int> importSampleHabits({
+    bool clearExisting = false,
+    int numberOfHabits = 3, // Always 3 specific habits
+    Function(String habitName, double progress)? onProgress,
+  }) async {
+    try {
+      debugPrint('📥 Starting sample habits import...');
+      
+      // Generate sample habits
+      final sampleHabits = await SampleDataGeneratorService.generateSampleHabits(
+        numberOfHabits: numberOfHabits,
+        yearsOfData: 2,
+        onProgress: onProgress,
+      );
+      
+      debugPrint('🎲 Generated ${sampleHabits.length} sample habits');
+      
+      // Import habits using repository
+      int importedCount;
+      if (clearExisting) {
+        importedCount = await _habitRepository.clearAndImportHabits(sampleHabits);
+      } else {
+        importedCount = await _habitRepository.importHabits(sampleHabits, onProgress: onProgress);
+      }
+      
+      if (importedCount > 0) {
+        // Reload habits to update local state
+        await loadHabits(forceRefresh: true);
+        
+        // Get and log statistics
+        final stats = SampleDataGeneratorService.getSampleDataStats(sampleHabits);
+        debugPrint('📊 Sample data statistics: $stats');
+      }
+      
+      debugPrint('✅ Sample habits import completed: $importedCount habits imported');
+      return importedCount;
+      
+    } catch (e) {
+      debugPrint('❌ Error importing sample habits: $e');
+      _error = 'Failed to import sample habits: $e';
+      notifyListeners();
+      rethrow;
     }
   }
 

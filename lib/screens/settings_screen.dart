@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state_provider.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
+import '../widgets/import_progress_dialog.dart';
 import 'archive_screen.dart';
 
 /// Settings Screen - Comprehensive app configuration interface
@@ -73,6 +74,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (context) => const ArchiveScreen(),
         settings: const RouteSettings(name: '/archive'),
       ),
+    );
+  }
+
+  void _showImportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Import Sample Data'),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will generate realistic sample habits with 2 years of completion data.',
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Choose import option:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 8),
+              Text('• Add to existing habits (recommended)'),
+              Text('• Replace all existing habits'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _importSampleData(context, clearExisting: false);
+              },
+              child: const Text('Add to Existing'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _importSampleData(context, clearExisting: true);
+              },
+              child: const Text('Replace All'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _importSampleData(BuildContext context, {required bool clearExisting}) async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    
+    // Show progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return ImportProgressDialog(
+          clearExisting: clearExisting,
+          importFunction: (onProgress) async {
+            return await appState.habitProvider.importSampleHabits(
+              clearExisting: clearExisting,
+              numberOfHabits: 3, // Always 3 specific habits
+              onProgress: onProgress,
+            );
+          },
+        );
+      },
     );
   }
 
@@ -402,12 +473,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: widget.onAddSampleHabits,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Sample Habits'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'Generate realistic sample habits with 2 years of completion data for testing and demonstration.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: widget.onAddSampleHabits,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Sample Habits'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showImportDialog(context),
+                        icon: const Icon(Icons.file_download),
+                        label: const Text('Import Sample Data'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
