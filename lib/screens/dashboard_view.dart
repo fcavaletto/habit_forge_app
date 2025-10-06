@@ -999,44 +999,41 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
         final updatedHabit = data.habit;
         final currentDate = data.selectedDate;
         
-        // Use FutureBuilder to get cached completion count
-        return FutureBuilder<int>(
-          future: context.read<HabitProvider>().getCachedCompletionCount(widget.habit.id, currentDate),
-          builder: (context, snapshot) {
-            final currentCompletionCount = snapshot.data ?? updatedHabit.getCompletionCount(currentDate);
-            
-            // Check if this specific habit actually changed
-            final hasChanged = _cachedHabit == null ||
-                _cachedCompletionCount != currentCompletionCount ||
-                _cachedDate != currentDate ||
-                _cachedHabit!.id != updatedHabit.id;
-            
-            if (!hasChanged) {
-              debugPrint('⏭️ Skipping rebuild: Habit ${widget.habit.id} (${widget.habit.name}) - no change');
-              return child!; // Return cached widget
-            }
-            
-            // Update cache
-            _cachedHabit = updatedHabit;
-            _cachedCompletionCount = currentCompletionCount;
-            _cachedDate = currentDate;
-            
-            debugPrint('🎯 True selective rebuild: Habit ${widget.habit.id} (${widget.habit.name}) = $currentCompletionCount');
-            
-            return HabitCard(
-              key: ValueKey(widget.habit.id),
-              habit: updatedHabit,
-              onTap: widget.onTap,
-              onComplete: widget.onComplete,
-              onIncrement: widget.onIncrement,
-              onDecrement: widget.onDecrement,
-              onCustomCompletion: widget.onCustomCompletion,
-              onEdit: widget.onEdit,
-              onArchive: widget.onArchive,
-              onDelete: widget.onDelete,
-              onStats: widget.onStats,
-            );
-          },
+        // Get completion count directly from cache without FutureBuilder
+        final habitProvider = context.read<HabitProvider>();
+        final currentCompletionCount = habitProvider.getCachedCompletionCountSync(widget.habit.id, currentDate) ?? 
+            updatedHabit.getCompletionCount(currentDate);
+        
+        // Check if this specific habit actually changed
+        final hasChanged = _cachedHabit == null ||
+            _cachedCompletionCount != currentCompletionCount ||
+            _cachedDate != currentDate ||
+            _cachedHabit!.id != updatedHabit.id;
+        
+        if (!hasChanged) {
+          debugPrint('⏭️ Skipping rebuild: Habit ${widget.habit.id} (${widget.habit.name}) - no change');
+          return child!; // Return cached widget
+        }
+        
+        // Update cache
+        _cachedHabit = updatedHabit;
+        _cachedCompletionCount = currentCompletionCount;
+        _cachedDate = currentDate;
+        
+        debugPrint('🎯 True selective rebuild: Habit ${widget.habit.id} (${widget.habit.name}) = $currentCompletionCount');
+        
+        return HabitCard(
+          key: ValueKey(widget.habit.id),
+          habit: updatedHabit,
+          onTap: widget.onTap,
+          onComplete: widget.onComplete,
+          onIncrement: widget.onIncrement,
+          onDecrement: widget.onDecrement,
+          onCustomCompletion: widget.onCustomCompletion,
+          onEdit: widget.onEdit,
+          onArchive: widget.onArchive,
+          onDelete: widget.onDelete,
+          onStats: widget.onStats,
         );
       },
       child: HabitCard(

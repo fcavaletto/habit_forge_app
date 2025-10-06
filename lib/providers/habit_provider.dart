@@ -522,6 +522,14 @@ class HabitState extends ChangeNotifier {
     }
   }
 
+  /// Get completion count synchronously from cache
+  ///
+  /// This method provides synchronous access to cached completion data.
+  /// Returns null if not cached, allowing the caller to handle cache misses.
+  int? getCachedCompletionCountSync(String habitId, DateTime date) {
+    return _completionCache.getCompletionCount(habitId, date);
+  }
+
   /// Get completion count with intelligent caching
   ///
   /// This method first checks the cache for completion data. If not found,
