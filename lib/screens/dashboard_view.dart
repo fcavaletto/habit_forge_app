@@ -987,19 +987,21 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<HabitProvider>(
-      builder: (context, habitProvider, child) {
-        // Get the updated habit from the provider
-        final updatedHabit = habitProvider.habits.firstWhere(
+    return Selector<HabitProvider, ({Habit habit, DateTime selectedDate})>(
+      selector: (context, habitProvider) => (
+        habit: habitProvider.habits.firstWhere(
           (h) => h.id == widget.habit.id,
           orElse: () => widget.habit,
-        );
-        
-        final currentDate = habitProvider.selectedDate;
+        ),
+        selectedDate: habitProvider.selectedDate,
+      ),
+      builder: (context, data, child) {
+        final updatedHabit = data.habit;
+        final currentDate = data.selectedDate;
         
         // Use FutureBuilder to get cached completion count
         return FutureBuilder<int>(
-          future: habitProvider.getCachedCompletionCount(widget.habit.id, currentDate),
+          future: context.read<HabitProvider>().getCachedCompletionCount(widget.habit.id, currentDate),
           builder: (context, snapshot) {
             final currentCompletionCount = snapshot.data ?? updatedHabit.getCompletionCount(currentDate);
             
