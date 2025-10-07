@@ -998,7 +998,11 @@ class SqliteHabitRepository {
       final completions = <DateTime, CompletionRecord>{};
       for (final completionRow in completionRows) {
         final date = convertToLocal 
-            ? TimezoneUtils.fromUtcTimestamp(completionRow['completion_date'] as int)
+            ? TimezoneUtils.fromUtcTimestamp(
+                completionRow['completion_date'] as int,
+                context: 'Habit ${row['id']} completion date',
+                caller: '_rowToHabit'
+              )
             : DateTime.fromMillisecondsSinceEpoch(completionRow['completion_date'] as int, isUtc: true);
         
         final count = completionRow['completion_count'] as int;
@@ -1041,7 +1045,11 @@ class SqliteHabitRepository {
         colorIndex: row['color_index'] as int,
         createdAt: (() {
           debugPrint('🕒 Loading habit creation timestamp for habit ${row['id']}');
-          return TimezoneUtils.fromUtcTimestamp(row['created_at'] as int);
+          return TimezoneUtils.fromUtcTimestamp(
+            row['created_at'] as int,
+            context: 'Habit ${row['id']} creation date',
+            caller: '_rowToHabit'
+          );
         })(),
         completions: completions,
         iconName: row['icon_name'] as String,

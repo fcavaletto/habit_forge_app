@@ -24,10 +24,22 @@ class TimezoneUtils {
   /// Convert UTC timestamp to local DateTime for display
   ///
   /// @param utcTimestamp UTC timestamp in milliseconds since epoch
+  /// @param context Optional context for debugging (habit ID, field name, etc.)
+  /// @param caller Optional caller information for debugging
   /// @return Local DateTime for display
-  static DateTime fromUtcTimestamp(int utcTimestamp) {
+  static DateTime fromUtcTimestamp(int utcTimestamp, {String? context, String? caller}) {
     final localDateTime = DateTime.fromMillisecondsSinceEpoch(utcTimestamp).toLocal();
-    debugPrint('🌍 [DISPLAY] Converting UTC timestamp $utcTimestamp to local ${localDateTime.toIso8601String()}');
+    
+    // Build detailed log message with context
+    String logMessage = '🌍 [DISPLAY] Converting UTC timestamp $utcTimestamp to local ${localDateTime.toIso8601String()}';
+    if (context != null) {
+      logMessage += ' | Context: $context';
+    }
+    if (caller != null) {
+      logMessage += ' | Called by: $caller';
+    }
+    
+    debugPrint(logMessage);
     return localDateTime;
   }
   

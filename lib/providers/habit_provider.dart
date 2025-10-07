@@ -1032,8 +1032,8 @@ class HabitState extends ChangeNotifier {
           return;
         }
 
-        await _persistentCache.saveHabits(_habits);
-        debugPrint('✅ Cache updated after database operation (attempt $attempt)');
+        await _persistentCache.saveDashboardHabits(_habits);
+        debugPrint('✅ Dashboard-optimized cache updated after database operation (attempt $attempt)');
         return;
       } catch (e) {
         debugPrint('⚠️ Cache update attempt $attempt failed: $e');
@@ -1378,8 +1378,8 @@ class HabitProvider extends HabitState {
       // Save to persistent cache for next startup
       if (_habits.isNotEmpty) {
         try {
-          await _persistentCache.saveHabits(_habits);
-          debugPrint('✅ Saved ${_habits.length} habits to persistent cache');
+          await _persistentCache.saveDashboardHabits(_habits);
+          debugPrint('✅ Saved ${_habits.length} dashboard-optimized habits to persistent cache');
         } catch (e) {
           debugPrint('⚠️ Failed to save habits to persistent cache: $e');
           // Don't fail initialization if cache save fails

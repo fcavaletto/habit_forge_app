@@ -154,6 +154,97 @@ class PersistentCacheService {
     }
   }
   
+  /// Save habits optimized for dashboard (last 7 days only)
+  /// 
+  /// This method saves habits with only the last 7 days of completion data,
+  /// dramatically reducing cache size and improving performance for dashboard operations.
+  /// The cache is primarily used for fast dashboard loading, so full historical data
+  /// is not needed in the cache.
+  Future<void> saveDashboardHabits(List<Habit> habits) async {
+    try {
+      await _ensureInitialized();
+      
+      // Filter habits to dashboard-optimized data (last 7 days)
+      final dashboardHabits = _filterHabitsForDashboard(habits);
+      
+      // Sort habits by orderValue (DESC) before saving to maintain proper order
+      final sortedHabits = List<Habit>.from(dashboardHabits);
+      sortedHabits.sort((a, b) {
+        final aOrder = a.orderValue ?? 0.0;
+        final bOrder = b.orderValue ?? 0.0;
+        return bOrder.compareTo(aOrder); // DESC order (highest first)
+      });
+      
+      // Check cache size limit
+      final habitsJson = jsonEncode(sortedHabits.map((h) => h.toJson()).toList());
+      if (habitsJson.length > _maxCacheSizeBytes) {
+        debugPrint('⚠️ Dashboard cache size exceeds limit, compressing data');
+        await _compressCache(sortedHabits);
+        return;
+      }
+      
+      // Create metadata with dashboard-specific flag
+      final metadata = CacheMetadata(
+        version: _getAppVersion(),
+        cachedAt: DateTime.now(),
+        dataHash: _generateDataHash(habitsJson),
+        habitCount: sortedHabits.length,
+        lastModified: DateTime.now(),
+      );
+      
+      // Save to cache
+      await _prefs!.setString(_habitsKey, habitsJson);
+      await _prefs!.setString(_metadataKey, metadata.toJsonString());
+      
+      // Create backup
+      await _prefs!.setString(_backupKey, habitsJson);
+      
+      debugPrint('✅ Saved ${sortedHabits.length} dashboard-optimized habits to persistent cache (last 7 days only)');
+    } catch (e) {
+      debugPrint('❌ Error saving dashboard habits to cache: $e');
+      rethrow;
+    }
+  }
+  
+  /// Filter habits to contain only last 7 days of completion data
+  /// 
+  /// This helper method creates new Habit objects with only the completion
+  /// data needed for dashboard display, significantly reducing memory usage
+  /// and serialization overhead.
+  List<Habit> _filterHabitsForDashboard(List<Habit> habits) {
+    final today = DateTime.now();
+    final last7Days = today.subtract(const Duration(days: 6));
+    
+    return habits.map((habit) {
+      // Filter completions to last 7 days only
+      final dashboardCompletions = <DateTime, CompletionRecord>{};
+      habit.completions.forEach((date, completion) {
+        if (date.isAfter(last7Days.subtract(const Duration(days: 1))) && 
+            date.isBefore(today.add(const Duration(days: 1)))) {
+          dashboardCompletions[date] = completion;
+        }
+      });
+      
+      // Create new habit with filtered completions
+      return Habit(
+        id: habit.id,
+        name: habit.name,
+        description: habit.description,
+        colorIndex: habit.colorIndex,
+        createdAt: habit.createdAt,
+        completions: dashboardCompletions,
+        iconName: habit.iconName,
+        reminderTime: habit.reminderTime,
+        enableReminders: habit.enableReminders,
+        isArchived: habit.isArchived,
+        orderValue: habit.orderValue,
+        frequencyDays: habit.frequencyDays,
+        targetGoal: habit.targetGoal,
+        allowExceedGoal: habit.allowExceedGoal,
+      );
+    }).toList();
+  }
+  
   /// Update a single habit in cache
   /// 
   /// This method efficiently updates a single habit in the cache without

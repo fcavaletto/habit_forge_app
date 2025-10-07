@@ -18,7 +18,11 @@ class TimezoneConsistencyChecker {
   /// @param utcTimestamp The UTC timestamp
   /// @throws StateError if conversion is inconsistent
   static void validateUtcToLocalConversion(DateTime localDate, int utcTimestamp) {
-    final convertedBack = TimezoneUtils.fromUtcTimestamp(utcTimestamp);
+    final convertedBack = TimezoneUtils.fromUtcTimestamp(
+      utcTimestamp,
+      context: 'Consistency check validation',
+      caller: 'TimezoneConsistencyChecker.validateUtcToLocalConversion'
+    );
     final difference = convertedBack.difference(localDate).abs();
     
     // Allow up to 1 second difference for rounding
