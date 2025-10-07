@@ -88,7 +88,7 @@ class _DashboardViewState extends State<DashboardView>
   void _startClockTimer() {
     _clockTimer?.cancel();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted && !_appState.isTimeOverridden) {
+      if (mounted && !_appState.isTimeOverridden && _appState.showTimeOverride) {
         setState(() {
           // Force rebuild to update the clock display
         });
@@ -422,6 +422,10 @@ class _DashboardViewState extends State<DashboardView>
         Consumer<AppState>(
           builder: (context, appState, child) {
             if (!appState.showTimeOverride) {
+              // Cancel timer when time override is disabled
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _clockTimer?.cancel();
+              });
               return const SizedBox.shrink(); // Hide when setting is off
             }
             // Restart timer when override state changes
