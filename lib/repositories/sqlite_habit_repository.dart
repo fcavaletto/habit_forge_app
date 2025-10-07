@@ -108,6 +108,153 @@ class SqliteHabitRepository {
     }
   }
   
+  /// Get active habits optimized for dashboard display (last 7 days, local timezone)
+  /// 
+  /// This method loads only the completion data needed for dashboard display,
+  /// dramatically reducing database queries and improving performance.
+  Future<List<Habit>> getActiveHabitsForDashboard() async {
+    try {
+      final db = await _databaseService.database;
+      final results = await db.rawQuery('''
+        SELECT h.*, o.order_value
+        FROM habits h
+        INNER JOIN habit_display_order o ON h.id = o.habit_id
+        WHERE h.is_archived = 0
+        ORDER BY o.order_value DESC
+      ''');
+      
+      final habits = <Habit>[];
+      final today = VirtualDateService().currentDate;
+      final last7Days = today.subtract(const Duration(days: 6));
+      
+      for (final row in results) {
+        final habit = await _rowToHabit(
+          row, 
+          startDate: last7Days, 
+          endDate: today,
+          convertToLocal: true, // Dashboard needs local timezone for display
+        );
+        if (habit != null) {
+          habits.add(habit);
+        }
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits for dashboard (last 7 days only)');
+      return habits;
+    } catch (e) {
+      debugPrint('❌ Error getting active habits for dashboard: $e');
+      return [];
+    }
+  }
+
+  /// Get active habits optimized for streak calculation (UTC dates, no timezone conversion)
+  /// 
+  /// This method loads all completion data but skips timezone conversion,
+  /// which is unnecessary for streak calculations and improves performance.
+  Future<List<Habit>> getActiveHabitsForStreakCalculation() async {
+    try {
+      final db = await _databaseService.database;
+      final results = await db.rawQuery('''
+        SELECT h.*, o.order_value
+        FROM habits h
+        INNER JOIN habit_display_order o ON h.id = o.habit_id
+        WHERE h.is_archived = 0
+        ORDER BY o.order_value DESC
+      ''');
+      
+      final habits = <Habit>[];
+      
+      for (final row in results) {
+        final habit = await _rowToHabit(
+          row,
+          convertToLocal: false, // Streak calculation doesn't need local timezone
+        );
+        if (habit != null) {
+          habits.add(habit);
+        }
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits for streak calculation (UTC dates)');
+      return habits;
+    } catch (e) {
+      debugPrint('❌ Error getting active habits for streak calculation: $e');
+      return [];
+    }
+  }
+
+  /// Get active habits optimized for stats screen (last 30 days, local timezone)
+  /// 
+  /// This method loads only the last 30 days of completion data, which is
+  /// sufficient for most stats screen operations and improves performance.
+  Future<List<Habit>> getActiveHabitsForStats() async {
+    try {
+      final db = await _databaseService.database;
+      final results = await db.rawQuery('''
+        SELECT h.*, o.order_value
+        FROM habits h
+        INNER JOIN habit_display_order o ON h.id = o.habit_id
+        WHERE h.is_archived = 0
+        ORDER BY o.order_value DESC
+      ''');
+      
+      final habits = <Habit>[];
+      final today = VirtualDateService().currentDate;
+      final last30Days = today.subtract(const Duration(days: 29));
+      
+      for (final row in results) {
+        final habit = await _rowToHabit(
+          row,
+          startDate: last30Days,
+          endDate: today,
+          convertToLocal: true, // Stats screen needs local timezone for display
+        );
+        if (habit != null) {
+          habits.add(habit);
+        }
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits for stats (last 30 days only)');
+      return habits;
+    } catch (e) {
+      debugPrint('❌ Error getting active habits for stats: $e');
+      return [];
+    }
+  }
+
+  /// Get active habits with full data for calendar screen (all data, local timezone)
+  /// 
+  /// This method loads all completion data and is used by calendar screen
+  /// and other views that need historical data.
+  Future<List<Habit>> getActiveHabitsWithFullData() async {
+    try {
+      final db = await _databaseService.database;
+      final results = await db.rawQuery('''
+        SELECT h.*, o.order_value
+        FROM habits h
+        INNER JOIN habit_display_order o ON h.id = o.habit_id
+        WHERE h.is_archived = 0
+        ORDER BY o.order_value DESC
+      ''');
+      
+      final habits = <Habit>[];
+      for (final row in results) {
+        final habit = await _rowToHabit(
+          row,
+          convertToLocal: true, // Calendar needs local timezone for display
+        );
+        if (habit != null) {
+          habits.add(habit);
+        }
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits with full completion data');
+      return habits;
+    } catch (e) {
+      debugPrint('❌ Error getting active habits with full data: $e');
+      return [];
+    }
+  }
+  
   Future<HabitSaveResult> saveHabit(Habit habit) async {
     try {
       debugPrint('💾 Saving habit to SQLite: ${habit.name}');
@@ -814,21 +961,46 @@ class SqliteHabitRepository {
     }
   }
   
-  /// Convert database row to Habit object
-  Future<Habit?> _rowToHabit(Map<String, dynamic> row) async {
+  /// Convert database row to Habit object with intelligent data loading
+  Future<Habit?> _rowToHabit(
+    Map<String, dynamic> row, {
+    DateTime? startDate,
+    DateTime? endDate,
+    bool convertToLocal = true, // Default to local conversion for display
+  }) async {
     try {
-      // Load completions
+      // Load completions with optional date filtering
       final db = await _databaseService.database;
+      String whereClause = 'habit_id = ?';
+      List<dynamic> whereArgs = [row['id']];
+      
+      if (startDate != null && endDate != null) {
+        whereClause += ' AND completion_date >= ? AND completion_date <= ?';
+        whereArgs.addAll([
+          TimezoneUtils.toUtcTimestamp(startDate),
+          TimezoneUtils.toUtcTimestamp(endDate),
+        ]);
+      }
+      
       final completionRows = await db.query(
         'habit_completions',
-        where: 'habit_id = ?',
-        whereArgs: [row['id']],
+        where: whereClause,
+        whereArgs: whereArgs,
       );
+      
+      // Log completion loading with context
+      if (completionRows.length > 10) {
+        debugPrint('📅 Loading ${completionRows.length} completion records for habit ${row['id']} (${startDate?.toIso8601String().split('T')[0] ?? 'all'} to ${endDate?.toIso8601String().split('T')[0] ?? 'all'})');
+      } else {
+        debugPrint('📅 Loading ${completionRows.length} completion records for habit ${row['id']}');
+      }
       
       final completions = <DateTime, CompletionRecord>{};
       for (final completionRow in completionRows) {
-        debugPrint('📅 Loading completion record for habit ${row['id']}');
-        final date = TimezoneUtils.fromUtcTimestamp(completionRow['completion_date'] as int);
+        final date = convertToLocal 
+            ? TimezoneUtils.fromUtcTimestamp(completionRow['completion_date'] as int)
+            : DateTime.fromMillisecondsSinceEpoch(completionRow['completion_date'] as int, isUtc: true);
+        
         final count = completionRow['completion_count'] as int;
         final goalAtCompletion = completionRow['goal_at_completion'] as int;
         completions[date] = CompletionRecord(
