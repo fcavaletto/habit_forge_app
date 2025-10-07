@@ -71,6 +71,14 @@ class DashboardController {
     debugPrint('📱 DashboardController: Loaded ${habits.length} habits for dashboard at $_lastRefreshTime');
   }
 
+  /// Load habits optimized for dashboard display (last 7 days only)
+  ///
+  /// This method is an alias for loadHabits() to maintain API consistency.
+  /// It loads habits with only the last 7 days of completion data.
+  Future<void> loadHabitsForDashboard() async {
+    await loadHabits();
+  }
+
   /// Refresh habits with intelligent freshness checking
   ///
   /// This method implements smart refresh logic that only reloads data when necessary,
@@ -101,7 +109,7 @@ class DashboardController {
     }
     
     debugPrint('🔄 DashboardController: Refreshing habits...');
-    await loadHabits();
+    await loadHabitsForDashboard();
   }
 
   /// Handle habit tap - navigate to details
@@ -300,7 +308,7 @@ class DashboardController {
       }
 
       // Step 3: Refresh UI and provide user feedback
-      await loadHabits(); // Refresh UI
+      await loadHabitsForDashboard(); // Refresh UI
 
       if (context.mounted) {
         // Generate appropriate user feedback message based on actions taken

@@ -47,7 +47,7 @@ lib/
 │   └── notification_service.dart # Push notifications
 ├── screens/               # App screens/pages
 │   ├── add_habit_screen.dart    # Create/edit habits
-│   └── calendar_screen.dart     # Calendar visualization
+│   └── stats_screen.dart        # Analytics and statistics
 └── widgets/               # Reusable UI components
     ├── habit_card.dart    # Habit display card
     ├── habit_grid.dart    # Calendar grid component

@@ -12,7 +12,6 @@ import '../widgets/current_time_clock.dart';
 import '../utils/constants.dart';
 import '../screens/settings_screen.dart';
 import '../screens/add_habit_screen.dart';
-import '../screens/calendar_screen.dart';
 import 'stats_screen.dart';
 import '../utils/data_freshness.dart';
 import '../widgets/custom_completion_modal.dart';
@@ -41,7 +40,7 @@ import '../widgets/custom_completion_modal.dart';
 /// 2. **Empty State**: Shows sample habit creation for new users
 /// 3. **Habit List**: Displays interactive habit cards with progress
 /// 4. **Quick Actions**: Tap to complete, long-press for options
-/// 5. **Navigation**: Access calendar, settings, and habit creation
+/// 5. **Navigation**: Access settings and habit creation
 ///
 /// ## Lifecycle Integration:
 /// - **App Resume**: Automatically refreshes stale data
@@ -231,17 +230,6 @@ class _DashboardViewState extends State<DashboardView>
         ),
       ),
       actions: [
-        // Calendar navigation button
-        Semantics(
-          label: 'Calendar view',
-          hint: 'Navigate to calendar to view habit progress over time',
-          button: true,
-          child: IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: () => _navigateToCalendar(),
-            tooltip: 'View Calendar',
-          ),
-        ),
         // Add habit button
         Semantics(
           label: 'Add new habit',
@@ -511,13 +499,6 @@ class _DashboardViewState extends State<DashboardView>
   }
 
 
-  void _navigateToCalendar() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const CalendarScreen(),
-      ),
-    );
-  }
 
   void _showSettings() {
     Navigator.of(context).push(
@@ -540,7 +521,7 @@ class _DashboardViewState extends State<DashboardView>
         builder: (context) => AddHabitScreen(
           onHabitAdded: (habit) {
             debugPrint('📱 Dashboard received new habit: ${habit.name}');
-            _controller.loadHabits();
+            _controller.loadHabitsForDashboard();
           },
           existingHabits: _controller.habits,
         ),
