@@ -1112,6 +1112,8 @@ class HabitState extends ChangeNotifier {
   /// - Graceful degradation on failures
   /// - Comprehensive error logging
   Future<void> _updateCompletionInCache(String habitId, DateTime date, int count) async {
+    debugPrint('🔧 _updateCompletionInCache called for habit $habitId with count $count');
+    
     if (habitId.isEmpty) {
       debugPrint('❌ Skipping completion cache update - empty habit ID');
       return;

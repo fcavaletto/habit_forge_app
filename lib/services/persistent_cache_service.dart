@@ -270,20 +270,60 @@ class PersistentCacheService {
   
   /// Update completion data for a habit
   /// 
-  /// This method updates completion data for a specific habit and date,
-  /// maintaining cache consistency and updating metadata.
+  /// This method efficiently updates completion data for a specific habit and date
+  /// by directly manipulating the JSON cache without deserializing all habits,
+  /// dramatically reducing the amount of data processed and eliminating timezone conversion cascades.
   Future<void> updateCompletion(String habitId, DateTime date, int count) async {
     try {
-      final habits = await loadHabits();
-      final habitIndex = habits.indexWhere((h) => h.id == habitId);
+      debugPrint('🔧 updateCompletion called for habit $habitId with count $count');
+      
+      await _ensureInitialized();
+      
+      // Check if cache exists
+      if (!_prefs!.containsKey(_habitsKey)) {
+        debugPrint('📭 No cached habits found, skipping completion update');
+        return;
+      }
+      
+      // Load raw JSON data without deserializing habits
+      final habitsJson = _prefs!.getString(_habitsKey);
+      if (habitsJson == null) {
+        debugPrint('⚠️ Cache data missing, skipping completion update');
+        return;
+      }
+      
+      // Parse JSON and find the specific habit
+      final List<dynamic> decoded = jsonDecode(habitsJson);
+      final habitIndex = decoded.indexWhere((habitJson) => habitJson['id'] == habitId);
       
       if (habitIndex >= 0) {
-        final habit = habits[habitIndex];
-        final updatedHabit = habit.markCompleted(date, count);
-        habits[habitIndex] = updatedHabit;
+        // Update completion data directly in JSON without deserializing the habit
+        final habitJson = decoded[habitIndex];
+        final completions = Map<String, dynamic>.from(habitJson['completions'] ?? {});
         
-        await saveHabits(habits);
-        debugPrint('✅ Updated completion for habit $habitId in persistent cache');
+        // Convert date to string key for JSON storage
+        final dateKey = date.toIso8601String().split('T')[0];
+        
+        // Update completion count
+        if (count > 0) {
+          completions[dateKey] = {
+            'count': count,
+            'goalAtCompletion': habitJson['targetGoal'] ?? 1,
+          };
+        } else {
+          completions.remove(dateKey);
+        }
+        
+        // Update the habit's completions in the JSON
+        habitJson['completions'] = completions;
+        
+        // Save updated JSON back to cache
+        final updatedJson = jsonEncode(decoded);
+        await _prefs!.setString(_habitsKey, updatedJson);
+        
+        debugPrint('✅ Updated completion for habit $habitId in persistent cache (JSON-only update)');
+      } else {
+        debugPrint('⚠️ Habit $habitId not found in cache, skipping completion update');
       }
     } catch (e) {
       debugPrint('❌ Error updating completion in cache: $e');
