@@ -84,10 +84,10 @@ class _DashboardViewState extends State<DashboardView>
     super.dispose();
   }
 
-  /// Start the clock timer to update the display every second when not overridden
+  /// Start the clock timer to update the display every minute when not overridden
   void _startClockTimer() {
     _clockTimer?.cancel();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted && !_appState.isTimeOverridden && _appState.showTimeOverride) {
         setState(() {
           // Force rebuild to update the clock display
