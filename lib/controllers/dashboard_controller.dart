@@ -58,17 +58,17 @@ class DashboardController {
   /// when manual refresh is requested.
   ///
   /// ## Process:
-  /// 1. Calls the habit provider to load data from storage
+  /// 1. Calls the habit provider to load dashboard-optimized data (last 7 days only)
   /// 2. Updates the last refresh timestamp
   /// 3. Logs the operation for debugging
   ///
   /// ## Error Handling:
   /// Errors are handled by the underlying provider and logged appropriately.
   Future<void> loadHabits() async {
-    debugPrint('📱 DashboardController: Loading habits from storage...');
-    await _appState.habitProvider.loadHabits();
+    debugPrint('📱 DashboardController: Loading habits optimized for dashboard...');
+    await _appState.habitProvider.loadHabitsForDashboard();
     _lastRefreshTime = VirtualDateService().currentDate;
-    debugPrint('📱 DashboardController: Loaded ${habits.length} habits at $_lastRefreshTime');
+    debugPrint('📱 DashboardController: Loaded ${habits.length} habits for dashboard at $_lastRefreshTime');
   }
 
   /// Refresh habits with intelligent freshness checking

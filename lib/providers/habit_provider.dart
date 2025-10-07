@@ -127,6 +127,15 @@ class HabitState extends ChangeNotifier {
     });
   }
 
+  /// Load habits optimized for dashboard display (last 7 days only)
+  Future<void> loadHabitsForDashboard({bool forceRefresh = false}) async {
+    // Debounce rapid refresh calls
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer(const Duration(milliseconds: 300), () async {
+      await _performDashboardLoad(forceRefresh);
+    });
+  }
+
   /// Internal method to perform the actual load operation
   Future<void> _performLoad(bool forceRefresh) async {
     // Skip reload if data is fresh and not forcing refresh
@@ -164,6 +173,45 @@ class HabitState extends ChangeNotifier {
       _error = 'Failed to load habits: $e';
       notifyListeners();
       debugPrint('❌ HabitProvider: Failed to load habits: $e');
+    }
+  }
+
+  /// Internal method to perform dashboard-optimized load operation
+  Future<void> _performDashboardLoad(bool forceRefresh) async {
+    // Skip reload if data is fresh and not forcing refresh
+    if (!forceRefresh && isDataFresh) {
+      debugPrint('📱 HabitProvider: Dashboard data is fresh, skipping reload');
+      return;
+    }
+
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      debugPrint('📱 HabitProvider: Loading habits optimized for dashboard...');
+      // Fetch dashboard-optimized data (last 7 days only)
+      _habits = await _habitRepository.getActiveHabitsForDashboard();
+
+      // Warm cache with completion data for current date
+      await _warmCompletionCache();
+
+      // Warm cache with metadata for all habits
+      await _warmMetadataCache();
+
+      // Update timestamp for freshness tracking
+      _lastLoadTime = VirtualDateService().currentDate;
+
+      _isLoading = false;
+      notifyListeners();
+      debugPrint(
+        '📱 HabitProvider: Loaded ${_habits.length} habits for dashboard at $_lastLoadTime',
+      );
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Failed to load habits for dashboard: $e';
+      notifyListeners();
+      debugPrint('❌ HabitProvider: Failed to load habits for dashboard: $e');
     }
   }
 
@@ -1522,15 +1570,15 @@ class HabitProvider extends HabitState {
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
         await _habitRepository.normalizeOrderValues();
         _reorderCount = 0;
-        // Reload habits to get normalized order values
-        await loadHabits(forceRefresh: true);
+        // Reload habits to get normalized order values (use dashboard-optimized loading)
+        await loadHabitsForDashboard(forceRefresh: true);
         // Update cache after normalization
         await _updateCacheAfterDatabaseOperation();
       }
     } catch (e) {
-      // Rollback on error - reload habits from database
+      // Rollback on error - reload habits from database (use dashboard-optimized loading)
       debugPrint('❌ Error reordering habits in context: $e');
-      await loadHabits(forceRefresh: true);
+      await loadHabitsForDashboard(forceRefresh: true);
       _error = 'Failed to reorder habits: $e';
       notifyListeners();
     }
