@@ -85,14 +85,33 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   /// Start the clock timer to update the display every minute when not overridden
+  /// Timer is synchronized to update exactly when the system minute changes
   void _startClockTimer() {
     _clockTimer?.cancel();
-    _clockTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+    
+    // Calculate delay until the next minute boundary
+    final now = DateTime.now();
+    final nextMinute = DateTime(now.year, now.month, now.day, now.hour, now.minute + 1);
+    final delay = nextMinute.difference(now);
+    
+    debugPrint('🕐 Clock timer: Next update in ${delay.inSeconds} seconds (at ${nextMinute.hour}:${nextMinute.minute.toString().padLeft(2, '0')})');
+    
+    // First timer: wait until the next minute boundary
+    Timer(delay, () {
       if (mounted && !_appState.isTimeOverridden && _appState.showTimeOverride) {
         setState(() {
           // Force rebuild to update the clock display
         });
       }
+      
+      // Then start the regular minute timer
+      _clockTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+        if (mounted && !_appState.isTimeOverridden && _appState.showTimeOverride) {
+          setState(() {
+            // Force rebuild to update the clock display
+          });
+        }
+      });
     });
   }
 
@@ -108,6 +127,10 @@ class _DashboardViewState extends State<DashboardView>
     switch (state) {
       case AppLifecycleState.resumed:
         _onAppResumed();
+        // Restart clock timer to sync with system time after app resume
+        if (_appState.showTimeOverride && !_appState.isTimeOverridden) {
+          _restartClockTimer();
+        }
         break;
       case AppLifecycleState.paused:
         debugPrint('⏸️ Dashboard: App paused');
