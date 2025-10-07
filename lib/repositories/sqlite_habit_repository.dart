@@ -42,6 +42,51 @@ class SqliteHabitRepository {
     }
   }
   
+  /// Get active habits with minimal data for reordering operations
+  /// 
+  /// This method loads habits with only essential metadata (name, description, 
+  /// order values, etc.) but NO completion data. This is perfect for reordering
+  /// operations where we only need to know about the habits themselves, not
+  /// their completion history.
+  /// 
+  /// Benefits:
+  /// - No timezone conversions (no completion dates to convert)
+  /// - Much faster loading (no completion data to process)
+  /// - Minimal memory usage
+  /// - Perfect for reordering, filtering, and other metadata operations
+  Future<List<Habit>> getActiveHabitsForReordering() async {
+    try {
+      final db = await _databaseService.database;
+      final results = await db.rawQuery('''
+        SELECT h.*, o.order_value
+        FROM habits h
+        INNER JOIN habit_display_order o ON h.id = o.habit_id
+        WHERE h.is_archived = 0
+        ORDER BY o.order_value DESC
+      ''');
+      
+      final habits = <Habit>[];
+      for (final row in results) {
+        final habit = await _rowToHabit(
+          row,
+          startDate: null, // No date filtering
+          endDate: null,   // No date filtering  
+          convertToLocal: false, // No timezone conversion needed
+          loadCompletions: false, // Skip completion data entirely
+        );
+        if (habit != null) {
+          habits.add(habit);
+        }
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits for reordering (minimal data only)');
+      return habits;
+    } catch (e) {
+      debugPrint('❌ Error getting active habits for reordering: $e');
+      return [];
+    }
+  }
+  
   Future<List<Habit>> getAllHabits() async {
     try {
       final db = await _databaseService.database;
@@ -967,50 +1012,59 @@ class SqliteHabitRepository {
     DateTime? startDate,
     DateTime? endDate,
     bool convertToLocal = true, // Default to local conversion for display
+    bool loadCompletions = true, // Default to loading completions
   }) async {
     try {
-      // Load completions with optional date filtering
-      final db = await _databaseService.database;
-      String whereClause = 'habit_id = ?';
-      List<dynamic> whereArgs = [row['id']];
-      
-      if (startDate != null && endDate != null) {
-        whereClause += ' AND completion_date >= ? AND completion_date <= ?';
-        whereArgs.addAll([
-          TimezoneUtils.toUtcTimestamp(startDate),
-          TimezoneUtils.toUtcTimestamp(endDate),
-        ]);
-      }
-      
-      final completionRows = await db.query(
-        'habit_completions',
-        where: whereClause,
-        whereArgs: whereArgs,
-      );
-      
-      // Log completion loading with context
-      if (completionRows.length > 10) {
-        debugPrint('📅 Loading ${completionRows.length} completion records for habit ${row['id']} (${startDate?.toIso8601String().split('T')[0] ?? 'all'} to ${endDate?.toIso8601String().split('T')[0] ?? 'all'})');
-      } else {
-        debugPrint('📅 Loading ${completionRows.length} completion records for habit ${row['id']}');
-      }
-      
       final completions = <DateTime, CompletionRecord>{};
-      for (final completionRow in completionRows) {
-        final date = convertToLocal 
-            ? TimezoneUtils.fromUtcTimestamp(
-                completionRow['completion_date'] as int,
-                context: 'Habit ${row['id']} completion date',
-                caller: '_rowToHabit'
-              )
-            : DateTime.fromMillisecondsSinceEpoch(completionRow['completion_date'] as int, isUtc: true);
+      
+      // Get database connection
+      final db = await _databaseService.database;
+      
+      // Only load completions if requested
+      if (loadCompletions) {
+        // Load completions with optional date filtering
+        String whereClause = 'habit_id = ?';
+        List<dynamic> whereArgs = [row['id']];
         
-        final count = completionRow['completion_count'] as int;
-        final goalAtCompletion = completionRow['goal_at_completion'] as int;
-        completions[date] = CompletionRecord(
-          count: count,
-          goalAtCompletion: goalAtCompletion,
+        if (startDate != null && endDate != null) {
+          whereClause += ' AND completion_date >= ? AND completion_date <= ?';
+          whereArgs.addAll([
+            TimezoneUtils.toUtcTimestamp(startDate),
+            TimezoneUtils.toUtcTimestamp(endDate),
+          ]);
+        }
+        
+        final completionRows = await db.query(
+          'habit_completions',
+          where: whereClause,
+          whereArgs: whereArgs,
         );
+        
+        // Log completion loading with context
+        if (completionRows.length > 10) {
+          debugPrint('📅 Loading ${completionRows.length} completion records for habit ${row['id']} (${startDate?.toIso8601String().split('T')[0] ?? 'all'} to ${endDate?.toIso8601String().split('T')[0] ?? 'all'})');
+        } else {
+          debugPrint('📅 Loading ${completionRows.length} completion records for habit ${row['id']}');
+        }
+        
+        for (final completionRow in completionRows) {
+          final date = convertToLocal 
+              ? TimezoneUtils.fromUtcTimestamp(
+                  completionRow['completion_date'] as int,
+                  context: 'Habit ${row['id']} completion date',
+                  caller: '_rowToHabit'
+                )
+              : DateTime.fromMillisecondsSinceEpoch(completionRow['completion_date'] as int, isUtc: true);
+          
+          final count = completionRow['completion_count'] as int;
+          final goalAtCompletion = completionRow['goal_at_completion'] as int;
+          completions[date] = CompletionRecord(
+            count: count,
+            goalAtCompletion: goalAtCompletion,
+          );
+        }
+      } else {
+        debugPrint('📅 Skipping completion data for habit ${row['id']} (minimal data mode)');
       }
       
       // Load reminder settings
@@ -1140,8 +1194,8 @@ class SqliteHabitRepository {
       debugPrint('🔄 Reordering habit $draggedId to position $newPosition in filtered context');
       debugPrint('📋 Visible habits: ${visibleHabitIds.join(', ')}');
       
-      // Get all active habits with their order values
-      final allHabits = await getActiveHabits();
+      // Get all active habits with minimal data (no completion data)
+      final allHabits = await getActiveHabitsForReordering();
       
       // Create a map for quick lookup
       final habitMap = {for (var h in allHabits) h.id: h};
