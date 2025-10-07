@@ -8,6 +8,7 @@ import '../controllers/dashboard_controller.dart';
 import '../services/virtual_date_service.dart';
 import '../widgets/habit_card.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
+import '../widgets/current_time_clock.dart';
 import '../utils/constants.dart';
 import '../screens/settings_screen.dart';
 import '../screens/add_habit_screen.dart';
@@ -73,7 +74,6 @@ class _DashboardViewState extends State<DashboardView>
     WidgetsBinding.instance.addObserver(this);
     _appState = context.read<AppState>();
     _controller = DashboardController(_appState);
-    _startClockTimer();
     // No need to load initial data - AppState already loaded it during initialization
   }
 
@@ -119,7 +119,6 @@ class _DashboardViewState extends State<DashboardView>
   void _restartClockTimer() {
     _startClockTimer();
   }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -442,19 +441,20 @@ class _DashboardViewState extends State<DashboardView>
         ),
         const SizedBox(height: 12),
         // Time selector (conditional based on setting)
-        Consumer<AppState>(
-          builder: (context, appState, child) {
-            if (!appState.showTimeOverride) {
+        Selector<AppState, ({bool showTimeOverride, bool isTimeOverridden})>(
+          selector: (context, appState) => (
+            showTimeOverride: appState.showTimeOverride,
+            isTimeOverridden: appState.isTimeOverridden,
+          ),
+          builder: (context, data, child) {
+            if (!data.showTimeOverride) {
               // Cancel timer when time override is disabled
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _clockTimer?.cancel();
               });
               return const SizedBox.shrink(); // Hide when setting is off
             }
-            // Restart timer when override state changes
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _restartClockTimer();
-            });
+            final appState = context.read<AppState>();
             return _buildTimeSelector(appState);
           },
         ),
@@ -724,7 +724,6 @@ class _DashboardViewState extends State<DashboardView>
   /// Build the time selector widget with dynamic states
   Widget _buildTimeSelector(AppState appState) {
     final isTimeOverridden = appState.isTimeOverridden;
-    final currentTime = appState.currentTime;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -763,15 +762,21 @@ class _DashboardViewState extends State<DashboardView>
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  _formatTime(currentTime),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: isTimeOverridden 
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
+                isTimeOverridden
+                    ? Text(
+                        _formatTime(appState.currentTime),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      )
+                    : CurrentTimeClock(
+                        isTimeOverridden: isTimeOverridden,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
               ],
             ),
           ),
