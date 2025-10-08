@@ -272,7 +272,7 @@ class DashboardController {
   Future<void> addSampleHabits(BuildContext context) async {
     try {
       // Get all habits (including archived) to check for existing samples
-      final allHabits = await _appState.habitProvider.repository.getAllHabits();
+      final allHabits = await _appState.habitProvider.dataAccessService.getAllHabits();
       final archivedHabits = allHabits.where((h) => h.isArchived).toList();
 
       int retrievedCount = 0; // Counter for habits restored from archive

@@ -182,6 +182,7 @@ class _StatsScreenState extends State<StatsScreen> {
               currentDate: currentDate,
               completions: completions,
               habitId: widget.habit.id,
+              dataAccessService: appState.habitProvider.dataAccessService,
             ),
                     const SizedBox(height: 24),
 
@@ -204,6 +205,7 @@ class _StatsScreenState extends State<StatsScreen> {
               completions: completions,
               currentDate: currentDate,
               habitId: widget.habit.id,
+              dataAccessService: appState.habitProvider.dataAccessService,
             ),
           ],
         ),

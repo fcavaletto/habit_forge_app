@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 import '../../models/habit.dart';
 import '../../utils/day_details_dialog.dart';
+import '../../services/data_access_service.dart';
 
 /// Monthly Calendar Widget
 ///
@@ -12,6 +13,7 @@ class MonthlyCalendar extends StatefulWidget {
   final DateTime currentDate;
   final DateTime? selectedMonth;
   final String habitId; // Habit ID for fetching completion timestamps
+  final DataAccessService dataAccessService;
 
   const MonthlyCalendar({
     super.key,
@@ -19,6 +21,7 @@ class MonthlyCalendar extends StatefulWidget {
     required this.currentDate,
     this.selectedMonth,
     required this.habitId,
+    required this.dataAccessService,
   });
 
   @override
@@ -209,7 +212,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                              date.day == widget.currentDate.day;
 
               return GestureDetector(
-                onTap: () async => await DayDetailsDialog.show(context, date, record, widget.habitId),
+                onTap: () async => await DayDetailsDialog.show(context, date, record, widget.habitId, widget.dataAccessService),
                 child: Container(
                   decoration: BoxDecoration(
                     color: isFullyCompleted

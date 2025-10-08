@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/habit.dart';
+import '../models/habit_result.dart';
 import '../repositories/sqlite_habit_repository.dart';
 import '../services/persistent_cache_service.dart';
 
@@ -220,6 +221,260 @@ class DataAccessService {
     return await _withTiming('removeCompletions', () async {
       await _repository.removeOldestCompletions(habitId, date, count);
       await _cache.updateCompletion(habitId, date, 0); // Remove from cache
+    });
+  }
+
+  /// Saves a new habit to the database
+  /// 
+  /// [habit] - The habit to save
+  /// 
+  /// Returns: HabitSaveResult indicating success/failure
+  Future<HabitSaveResult> saveHabit(Habit habit) async {
+    _logQuery('saveHabit', {
+      'habitId': habit.id,
+      'name': habit.name,
+      'targetGoal': habit.targetGoal,
+    });
+
+    return await _withTiming('saveHabit', () async {
+      return await _repository.saveHabit(habit);
+    });
+  }
+
+  /// Archives a habit
+  /// 
+  /// [habitId] - ID of the habit to archive
+  /// 
+  /// Returns: true if successful, false otherwise
+  Future<bool> archiveHabit(String habitId) async {
+    _logQuery('archiveHabit', {'habitId': habitId});
+
+    return await _withTiming('archiveHabit', () async {
+      return await _repository.archiveHabit(habitId);
+    });
+  }
+
+  /// Unarchives a habit
+  /// 
+  /// [habitId] - ID of the habit to unarchive
+  /// 
+  /// Returns: true if successful, false otherwise
+  Future<bool> unarchiveHabit(String habitId) async {
+    _logQuery('unarchiveHabit', {'habitId': habitId});
+
+    return await _withTiming('unarchiveHabit', () async {
+      return await _repository.unarchiveHabit(habitId);
+    });
+  }
+
+  /// Deletes a habit permanently
+  /// 
+  /// [habitId] - ID of the habit to delete
+  Future<void> deleteHabit(String habitId) async {
+    _logQuery('deleteHabit', {'habitId': habitId});
+
+    return await _withTiming('deleteHabit', () async {
+      await _repository.deleteHabit(habitId);
+    });
+  }
+
+  /// Gets archived habits
+  /// 
+  /// Returns: List of archived habits
+  Future<List<Habit>> getArchivedHabits() async {
+    _logQuery('getArchivedHabits', {});
+
+    return await _withTiming('getArchivedHabits', () async {
+      return await _repository.getArchivedHabits();
+    });
+  }
+
+  /// Gets all habits (including archived)
+  /// 
+  /// Returns: List of all habits
+  Future<List<Habit>> getAllHabits() async {
+    _logQuery('getAllHabits', {});
+
+    return await _withTiming('getAllHabits', () async {
+      return await _repository.getAllHabits();
+    });
+  }
+
+  /// Gets a specific habit by ID
+  /// 
+  /// [habitId] - ID of the habit to retrieve
+  /// 
+  /// Returns: The habit if found, null otherwise
+  Future<Habit?> getHabitById(String habitId) async {
+    _logQuery('getHabitById', {'habitId': habitId});
+
+    return await _withTiming('getHabitById', () async {
+      return await _repository.getHabitById(habitId);
+    });
+  }
+
+  /// Checks if a habit name and icon combination already exists
+  /// 
+  /// [name] - Habit name to check
+  /// [iconName] - Icon name to check
+  /// [excludeHabitId] - Optional habit ID to exclude from check
+  /// 
+  /// Returns: true if duplicate exists, false otherwise
+  Future<bool> hasDuplicateHabit(String name, String iconName, {String? excludeHabitId}) async {
+    _logQuery('hasDuplicateHabit', {
+      'name': name,
+      'iconName': iconName,
+      'excludeHabitId': excludeHabitId,
+    });
+
+    return await _withTiming('hasDuplicateHabit', () async {
+      return await _repository.hasDuplicateHabit(name, iconName, excludeHabitId: excludeHabitId);
+    });
+  }
+
+  /// Checks if a habit can be updated without conflicts
+  /// 
+  /// [habitId] - ID of the habit to update
+  /// [newName] - New name for the habit
+  /// [newIconName] - New icon name for the habit
+  /// 
+  /// Returns: true if update is allowed, false otherwise
+  Future<bool> canUpdateHabit(String habitId, String newName, String newIconName) async {
+    _logQuery('canUpdateHabit', {
+      'habitId': habitId,
+      'newName': newName,
+      'newIconName': newIconName,
+    });
+
+    return await _withTiming('canUpdateHabit', () async {
+      return await _repository.canUpdateHabit(habitId, newName, newIconName);
+    });
+  }
+
+  /// Gets habits that need attention (low completion rate or no recent completions)
+  /// 
+  /// Returns: List of habits needing attention
+  Future<List<Habit>> getHabitsNeedingAttention() async {
+    _logQuery('getHabitsNeedingAttention', {});
+
+    return await _withTiming('getHabitsNeedingAttention', () async {
+      return await _repository.getHabitsNeedingAttention();
+    });
+  }
+
+  /// Reorders habits in the database
+  /// 
+  /// [draggedId] - ID of the habit being dragged
+  /// [newPosition] - New position for the habit
+  Future<void> reorderHabits(String draggedId, int newPosition) async {
+    _logQuery('reorderHabits', {
+      'draggedId': draggedId,
+      'newPosition': newPosition,
+    });
+
+    return await _withTiming('reorderHabits', () async {
+      await _repository.reorderHabits(draggedId, newPosition);
+    });
+  }
+
+  /// Reorders habits in a specific context
+  /// 
+  /// [draggedId] - ID of the habit being dragged
+  /// [newPosition] - New position for the habit
+  /// [visibleHabitIds] - List of visible habit IDs in the context
+  Future<void> reorderHabitsInContext(String draggedId, int newPosition, List<String> visibleHabitIds) async {
+    _logQuery('reorderHabitsInContext', {
+      'draggedId': draggedId,
+      'newPosition': newPosition,
+      'visibleHabitIds': visibleHabitIds.length,
+    });
+
+    return await _withTiming('reorderHabitsInContext', () async {
+      await _repository.reorderHabitsInContext(draggedId, newPosition, visibleHabitIds);
+    });
+  }
+
+  /// Normalizes order values in the database
+  Future<void> normalizeOrderValues() async {
+    _logQuery('normalizeOrderValues', {});
+
+    return await _withTiming('normalizeOrderValues', () async {
+      await _repository.normalizeOrderValues();
+    });
+  }
+
+  /// Gets hourly completion data for a habit
+  /// 
+  /// [habitId] - ID of the habit
+  /// [startDate] - Start date for the data
+  /// [endDate] - End date for the data
+  /// 
+  /// Returns: Map of hour -> completion count
+  Future<Map<int, int>> getHourlyCompletions(String habitId, DateTime startDate, DateTime endDate) async {
+    _logQuery('getHourlyCompletions', {
+      'habitId': habitId,
+      'startDate': startDate.toIso8601String().split('T')[0],
+      'endDate': endDate.toIso8601String().split('T')[0],
+    });
+
+    return await _withTiming('getHourlyCompletions', () async {
+      return await _repository.getHourlyCompletions(habitId, startDate, endDate);
+    });
+  }
+
+  /// Imports sample habits
+  /// 
+  /// [sampleHabits] - List of sample habits to import
+  /// [clearExisting] - Whether to clear existing habits first
+  /// [onProgress] - Optional progress callback
+  /// 
+  /// Returns: Number of habits imported
+  Future<int> importSampleHabits(List<Habit> sampleHabits, {bool clearExisting = false, Function(String habitName, double progress)? onProgress}) async {
+    _logQuery('importSampleHabits', {
+      'sampleHabitsCount': sampleHabits.length,
+      'clearExisting': clearExisting,
+    });
+
+    return await _withTiming('importSampleHabits', () async {
+      if (clearExisting) {
+        return await _repository.clearAndImportHabits(sampleHabits);
+      } else {
+        return await _repository.importHabits(sampleHabits, onProgress: onProgress);
+      }
+    });
+  }
+
+  /// Overwrites an archived habit with new data
+  /// 
+  /// [archivedHabitId] - ID of the archived habit to overwrite
+  /// [newHabit] - New habit data
+  /// 
+  /// Returns: HabitSaveResult indicating success/failure
+  Future<HabitSaveResult> overwriteArchivedHabit(String archivedHabitId, Habit newHabit) async {
+    _logQuery('overwriteArchivedHabit', {
+      'archivedHabitId': archivedHabitId,
+      'newHabitId': newHabit.id,
+    });
+
+    return await _withTiming('overwriteArchivedHabit', () async {
+      return await _repository.overwriteArchivedHabit(archivedHabitId, newHabit);
+    });
+  }
+
+  /// Gets completion timestamps for a specific day
+  /// 
+  /// [habitId] - ID of the habit
+  /// [date] - Date to get timestamps for
+  /// 
+  /// Returns: List of completion timestamps
+  Future<List<DateTime>> getCompletionTimestampsForDay(String habitId, DateTime date) async {
+    _logQuery('getCompletionTimestampsForDay', {
+      'habitId': habitId,
+      'date': date.toIso8601String().split('T')[0],
+    });
+
+    return await _withTiming('getCompletionTimestampsForDay', () async {
+      return await _repository.getCompletionTimestampsForDay(habitId, date);
     });
   }
 

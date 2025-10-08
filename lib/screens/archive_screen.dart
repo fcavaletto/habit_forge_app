@@ -51,7 +51,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
       final appState = Provider.of<AppState>(context, listen: false);
       final habitProvider = appState.habitProvider;
       debugPrint('🔄 Archive Screen: HabitProvider obtained through AppState, calling repository...');
-      final archivedHabits = await habitProvider.repository.getArchivedHabits();
+      final archivedHabits = await habitProvider.dataAccessService.getArchivedHabits();
       debugPrint('🔄 Archive Screen: Retrieved ${archivedHabits.length} archived habits');
       
       // Log each habit for debugging

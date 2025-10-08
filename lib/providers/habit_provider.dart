@@ -90,6 +90,7 @@ class HabitState extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime? get lastLoadTime => _lastLoadTime;
+  DataAccessService get dataAccessService => _dataAccessService;
   bool get isDataFresh =>
       _lastLoadTime != null && !DataFreshness.isDataStale(_lastLoadTime!);
   bool get needsRefresh =>
@@ -280,7 +281,7 @@ class HabitState extends ChangeNotifier {
   /// Add a new habit
   Future<HabitSaveResult> addHabit(Habit habit) async {
     try {
-      final result = await _habitRepository.saveHabit(habit);
+      final result = await _dataAccessService.saveHabit(habit);
       if (result.success && result.savedHabit != null) {
         // Add to local state directly
         _habits.insert(0, result.savedHabit!); // Add at the beginning
@@ -759,7 +760,7 @@ class HabitState extends ChangeNotifier {
             case 'Last 7 Days':
               dateRange = DateRangeUtils.getLast7Days(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              hourlyCompletions = await _habitRepository.getHourlyCompletions(
+              hourlyCompletions = await _dataAccessService.getHourlyCompletions(
                 habitId,
                 dateRange.start,
                 dateRange.end,
@@ -768,7 +769,7 @@ class HabitState extends ChangeNotifier {
             case 'Last 30 Days':
               dateRange = DateRangeUtils.getLast30Days(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              hourlyCompletions = await _habitRepository.getHourlyCompletions(
+              hourlyCompletions = await _dataAccessService.getHourlyCompletions(
                 habitId,
                 dateRange.start,
                 dateRange.end,
@@ -811,7 +812,7 @@ class HabitState extends ChangeNotifier {
   /// Archive a habit
   Future<bool> archiveHabit(String habitId) async {
     try {
-      final success = await _habitRepository.archiveHabit(habitId);
+      final success = await _dataAccessService.archiveHabit(habitId);
       if (success) {
         // Update local state directly
         final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
@@ -835,7 +836,7 @@ class HabitState extends ChangeNotifier {
   /// Unarchive a habit
   Future<bool> unarchiveHabit(String habitId) async {
     try {
-      final success = await _habitRepository.unarchiveHabit(habitId);
+      final success = await _dataAccessService.unarchiveHabit(habitId);
       if (success) {
         // Reload habits to get the unarchived habit back
         await loadHabits();
@@ -854,7 +855,7 @@ class HabitState extends ChangeNotifier {
   /// Delete a habit
   Future<void> deleteHabit(String habitId) async {
     try {
-      await _habitRepository.deleteHabit(habitId);
+      await _dataAccessService.deleteHabit(habitId);
       // Update local state directly
       _habits.removeWhere((habit) => habit.id == habitId);
 
@@ -877,7 +878,7 @@ class HabitState extends ChangeNotifier {
     Habit newHabit,
   ) async {
     try {
-      final result = await _habitRepository.overwriteArchivedHabit(
+      final result = await _dataAccessService.overwriteArchivedHabit(
         archivedHabitId,
         newHabit,
       );
@@ -903,7 +904,7 @@ class HabitState extends ChangeNotifier {
   /// Get habits that need attention
   Future<List<Habit>> getHabitsNeedingAttention() async {
     try {
-      return await _habitRepository.getHabitsNeedingAttention();
+      return await _dataAccessService.getHabitsNeedingAttention();
     } catch (e) {
       _error = 'Failed to get habits needing attention: $e';
       notifyListeners();
@@ -926,7 +927,7 @@ class HabitState extends ChangeNotifier {
     String? excludeHabitId,
   }) async {
     try {
-      return await _habitRepository.hasDuplicateHabit(
+      return await _dataAccessService.hasDuplicateHabit(
         name,
         iconName,
         excludeHabitId: excludeHabitId,
@@ -952,7 +953,7 @@ class HabitState extends ChangeNotifier {
     String newIconName,
   ) async {
     try {
-      return await _habitRepository.canUpdateHabit(
+      return await _dataAccessService.canUpdateHabit(
         habitId,
         newName,
         newIconName,
@@ -992,9 +993,9 @@ class HabitState extends ChangeNotifier {
       // Import habits using repository
       int importedCount;
       if (clearExisting) {
-        importedCount = await _habitRepository.clearAndImportHabits(sampleHabits);
+        importedCount = await _dataAccessService.importSampleHabits(sampleHabits, clearExisting: true);
       } else {
-        importedCount = await _habitRepository.importHabits(sampleHabits, onProgress: onProgress);
+        importedCount = await _dataAccessService.importSampleHabits(sampleHabits, onProgress: onProgress);
       }
       
       if (importedCount > 0) {
@@ -1558,7 +1559,7 @@ class HabitProvider extends HabitState {
       notifyListeners();
 
       // Perform actual reordering in database
-      await _habitRepository.reorderHabits(draggedId, newPosition);
+      await _dataAccessService.reorderHabits(draggedId, newPosition);
       debugPrint('✅ Successfully reordered habit $draggedId in database');
 
       // Update persistent cache immediately after database operation
@@ -1569,7 +1570,7 @@ class HabitProvider extends HabitState {
       if (_reorderCount >= 10) {
         // Normalize every 10 reorders
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
-        await _habitRepository.normalizeOrderValues();
+        await _dataAccessService.normalizeOrderValues();
         _reorderCount = 0;
         // Reload habits to get normalized order values
         await loadHabits(forceRefresh: true);
@@ -1607,7 +1608,7 @@ class HabitProvider extends HabitState {
       notifyListeners();
 
       // Perform actual reordering in database with context
-      await _habitRepository.reorderHabitsInContext(
+      await _dataAccessService.reorderHabitsInContext(
         draggedId,
         newPosition,
         visibleHabitIds,
@@ -1624,7 +1625,7 @@ class HabitProvider extends HabitState {
       if (_reorderCount >= 10) {
         // Normalize every 10 reorders
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
-        await _habitRepository.normalizeOrderValues();
+        await _dataAccessService.normalizeOrderValues();
         _reorderCount = 0;
         // Reload habits to get normalized order values (use dashboard-optimized loading)
         await loadHabitsForDashboard(forceRefresh: true);
@@ -1644,10 +1645,10 @@ class HabitProvider extends HabitState {
   @override
   Future<bool> unarchiveHabit(String habitId) async {
     try {
-      final success = await _habitRepository.unarchiveHabit(habitId);
+      final success = await _dataAccessService.unarchiveHabit(habitId);
       if (success) {
         // Surgical reload: fetch only the restored habit and insert at top
-        final restoredHabit = await _habitRepository.getHabitById(habitId);
+        final restoredHabit = await _dataAccessService.getHabitById(habitId);
         if (restoredHabit != null) {
           // Insert at the top of the habits list
           _habits.insert(0, restoredHabit);

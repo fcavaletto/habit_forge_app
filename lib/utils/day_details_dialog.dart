@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
-import '../repositories/sqlite_habit_repository.dart';
-import '../services/database_service.dart';
+import '../services/data_access_service.dart';
 
 /// Shared utility for displaying day details dialogs
 ///
@@ -14,11 +13,13 @@ class DayDetailsDialog {
   /// @param date The date to show details for
   /// @param record The completion record for that date (can be null)
   /// @param habitId The habit ID for fetching completion timestamps
+  /// @param dataAccessService The data access service for fetching timestamps
   static Future<void> show(
     BuildContext context,
     DateTime date,
     CompletionRecord? record,
     String habitId,
+    DataAccessService dataAccessService,
   ) async {
     final fullDayName = _getFullDayName(date);
     final dateStr = '${date.day} ${_getMonthAbbreviation(date.month)}';
@@ -27,9 +28,7 @@ class DayDetailsDialog {
     List<DateTime> completionTimes = [];
     if (record != null && record.count > 0) {
       try {
-        final databaseService = DatabaseService();
-        final repository = SqliteHabitRepository(databaseService);
-        completionTimes = await repository.getCompletionTimestampsForDay(habitId, date);
+        completionTimes = await dataAccessService.getCompletionTimestampsForDay(habitId, date);
       } catch (e) {
         debugPrint('❌ Error fetching completion times: $e');
       }

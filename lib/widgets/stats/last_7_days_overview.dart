@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 import '../../models/habit.dart';
 import '../../utils/day_details_dialog.dart';
+import '../../services/data_access_service.dart';
 
 /// Last 7 Days Overview Widget
 ///
@@ -13,6 +14,7 @@ class Last7DaysOverview extends StatelessWidget {
   final DateTime currentDate;
   final Map<DateTime, CompletionRecord>? completions; // Full completions map for timestamps
   final String habitId; // Habit ID for fetching completion timestamps
+  final DataAccessService dataAccessService;
 
   const Last7DaysOverview({
     super.key,
@@ -20,6 +22,7 @@ class Last7DaysOverview extends StatelessWidget {
     required this.currentDate,
     this.completions,
     required this.habitId,
+    required this.dataAccessService,
   });
 
   @override
@@ -77,7 +80,7 @@ class Last7DaysOverview extends StatelessWidget {
     return Column(
       children: [
         GestureDetector(
-          onTap: () async => await DayDetailsDialog.show(context, date, record, habitId),
+          onTap: () async => await DayDetailsDialog.show(context, date, record, habitId, dataAccessService),
           child: Container(
             width: 40,
             height: 40,
