@@ -299,6 +299,112 @@ class SqliteHabitRepository {
       return [];
     }
   }
+
+  /// Get active habits for dashboard with custom date range
+  /// 
+  /// [startDate] - Start date for completion data filtering
+  /// [endDate] - End date for completion data filtering
+  /// [habitIds] - Optional list of specific habit IDs to load
+  Future<List<Habit>> getActiveHabitsForDashboardWithDateRange({
+    required DateTime startDate,
+    required DateTime endDate,
+    List<String>? habitIds,
+  }) async {
+    try {
+      final db = await _databaseService.database;
+      
+      String query = '''
+        SELECT h.*, o.order_value
+        FROM habits h
+        INNER JOIN habit_display_order o ON h.id = o.habit_id
+        WHERE h.is_archived = 0
+      ''';
+      
+      List<dynamic> whereArgs = [];
+      
+      if (habitIds != null && habitIds.isNotEmpty) {
+        final placeholders = habitIds.map((_) => '?').join(',');
+        query += ' AND h.id IN ($placeholders)';
+        whereArgs.addAll(habitIds);
+      }
+      
+      query += ' ORDER BY o.order_value DESC';
+      
+      final results = await db.rawQuery(query, whereArgs);
+      
+      final habits = <Habit>[];
+      for (final row in results) {
+        final habit = await _rowToHabit(
+          row, 
+          startDate: startDate, 
+          endDate: endDate,
+          convertToLocal: true, // Dashboard needs local timezone for display
+        );
+        if (habit != null) {
+          habits.add(habit);
+        }
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits for dashboard (${startDate.toIso8601String().split('T')[0]} to ${endDate.toIso8601String().split('T')[0]})');
+      return habits;
+    } catch (e) {
+      debugPrint('❌ Error getting active habits for dashboard with date range: $e');
+      return [];
+    }
+  }
+
+  /// Get active habits for streak calculation with custom date range
+  /// 
+  /// [startDate] - Start date for completion data filtering
+  /// [endDate] - End date for completion data filtering
+  /// [habitIds] - Optional list of specific habit IDs to load
+  Future<List<Habit>> getActiveHabitsForStreakCalculationWithDateRange({
+    required DateTime startDate,
+    required DateTime endDate,
+    List<String>? habitIds,
+  }) async {
+    try {
+      final db = await _databaseService.database;
+      
+      String query = '''
+        SELECT h.*, o.order_value
+        FROM habits h
+        INNER JOIN habit_display_order o ON h.id = o.habit_id
+        WHERE h.is_archived = 0
+      ''';
+      
+      List<dynamic> whereArgs = [];
+      
+      if (habitIds != null && habitIds.isNotEmpty) {
+        final placeholders = habitIds.map((_) => '?').join(',');
+        query += ' AND h.id IN ($placeholders)';
+        whereArgs.addAll(habitIds);
+      }
+      
+      query += ' ORDER BY o.order_value DESC';
+      
+      final results = await db.rawQuery(query, whereArgs);
+      
+      final habits = <Habit>[];
+      for (final row in results) {
+        final habit = await _rowToHabit(
+          row, 
+          startDate: startDate, 
+          endDate: endDate,
+          convertToLocal: false, // Streak calculation uses UTC dates
+        );
+        if (habit != null) {
+          habits.add(habit);
+        }
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits for streak calculation (${startDate.toIso8601String().split('T')[0]} to ${endDate.toIso8601String().split('T')[0]})');
+      return habits;
+    } catch (e) {
+      debugPrint('❌ Error getting active habits for streak calculation with date range: $e');
+      return [];
+    }
+  }
   
   Future<HabitSaveResult> saveHabit(Habit habit) async {
     try {
