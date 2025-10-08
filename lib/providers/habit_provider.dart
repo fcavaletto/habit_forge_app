@@ -10,6 +10,7 @@ import '../services/virtual_time_service.dart';
 import '../services/completion_cache_service.dart';
 import '../services/habit_metadata_cache_service.dart';
 import '../services/persistent_cache_service.dart';
+import '../services/data_access_service.dart';
 import '../services/sample_data_generator_service.dart';
 import '../utils/data_freshness.dart';
 import '../utils/date_range_utils.dart';
@@ -55,6 +56,7 @@ import '../utils/performance_monitor.dart';
 class HabitState extends ChangeNotifier {
   final SqliteHabitRepository _habitRepository;
   final SettingsRepository _settingsRepository;
+  late final DataAccessService _dataAccessService;
   final CompletionCacheService _completionCache = CompletionCacheService();
   final HabitMetadataCacheService _metadataCache = HabitMetadataCacheService();
   final PersistentCacheService _persistentCache = PersistentCacheService();
@@ -72,6 +74,12 @@ class HabitState extends ChangeNotifier {
       false; // Whether to show all habits or just today's habits
 
   HabitState(this._habitRepository, this._settingsRepository) {
+    // Initialize DataAccessService with repository and cache
+    _dataAccessService = DataAccessService(
+      repository: _habitRepository,
+      cache: _persistentCache,
+    );
+    
     // Initialize with current date and time from global providers
     _selectedDate = VirtualDateService().currentDate;
     _selectedTime = VirtualTimeService().currentTime;
@@ -151,8 +159,35 @@ class HabitState extends ChangeNotifier {
       notifyListeners();
 
       debugPrint('📱 HabitProvider: Loading habits from storage...');
-      // Fetch fresh data from repository layer
-      _habits = await _habitRepository.getActiveHabits();
+      // Fetch fresh data using DataAccessService with full data
+      final today = VirtualDateService().currentDate;
+      final startDate = DateTime(2020); // Load all historical data
+      final habits = await _dataAccessService.getHabitFeatures();
+      final completions = await _dataAccessService.getCompletionTimestamps(
+        startDate: startDate,
+        endDate: today,
+      );
+      
+      // Combine habit features with completion data
+      _habits = habits.map((habit) {
+        final habitCompletions = completions[habit.id] ?? <DateTime, CompletionRecord>{};
+        return Habit(
+          id: habit.id,
+          name: habit.name,
+          description: habit.description,
+          colorIndex: habit.colorIndex,
+          createdAt: habit.createdAt,
+          completions: habitCompletions,
+          iconName: habit.iconName,
+          reminderTime: habit.reminderTime,
+          enableReminders: habit.enableReminders,
+          isArchived: habit.isArchived,
+          orderValue: habit.orderValue,
+          frequencyDays: habit.frequencyDays,
+          targetGoal: habit.targetGoal,
+          allowExceedGoal: habit.allowExceedGoal,
+        );
+      }).toList();
 
       // Warm cache with completion data for current date
       await _warmCompletionCache();
@@ -190,8 +225,35 @@ class HabitState extends ChangeNotifier {
       notifyListeners();
 
       debugPrint('📱 HabitProvider: Loading habits optimized for dashboard...');
-      // Fetch dashboard-optimized data (last 7 days only)
-      _habits = await _habitRepository.getActiveHabitsForDashboard();
+      // Fetch dashboard-optimized data using DataAccessService (last 7 days only)
+      final today = VirtualDateService().currentDate;
+      final last7Days = today.subtract(const Duration(days: 6));
+      final habits = await _dataAccessService.getHabitFeatures();
+      final completions = await _dataAccessService.getCompletionTimestamps(
+        startDate: last7Days,
+        endDate: today,
+      );
+      
+      // Combine habit features with completion data
+      _habits = habits.map((habit) {
+        final habitCompletions = completions[habit.id] ?? <DateTime, CompletionRecord>{};
+        return Habit(
+          id: habit.id,
+          name: habit.name,
+          description: habit.description,
+          colorIndex: habit.colorIndex,
+          createdAt: habit.createdAt,
+          completions: habitCompletions,
+          iconName: habit.iconName,
+          reminderTime: habit.reminderTime,
+          enableReminders: habit.enableReminders,
+          isArchived: habit.isArchived,
+          orderValue: habit.orderValue,
+          frequencyDays: habit.frequencyDays,
+          targetGoal: habit.targetGoal,
+          allowExceedGoal: habit.allowExceedGoal,
+        );
+      }).toList();
 
       // Warm cache with completion data for current date
       await _warmCompletionCache();
@@ -309,19 +371,13 @@ class HabitState extends ChangeNotifier {
       final difference = count - currentCount;
 
       if (difference > 0) {
-        // Add completions using batch operation
-        await _habitRepository.addMultipleCompletions(
-          habitId,
-          date,
-          difference,
-        );
+        // Add completions using DataAccessService
+        await _dataAccessService.addCompletions(habitId, date, difference);
         // Invalidate cache for this habit and date
         _completionCache.invalidateCompletion(habitId, date);
       } else if (difference < 0) {
-        // Remove completions
-        for (int i = 0; i < -difference; i++) {
-          await _habitRepository.removeHabitCompletion(habitId, date);
-        }
+        // Remove completions using DataAccessService
+        await _dataAccessService.removeCompletions(habitId, date, -difference);
         // Invalidate cache for this habit and date
         _completionCache.invalidateCompletion(habitId, date);
       }
@@ -457,24 +513,16 @@ class HabitState extends ChangeNotifier {
       final currentCount = originalHabit.getCompletionCount(date);
 
       if (newCount > currentCount) {
-        // INCREASE: Add additional completions while preserving existing timestamps
+        // INCREASE: Add additional completions using DataAccessService
         final additionalCount = newCount - currentCount;
-        await _habitRepository.addAdditionalCompletions(
-          habitId,
-          date,
-          additionalCount,
-        );
+        await _dataAccessService.addCompletions(habitId, date, additionalCount);
         debugPrint(
           '📈 Incremental increase: Added $additionalCount completions ($currentCount → $newCount)',
         );
       } else if (newCount < currentCount) {
-        // DECREASE: Remove newest completions while preserving older timestamps
+        // DECREASE: Remove completions using DataAccessService
         final countToRemove = currentCount - newCount;
-        await _habitRepository.removeOldestCompletions(
-          habitId,
-          date,
-          countToRemove,
-        );
+        await _dataAccessService.removeCompletions(habitId, date, countToRemove);
         debugPrint(
           '📉 Incremental decrease: Removed $countToRemove newest completions ($currentCount → $newCount)',
         );
@@ -505,7 +553,8 @@ class HabitState extends ChangeNotifier {
     int habitIndex,
   ) async {
     try {
-      await _habitRepository.removeAllCompletionsForDate(habitId, date);
+      // Remove all completions using DataAccessService
+      await _dataAccessService.removeCompletions(habitId, date, 999); // Remove all completions
 
       // Invalidate cache for this habit and date
       _completionCache.invalidateCompletion(habitId, date);
@@ -1319,7 +1368,7 @@ class HabitProvider extends HabitState {
   final SqliteHabitRepository _repository;
 
   HabitProvider(super.habitRepository, super.settingsRepository)
-    : _repository = habitRepository;
+      : _repository = habitRepository;
 
   // Factory method for easy creation with SQLite repository
   factory HabitProvider.create() {
