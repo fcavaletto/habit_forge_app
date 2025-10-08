@@ -1541,8 +1541,8 @@ class SqliteHabitRepository {
   /// [startDate] - Start date for completion data
   /// [endDate] - End date for completion data
   /// 
-  /// Returns: Map of date -> completion count
-  Future<Map<DateTime, int>> getCompletionDataForHabit(String habitId, DateTime startDate, DateTime endDate) async {
+  /// Returns: Map of date -> CompletionRecord
+  Future<Map<DateTime, CompletionRecord>> getCompletionDataForHabit(String habitId, DateTime startDate, DateTime endDate) async {
     try {
       final db = await _databaseService.database;
       
@@ -1556,7 +1556,7 @@ class SqliteHabitRepository {
         ],
       );
       
-      final completions = <DateTime, int>{};
+      final completions = <DateTime, CompletionRecord>{};
       for (final row in completionRows) {
         final date = TimezoneUtils.fromUtcTimestamp(
           row['completion_date'] as int,
@@ -1564,7 +1564,11 @@ class SqliteHabitRepository {
           caller: 'getCompletionDataForHabit'
         );
         final count = row['completion_count'] as int;
-        completions[date] = count;
+        final goalAtCompletion = row['goal_at_completion'] as int;
+        completions[date] = CompletionRecord(
+          count: count,
+          goalAtCompletion: goalAtCompletion,
+        );
       }
       
       debugPrint('📅 Loaded ${completions.length} completion records for habit $habitId (${startDate.toIso8601String().split('T')[0]} to ${endDate.toIso8601String().split('T')[0]})');

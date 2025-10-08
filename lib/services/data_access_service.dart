@@ -71,11 +71,18 @@ class DataAccessService {
 
       // Load completion data directly from database for each habit
       for (final habit in filteredHabits) {
-        final completions = await _repository.getCompletionDataForHabit(
+        final completionRecords = await _repository.getCompletionDataForHabit(
           habit.id, 
           startDate, 
           endDate
         );
+        
+        // Extract just the counts for getCompletionDays
+        final completions = <DateTime, int>{};
+        for (final entry in completionRecords.entries) {
+          completions[entry.key] = entry.value.count;
+        }
+        
         result[habit.id] = completions;
         totalCompletions += completions.length;
       }
@@ -119,23 +126,14 @@ class DataAccessService {
 
       // Load completion data directly from database for each habit
       for (final habit in filteredHabits) {
-        final completions = await _repository.getCompletionDataForHabit(
+        final completionRecords = await _repository.getCompletionDataForHabit(
           habit.id, 
           startDate, 
           endDate
         );
         
-        // Convert to CompletionRecord format
-        final completionRecords = <DateTime, CompletionRecord>{};
-        for (final entry in completions.entries) {
-          completionRecords[entry.key] = CompletionRecord(
-            count: entry.value,
-            timestamps: [], // We don't load individual timestamps in this method
-          );
-        }
-        
         result[habit.id] = completionRecords;
-        totalCompletions += completions.length;
+        totalCompletions += completionRecords.length;
       }
 
       _logDataVolume('getCompletionTimestamps', totalCompletions, startDate, endDate);
