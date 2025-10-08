@@ -58,22 +58,26 @@ class DataAccessService {
     });
 
     return await _withTiming('getCompletionDays', () async {
-      final habits = await _repository.getActiveHabitsForDashboardWithDateRange(
-        startDate: startDate,
-        endDate: endDate,
-        habitIds: habitIds,
-      );
+      // Get habit metadata only (no completion data)
+      final habits = await _repository.getActiveHabitsForReordering();
+      
+      // Filter by IDs if provided
+      final filteredHabits = habitIds != null && habitIds.isNotEmpty
+          ? habits.where((h) => habitIds.contains(h.id)).toList()
+          : habits;
 
       final result = <String, Map<DateTime, int>>{};
       int totalCompletions = 0;
 
-      for (final habit in habits) {
-        final completions = <DateTime, int>{};
-        for (final entry in habit.completions.entries) {
-          completions[entry.key] = entry.value.count;
-          totalCompletions++;
-        }
+      // Load completion data directly from database for each habit
+      for (final habit in filteredHabits) {
+        final completions = await _repository.getCompletionDataForHabit(
+          habit.id, 
+          startDate, 
+          endDate
+        );
         result[habit.id] = completions;
+        totalCompletions += completions.length;
       }
 
       _logDataVolume('getCompletionDays', totalCompletions, startDate, endDate);
@@ -102,22 +106,36 @@ class DataAccessService {
     });
 
     return await _withTiming('getCompletionTimestamps', () async {
-      final habits = await _repository.getActiveHabitsForDashboardWithDateRange(
-        startDate: startDate,
-        endDate: endDate,
-        habitIds: habitIds,
-      );
+      // Get habit metadata only (no completion data)
+      final habits = await _repository.getActiveHabitsForReordering();
+      
+      // Filter by IDs if provided
+      final filteredHabits = habitIds != null && habitIds.isNotEmpty
+          ? habits.where((h) => habitIds.contains(h.id)).toList()
+          : habits;
 
       final result = <String, Map<DateTime, CompletionRecord>>{};
       int totalCompletions = 0;
 
-      for (final habit in habits) {
-        final completions = <DateTime, CompletionRecord>{};
-        for (final entry in habit.completions.entries) {
-          completions[entry.key] = entry.value;
-          totalCompletions++;
+      // Load completion data directly from database for each habit
+      for (final habit in filteredHabits) {
+        final completions = await _repository.getCompletionDataForHabit(
+          habit.id, 
+          startDate, 
+          endDate
+        );
+        
+        // Convert to CompletionRecord format
+        final completionRecords = <DateTime, CompletionRecord>{};
+        for (final entry in completions.entries) {
+          completionRecords[entry.key] = CompletionRecord(
+            count: entry.value,
+            timestamps: [], // We don't load individual timestamps in this method
+          );
         }
-        result[habit.id] = completions;
+        
+        result[habit.id] = completionRecords;
+        totalCompletions += completions.length;
       }
 
       _logDataVolume('getCompletionTimestamps', totalCompletions, startDate, endDate);
@@ -135,17 +153,20 @@ class DataAccessService {
     _logQuery('getMaxStreak', {'habitIds': habitIds?.length ?? 'all'});
 
     return await _withTiming('getMaxStreak', () async {
-      // For max streak, we need all historical data, so we use a wide date range
-      final now = DateTime.now();
-      final habits = await _repository.getActiveHabitsForStreakCalculationWithDateRange(
-        startDate: DateTime(2020), // Start from a reasonable past date
-        endDate: now,
-        habitIds: habitIds,
-      );
+      // Get habit metadata only (no completion data)
+      final habits = await _repository.getActiveHabitsForReordering();
+      
+      // Filter by IDs if provided
+      final filteredHabits = habitIds != null && habitIds.isNotEmpty
+          ? habits.where((h) => habitIds.contains(h.id)).toList()
+          : habits;
 
       final result = <String, int>{};
-      for (final habit in habits) {
-        result[habit.id] = habit.currentStreak; // Use the getter instead of non-existent method
+      
+      // Calculate max streak using SQL for each habit
+      for (final habit in filteredHabits) {
+        final maxStreak = await _repository.calculateMaxStreak(habit.id);
+        result[habit.id] = maxStreak;
       }
 
       _logDataVolume('getMaxStreak', result.length, DateTime.now(), DateTime.now());
@@ -170,17 +191,20 @@ class DataAccessService {
     });
 
     return await _withTiming('getCurrentStreak', () async {
-      // For current streak, we need data from the calculation date backwards
-      final startDate = date.subtract(const Duration(days: 365)); // Look back up to a year
-      final habits = await _repository.getActiveHabitsForStreakCalculationWithDateRange(
-        startDate: startDate,
-        endDate: date,
-        habitIds: habitIds,
-      );
+      // Get habit metadata only (no completion data)
+      final habits = await _repository.getActiveHabitsForReordering();
+      
+      // Filter by IDs if provided
+      final filteredHabits = habitIds != null && habitIds.isNotEmpty
+          ? habits.where((h) => habitIds.contains(h.id)).toList()
+          : habits;
 
       final result = <String, int>{};
-      for (final habit in habits) {
-        result[habit.id] = habit.calculateCurrentStreak(); // Remove the date parameter
+      
+      // Calculate current streak using SQL for each habit
+      for (final habit in filteredHabits) {
+        final currentStreak = await _repository.calculateCurrentStreak(habit.id, date);
+        result[habit.id] = currentStreak;
       }
 
       _logDataVolume('getCurrentStreak', result.length, DateTime.now(), DateTime.now());

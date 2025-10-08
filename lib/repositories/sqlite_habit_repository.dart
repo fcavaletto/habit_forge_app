@@ -1535,6 +1535,149 @@ class SqliteHabitRepository {
     }
   }
 
+  /// Gets completion data for a habit within a date range
+  /// 
+  /// [habitId] - ID of the habit
+  /// [startDate] - Start date for completion data
+  /// [endDate] - End date for completion data
+  /// 
+  /// Returns: Map of date -> completion count
+  Future<Map<DateTime, int>> getCompletionDataForHabit(String habitId, DateTime startDate, DateTime endDate) async {
+    try {
+      final db = await _databaseService.database;
+      
+      final completionRows = await db.query(
+        'habit_completions',
+        where: 'habit_id = ? AND completion_date >= ? AND completion_date <= ?',
+        whereArgs: [
+          habitId,
+          TimezoneUtils.toUtcTimestamp(startDate),
+          TimezoneUtils.toUtcTimestamp(endDate),
+        ],
+      );
+      
+      final completions = <DateTime, int>{};
+      for (final row in completionRows) {
+        final date = TimezoneUtils.fromUtcTimestamp(
+          row['completion_date'] as int,
+          context: 'Habit $habitId completion date',
+          caller: 'getCompletionDataForHabit'
+        );
+        final count = row['completion_count'] as int;
+        completions[date] = count;
+      }
+      
+      debugPrint('📅 Loaded ${completions.length} completion records for habit $habitId (${startDate.toIso8601String().split('T')[0]} to ${endDate.toIso8601String().split('T')[0]})');
+      return completions;
+    } catch (e) {
+      debugPrint('❌ Error getting completion data for habit $habitId: $e');
+      return {};
+    }
+  }
+
+  /// Calculates current streak for a habit using SQL
+  /// 
+  /// [habitId] - ID of the habit
+  /// [asOfDate] - Date to calculate streak for
+  /// 
+  /// Returns: Current streak value
+  Future<int> calculateCurrentStreak(String habitId, DateTime asOfDate) async {
+    try {
+      final db = await _databaseService.database;
+      
+      // Convert asOfDate to UTC timestamp
+      final asOfTimestamp = TimezoneUtils.toUtcTimestamp(asOfDate);
+      
+      // Query to find the current streak by counting consecutive days backwards
+      final query = '''
+        WITH RECURSIVE streak_days AS (
+          -- Start from the asOfDate
+          SELECT ? as check_date, 0 as streak_count
+          
+          UNION ALL
+          
+          -- Recursively go backwards day by day
+          SELECT 
+            check_date - (24 * 60 * 60 * 1000), -- Subtract 1 day in milliseconds
+            CASE 
+              WHEN EXISTS (
+                SELECT 1 FROM habit_completions 
+                WHERE habit_id = ? 
+                AND completion_date = check_date - (24 * 60 * 60 * 1000)
+                AND completion_count > 0
+              ) THEN streak_count + 1
+              ELSE streak_count
+            END
+          FROM streak_days
+          WHERE check_date > ? -- Stop when we go too far back (e.g., 1 year)
+            AND streak_count < 1000 -- Prevent infinite recursion
+        )
+        SELECT MAX(streak_count) as max_streak
+        FROM streak_days
+        WHERE check_date <= ?
+      ''';
+      
+      final result = await db.rawQuery(query, [
+        asOfTimestamp, // Start date
+        habitId,       // Habit ID for completion check
+        asOfTimestamp - (365 * 24 * 60 * 60 * 1000), // Stop after 1 year
+        asOfTimestamp  // End date
+      ]);
+      
+      final streak = result.first['max_streak'] as int? ?? 0;
+      debugPrint('📊 Calculated current streak for habit $habitId: $streak (as of ${asOfDate.toIso8601String().split('T')[0]})');
+      return streak;
+    } catch (e) {
+      debugPrint('❌ Error calculating current streak for habit $habitId: $e');
+      return 0;
+    }
+  }
+
+  /// Calculates maximum streak for a habit using SQL
+  /// 
+  /// [habitId] - ID of the habit
+  /// 
+  /// Returns: Maximum streak value
+  Future<int> calculateMaxStreak(String habitId) async {
+    try {
+      final db = await _databaseService.database;
+      
+      // Query to find the maximum streak by analyzing all completion data
+      final query = '''
+        WITH completion_dates AS (
+          SELECT DISTINCT completion_date
+          FROM habit_completions
+          WHERE habit_id = ? AND completion_count > 0
+          ORDER BY completion_date
+        ),
+        streak_groups AS (
+          SELECT 
+            completion_date,
+            ROW_NUMBER() OVER (ORDER BY completion_date) as row_num,
+            completion_date - (ROW_NUMBER() OVER (ORDER BY completion_date) * 24 * 60 * 60 * 1000) as streak_group
+          FROM completion_dates
+        ),
+        streak_lengths AS (
+          SELECT 
+            streak_group,
+            COUNT(*) as streak_length
+          FROM streak_groups
+          GROUP BY streak_group
+        )
+        SELECT MAX(streak_length) as max_streak
+        FROM streak_lengths
+      ''';
+      
+      final result = await db.rawQuery(query, [habitId]);
+      final maxStreak = result.first['max_streak'] as int? ?? 0;
+      debugPrint('📊 Calculated max streak for habit $habitId: $maxStreak');
+      return maxStreak;
+    } catch (e) {
+      debugPrint('❌ Error calculating max streak for habit $habitId: $e');
+      return 0;
+    }
+  }
+
   /// Get completion timestamps for a specific day
   Future<List<DateTime>> getCompletionTimestampsForDay(String habitId, DateTime date) async {
     try {
