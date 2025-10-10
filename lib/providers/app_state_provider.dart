@@ -68,6 +68,13 @@ class AppState extends ChangeNotifier {
   final VirtualTimeService _virtualTimeService = VirtualTimeService();
   final SettingsRepository _settingsRepository;
 
+  // Smart notification system
+  Timer? _notificationDebounce;
+  bool _hasNotificationPending = false;
+  int _lastHabitCount = 0;
+  ThemeMode? _lastThemeMode;
+  bool _lastCompletionCountSetting = false;
+  
   AppState(
     this._habitProvider,
     this._notificationProvider,
@@ -79,46 +86,94 @@ class AppState extends ChangeNotifier {
     this._dateProvider,
     this._settingsRepository,
   ) {
-    // Listen to changes in child providers
+    // Initialize last known states
+    _lastHabitCount = _habitProvider.habits.length;
+    _lastThemeMode = _themeProvider.themeMode;
+    _lastCompletionCountSetting = _completionCountProvider.showCompletionCount;
+    
+    // Listen to changes in child providers with smart notification
     _habitProvider.addListener(() {
       debugPrint('🔗 AppState received notification from HabitProvider');
-      notifyListeners();
+      _smartNotify('HabitProvider');
     });
     _notificationProvider.addListener(() {
       debugPrint('🔗 AppState received notification from NotificationProvider');
-      notifyListeners();
+      _smartNotify('NotificationProvider');
     });
     _themeProvider.addListener(() {
       debugPrint('🔗 AppState received notification from ThemeProvider');
-      notifyListeners();
+      _smartNotify('ThemeProvider');
     });
     _completionCountProvider.addListener(() {
       debugPrint(
         '🔗 AppState received notification from CompletionCountProvider',
       );
-      notifyListeners();
+      _smartNotify('CompletionCountProvider');
     });
     _extendedColorPaletteProvider.addListener(() {
       debugPrint(
         '🔗 AppState received notification from ExtendedColorPaletteProvider',
       );
-      notifyListeners();
+      _smartNotify('ExtendedColorPaletteProvider');
     });
     _proSubscriptionProvider.addListener(() {
       debugPrint(
         '🔗 AppState received notification from ProSubscriptionProvider',
       );
-      notifyListeners();
+      _smartNotify('ProSubscriptionProvider');
     });
     _streakSettingsProvider.addListener(() {
       debugPrint(
         '🔗 AppState received notification from StreakSettingsProvider',
       );
-      notifyListeners();
+      _smartNotify('StreakSettingsProvider');
     });
     _dateProvider.addListener(() {
       debugPrint('🔗 AppState received notification from DateProvider');
-      notifyListeners();
+      _smartNotify('DateProvider');
+    });
+  }
+  
+  /// Smart notification with change detection and debouncing
+  /// 
+  /// Prevents unnecessary notifications by:
+  /// 1. Detecting actual state changes
+  /// 2. Debouncing rapid successive notifications (300ms window)
+  /// 3. Batching multiple notifications into one
+  void _smartNotify(String source) {
+    // Check if anything actually changed
+    final habitCountChanged = _habitProvider.habits.length != _lastHabitCount;
+    final themeChanged = _themeProvider.themeMode != _lastThemeMode;
+    final completionCountChanged = 
+        _completionCountProvider.showCompletionCount != _lastCompletionCountSetting;
+    
+    final hasActualChanges = habitCountChanged || themeChanged || completionCountChanged;
+    
+    if (!hasActualChanges && source != 'HabitProvider') {
+      // For non-HabitProvider sources, skip if no tracked changes detected
+      // Note: HabitProvider always notifies because completions may have changed
+      debugPrint('⏭️ AppState: No changes detected from $source, skipping notification');
+      return;
+    }
+    
+    // Update last known states
+    _lastHabitCount = _habitProvider.habits.length;
+    _lastThemeMode = _themeProvider.themeMode;
+    _lastCompletionCountSetting = _completionCountProvider.showCompletionCount;
+    
+    // Mark that we have a pending notification
+    _hasNotificationPending = true;
+    
+    // Cancel existing debounce timer
+    _notificationDebounce?.cancel();
+    
+    // Set up new debounce timer (300ms window)
+    _notificationDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (_hasNotificationPending) {
+        debugPrint('🔔 AppState: Notifying listeners (debounced from $source)');
+        _hasNotificationPending = false;
+        notifyListeners();
+      }
     });
   }
 
@@ -398,6 +453,9 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    // Cancel any pending debounce timer
+    _notificationDebounce?.cancel();
+    
     _habitProvider.removeListener(notifyListeners);
     _notificationProvider.removeListener(notifyListeners);
     _themeProvider.removeListener(notifyListeners);

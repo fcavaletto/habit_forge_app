@@ -13,6 +13,7 @@ import '../services/persistent_cache_service.dart';
 import '../services/data_access_service.dart';
 import '../services/atomic_data_service.dart';
 import '../services/sample_data_generator_service.dart';
+import '../services/service_factory.dart';
 import '../utils/data_freshness.dart';
 import '../utils/date_range_utils.dart';
 import '../utils/performance_monitor.dart';
@@ -226,36 +227,22 @@ class HabitState extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      debugPrint('📱 HabitProvider: Loading habits optimized for dashboard...');
-      // Fetch dashboard-optimized data using DataAccessService (last 7 days only)
-      final today = VirtualDateService().currentDate;
-      final last7Days = today.subtract(const Duration(days: 6));
-      final habits = await _dataAccessService.getHabitFeatures();
-      final completions = await _dataAccessService.getCompletionTimestamps(
-        startDate: last7Days,
-        endDate: today,
+      debugPrint('📱 HabitProvider: Loading habits using DataPreparationService...');
+      
+      // Use DataPreparationService for optimized dashboard loading
+      final result = await ServiceFactory.dashboardDataService.getDashboardHabits(
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'loadDashboardHabits',
+        ),
       );
       
-      // Combine habit features with completion data
-      _habits = habits.map((habit) {
-        final habitCompletions = completions[habit.id] ?? <DateTime, CompletionRecord>{};
-        return Habit(
-          id: habit.id,
-          name: habit.name,
-          description: habit.description,
-          colorIndex: habit.colorIndex,
-          createdAt: habit.createdAt,
-          completions: habitCompletions,
-          iconName: habit.iconName,
-          reminderTime: habit.reminderTime,
-          enableReminders: habit.enableReminders,
-          isArchived: habit.isArchived,
-          orderValue: habit.orderValue,
-          frequencyDays: habit.frequencyDays,
-          targetGoal: habit.targetGoal,
-          allowExceedGoal: habit.allowExceedGoal,
-        );
-      }).toList();
+      if (!result.success) {
+        throw Exception(result.errorMessage ?? 'Failed to load dashboard habits');
+      }
+      
+      // Update local state with prepared data
+      _habits = result.data;
 
       // Warm cache with completion data for current date
       await _warmCompletionCache();
@@ -269,7 +256,7 @@ class HabitState extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       debugPrint(
-        '📱 HabitProvider: Loaded ${_habits.length} habits for dashboard at $_lastLoadTime',
+        '✅ HabitProvider: Loaded ${_habits.length} habits for dashboard using DataPreparationService',
       );
     } catch (e) {
       _isLoading = false;

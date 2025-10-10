@@ -245,21 +245,41 @@ class CompletionProcessor implements ICompletionProcessor {
 
       debugPrint('📅 [COMPLETION_PROCESSOR] Found ${completionRows.length} completion records for habit $habitId');
 
-      for (final row in completionRows) {
-        final date = config.convertToLocal
-            ? TimezoneUtils.fromUtcTimestamp(
-                row['completion_date'] as int,
-                context: 'Habit $habitId completion date',
-                caller: 'processCompletions'
-              )
-            : DateTime.fromMillisecondsSinceEpoch(row['completion_date'] as int, isUtc: true);
-
-        final count = row['completion_count'] as int;
-        final goalAtCompletion = row['goal_at_completion'] as int;
-        completions[date] = CompletionRecord(
-          count: count,
-          goalAtCompletion: goalAtCompletion,
+      // Use batch conversion for better performance (single log vs N logs)
+      if (config.convertToLocal && completionRows.isNotEmpty) {
+        final utcTimestamps = completionRows
+            .map((row) => row['completion_date'] as int)
+            .toList();
+        
+        final localDates = TimezoneUtils.batchFromUtcTimestamp(
+          utcTimestamps,
+          context: 'Habit $habitId completion dates',
         );
+        
+        for (var i = 0; i < completionRows.length; i++) {
+          final row = completionRows[i];
+          final date = localDates[i];
+          final count = row['completion_count'] as int;
+          final goalAtCompletion = row['goal_at_completion'] as int;
+          completions[date] = CompletionRecord(
+            count: count,
+            goalAtCompletion: goalAtCompletion,
+          );
+        }
+      } else {
+        // Non-local conversion (raw UTC timestamps)
+        for (final row in completionRows) {
+          final date = DateTime.fromMillisecondsSinceEpoch(
+            row['completion_date'] as int,
+            isUtc: true,
+          );
+          final count = row['completion_count'] as int;
+          final goalAtCompletion = row['goal_at_completion'] as int;
+          completions[date] = CompletionRecord(
+            count: count,
+            goalAtCompletion: goalAtCompletion,
+          );
+        }
       }
 
       stopwatch.stop();

@@ -87,4 +87,88 @@ class TimezoneUtils {
   static String formatForStorage(DateTime dateTime) {
     return dateTime.toUtc().toIso8601String();
   }
+  
+  /// Batch convert UTC timestamps to local DateTimes (reduces logging overhead)
+  ///
+  /// Use this when converting multiple timestamps at once to avoid excessive logging
+  /// @param utcTimestamps List of UTC timestamps in milliseconds since epoch
+  /// @param context Optional context for debugging (e.g., "habit completions", "creation dates")
+  /// @return List of local DateTimes for display
+  static List<DateTime> batchFromUtcTimestamp(
+    List<int> utcTimestamps, {
+    String? context,
+  }) {
+    if (utcTimestamps.isEmpty) {
+      return [];
+    }
+    
+    final localDateTimes = utcTimestamps
+        .map((timestamp) => DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal())
+        .toList();
+    
+    // Single log message for the entire batch
+    debugPrint(
+      '🌍 [BATCH-DISPLAY] Converted ${utcTimestamps.length} UTC timestamps to local'
+      '${context != null ? ' | Context: $context' : ''}',
+    );
+    
+    return localDateTimes;
+  }
+  
+  /// Batch convert local DateTimes to UTC timestamps (reduces logging overhead)
+  ///
+  /// Use this when converting multiple DateTimes at once to avoid excessive logging
+  /// @param localDateTimes List of local DateTimes to convert
+  /// @param context Optional context for debugging
+  /// @return List of UTC timestamps in milliseconds since epoch
+  static List<int> batchToUtcTimestamp(
+    List<DateTime> localDateTimes, {
+    String? context,
+  }) {
+    if (localDateTimes.isEmpty) {
+      return [];
+    }
+    
+    final utcTimestamps = localDateTimes
+        .map((dateTime) => dateTime.toUtc().millisecondsSinceEpoch)
+        .toList();
+    
+    // Single log message for the entire batch
+    debugPrint(
+      '🌍 [BATCH-STORAGE] Converted ${localDateTimes.length} local DateTimes to UTC'
+      '${context != null ? ' | Context: $context' : ''}',
+    );
+    
+    return utcTimestamps;
+  }
+  
+  /// Batch convert map of date keys with UTC timestamp values to local dates
+  ///
+  /// Specifically optimized for completion data: Map<DateTime, int>
+  /// @param utcCompletionMap Map with UTC timestamps as keys
+  /// @param context Optional context for debugging
+  /// @return Map with local DateTimes as keys
+  static Map<DateTime, int> batchConvertCompletionMap(
+    Map<int, int> utcCompletionMap, {
+    String? context,
+  }) {
+    if (utcCompletionMap.isEmpty) {
+      return {};
+    }
+    
+    final localCompletionMap = <DateTime, int>{};
+    
+    for (final entry in utcCompletionMap.entries) {
+      final localDate = DateTime.fromMillisecondsSinceEpoch(entry.key).toLocal();
+      localCompletionMap[localDate] = entry.value;
+    }
+    
+    // Single log message for the entire batch
+    debugPrint(
+      '🌍 [BATCH-COMPLETIONS] Converted ${utcCompletionMap.length} completion timestamps to local'
+      '${context != null ? ' | Context: $context' : ''}',
+    );
+    
+    return localCompletionMap;
+  }
 }
