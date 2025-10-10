@@ -518,10 +518,10 @@ class AtomicDataService implements IAtomicDataService {
           ),
         );
 
-        if (completionResult.success) {
+        if (completionResult.success && completionResult.data != null) {
           // Extract just the counts
           final completions = <DateTime, int>{};
-          for (final entry in completionResult.data.completions.entries) {
+          for (final entry in completionResult.data!.completions.entries) {
             completions[entry.key] = entry.value.count;
           }
           result[habit.id] = completions;
@@ -604,8 +604,8 @@ class AtomicDataService implements IAtomicDataService {
           ),
         );
 
-        if (completionResult.success) {
-          result[habit.id] = completionResult.data.completions;
+        if (completionResult.success && completionResult.data != null) {
+          result[habit.id] = completionResult.data!.completions;
         }
       }
 

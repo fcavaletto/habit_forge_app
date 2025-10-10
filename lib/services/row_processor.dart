@@ -523,20 +523,20 @@ class CachedRowProcessor implements IRowProcessor {
 
     final result = await _processor.processHabitMetadata(row: row, context: context);
 
-    if (result.success) {
+    if (result.success && result.data != null) {
       // Cache the processed metadata
       await _cache.cacheMetadata([habitId], {
         'metadata': {
-          'id': result.data.id,
-          'name': result.data.name,
-          'description': result.data.description,
-          'colorIndex': result.data.colorIndex,
-          'iconName': result.data.iconName,
-          'createdAt': result.data.createdAt.toIso8601String(),
-          'isArchived': result.data.isArchived,
-          'orderValue': result.data.orderValue,
-          'targetGoal': result.data.targetGoal,
-          'allowExceedGoal': result.data.allowExceedGoal,
+          'id': result.data!.id,
+          'name': result.data!.name,
+          'description': result.data!.description,
+          'colorIndex': result.data!.colorIndex,
+          'iconName': result.data!.iconName,
+          'createdAt': result.data!.createdAt.toIso8601String(),
+          'isArchived': result.data!.isArchived,
+          'orderValue': result.data!.orderValue,
+          'targetGoal': result.data!.targetGoal,
+          'allowExceedGoal': result.data!.allowExceedGoal,
         },
         'timestamp': DateTime.now().toIso8601String(),
       });
@@ -602,14 +602,14 @@ class CachedRowProcessor implements IRowProcessor {
 
     final result = await _processor.processReminders(habitId: habitId, context: context);
 
-    if (result.success) {
+    if (result.success && result.data != null) {
       await _cache.cacheMetadata([habitId], {
         'reminders': {
-          'reminderTime': result.data.reminderTime != null ? {
-            'hour': result.data.reminderTime!.hour,
-            'minute': result.data.reminderTime!.minute,
+          'reminderTime': result.data!.reminderTime != null ? {
+            'hour': result.data!.reminderTime!.hour,
+            'minute': result.data!.reminderTime!.minute,
           } : null,
-          'enableReminders': result.data.enableReminders,
+          'enableReminders': result.data!.enableReminders,
         },
         'timestamp': DateTime.now().toIso8601String(),
       });
@@ -657,9 +657,9 @@ class CachedRowProcessor implements IRowProcessor {
 
     final result = await _processor.processFrequencyDays(row: row, context: context);
 
-    if (result.success) {
+    if (result.success && result.data != null) {
       await _cache.cacheMetadata([habitId], {
-        'frequency': result.data.frequencyDays,
+        'frequency': result.data!.frequencyDays,
         'timestamp': DateTime.now().toIso8601String(),
       });
     }
@@ -799,7 +799,7 @@ class RowProcessor implements IRowProcessor {
     final metadataResult = results[0] as DataAccessResult<HabitMetadata>;
     final frequencyResult = results[1] as DataAccessResult<ProcessedFrequency>;
 
-    if (!metadataResult.success) {
+    if (!metadataResult.success || metadataResult.data == null) {
       return DataAccessResult.failure(
         errorMessage: 'Failed to process metadata: ${metadataResult.errorMessage}',
         context: context,
@@ -842,9 +842,9 @@ class RowProcessor implements IRowProcessor {
       );
     }
 
-    // Assemble the complete habit
+    // Assemble the complete habit (safe: null checked above)
     return await assembleHabit(
-      metadata: metadataResult.data,
+      metadata: metadataResult.data!,
       completions: completionResult.data,
       reminders: reminderResult.data,
       frequency: frequencyResult.data,

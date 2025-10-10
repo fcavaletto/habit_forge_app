@@ -1021,13 +1021,13 @@ class HabitState extends ChangeNotifier {
         ),
       );
       
-      if (!metadataResult.success || metadataResult.data.isEmpty) {
+      if (!metadataResult.success || metadataResult.data == null || metadataResult.data!.isEmpty) {
         _error = 'Failed to fetch unarchived habit metadata';
         notifyListeners();
         return false;
       }
       
-      final habitMetadata = metadataResult.data.first;
+      final habitMetadata = metadataResult.data!.first;
 
       // Step 3: Load completions for the unarchived habit (last 7 days)
       final today = DateTime.now();
@@ -1044,8 +1044,8 @@ class HabitState extends ChangeNotifier {
       );
 
       Map<DateTime, CompletionRecord> completions = {};
-      if (completionResult.success) {
-        completions = completionResult.data[habitId] ?? {};
+      if (completionResult.success && completionResult.data != null) {
+        completions = completionResult.data![habitId] ?? {};
       }
       
       // Build full habit with metadata + completions
