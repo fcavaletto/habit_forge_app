@@ -2,18 +2,38 @@ import 'package:flutter/foundation.dart';
 import '../models/habit.dart';
 import '../models/habit_result.dart';
 import '../repositories/sqlite_habit_repository.dart';
-import '../services/persistent_cache_service.dart';
+import '../services/atomic_data_service.dart';
+import '../services/caching_service.dart';
+import '../services/database_service.dart';
+import '../services/row_processor.dart';
 
 /// Centralized service for all database queries with mandatory date ranges
 /// and comprehensive logging to prevent data access issues.
 class DataAccessService {
   final SqliteHabitRepository _repository;
-  final PersistentCacheService _cache;
+  final ICachingService _cache;
+  late final AtomicDataService _atomicDataService;
 
   DataAccessService({
     required SqliteHabitRepository repository,
-    required PersistentCacheService cache,
-  }) : _repository = repository, _cache = cache;
+    required ICachingService cache,
+  }) : _repository = repository, _cache = cache {
+    // Initialize the atomic data service with dependencies
+    _atomicDataService = AtomicDataService(
+      repository: repository,
+      cache: cache,
+      rowProcessor: RowProcessor(
+        metadataProcessor: MetadataProcessor(),
+        completionProcessor: CompletionProcessor(DatabaseService()),
+        reminderProcessor: ReminderProcessor(DatabaseService()),
+        frequencyProcessor: FrequencyProcessor(),
+        habitAssembler: HabitAssembler(),
+      ),
+    );
+  }
+
+  /// Get the atomic data service for new architecture operations
+  AtomicDataService get atomicDataService => _atomicDataService;
 
   /// Loads habit metadata only (no completion data)
   /// 
@@ -224,7 +244,7 @@ class DataAccessService {
 
     return await _withTiming('addCompletions', () async {
       await _repository.addMultipleCompletions(habitId, date, count);
-      await _cache.updateCompletion(habitId, date, count);
+      await _cache.cacheCompletion(habitId, date, count);
     });
   }
 
@@ -242,7 +262,7 @@ class DataAccessService {
 
     return await _withTiming('removeCompletions', () async {
       await _repository.removeOldestCompletions(habitId, date, count);
-      await _cache.updateCompletion(habitId, date, 0); // Remove from cache
+      await _cache.cacheCompletion(habitId, date, 0); // Remove from cache
     });
   }
 

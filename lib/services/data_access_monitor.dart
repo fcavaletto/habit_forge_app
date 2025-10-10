@@ -404,6 +404,86 @@ class HealthChecker {
   }
 }
 
+/// Retry configuration for database operations
+class RetryConfig {
+  final int maxAttempts;
+  final Duration initialDelay;
+  final Duration maxDelay;
+  final double backoffMultiplier;
+
+  const RetryConfig({
+    this.maxAttempts = 3,
+    this.initialDelay = const Duration(milliseconds: 100),
+    this.maxDelay = const Duration(seconds: 5),
+    this.backoffMultiplier = 2.0,
+  });
+
+  /// Calculate delay for attempt number
+  Duration getDelayForAttempt(int attempt) {
+    final delay = initialDelay * (backoffMultiplier * (attempt - 1));
+    return delay > maxDelay ? maxDelay : delay;
+  }
+}
+
+/// Retry utility for database operations
+class RetryUtils {
+  /// Execute operation with exponential backoff retry
+  static Future<T> executeWithRetry<T>({
+    required Future<T> Function() operation,
+    RetryConfig config = const RetryConfig(),
+    String operationName = 'unknown',
+  }) async {
+    Exception? lastException;
+
+    for (int attempt = 1; attempt <= config.maxAttempts; attempt++) {
+      try {
+        return await operation();
+      } catch (e) {
+        lastException = e as Exception;
+
+        if (attempt == config.maxAttempts) {
+          DataAccessLogger.logFailure(
+            operation: operationName,
+            component: 'RetryUtils',
+            executionTime: Duration.zero,
+            error: e,
+            parameters: {'attempt': attempt, 'maxAttempts': config.maxAttempts},
+          );
+          rethrow;
+        }
+
+        final delay = config.getDelayForAttempt(attempt);
+        DataAccessLogger.logWarning(
+          operation: operationName,
+          component: 'RetryUtils',
+          message: 'Attempt $attempt failed, retrying in ${delay.inMilliseconds}ms',
+          parameters: {'attempt': attempt, 'maxAttempts': config.maxAttempts},
+        );
+
+        await Future.delayed(delay);
+      }
+    }
+
+    throw lastException!;
+  }
+
+  /// Execute operation with circuit breaker protection and retry
+  static Future<T> executeWithCircuitBreakerAndRetry<T>({
+    required Future<T> Function() operation,
+    required CircuitBreaker circuitBreaker,
+    RetryConfig retryConfig = const RetryConfig(),
+    String operationName = 'unknown',
+  }) async {
+    return await circuitBreaker.execute(() =>
+      executeWithRetry(
+        operation: operation,
+        config: retryConfig,
+        operationName: operationName,
+      )
+    );
+  }
+}
+
 /// Global instances for easy access
 final dataAccessLogger = DataAccessLogger();
 final performanceMonitor = PerformanceMonitor();
@@ -413,3 +493,4 @@ final healthChecker = HealthChecker();
 final databaseCircuitBreaker = CircuitBreaker(name: 'database');
 final cacheCircuitBreaker = CircuitBreaker(name: 'cache');
 final atomicServiceCircuitBreaker = CircuitBreaker(name: 'atomic_service');
+final rowProcessorCircuitBreaker = CircuitBreaker(name: 'row_processor');

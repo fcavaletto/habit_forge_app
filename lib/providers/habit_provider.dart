@@ -11,6 +11,7 @@ import '../services/completion_cache_service.dart';
 import '../services/habit_metadata_cache_service.dart';
 import '../services/persistent_cache_service.dart';
 import '../services/data_access_service.dart';
+import '../services/atomic_data_service.dart';
 import '../services/sample_data_generator_service.dart';
 import '../utils/data_freshness.dart';
 import '../utils/date_range_utils.dart';
@@ -281,21 +282,46 @@ class HabitState extends ChangeNotifier {
   /// Add a new habit
   Future<HabitSaveResult> addHabit(Habit habit) async {
     try {
-      final result = await _dataAccessService.saveHabit(habit);
-      if (result.success && result.savedHabit != null) {
+      // Convert Habit to HabitData for the new service
+      final habitData = HabitData(
+        name: habit.name,
+        description: habit.description,
+        colorIndex: habit.colorIndex,
+        iconName: habit.iconName,
+        reminderTime: habit.reminderTime,
+        enableReminders: habit.enableReminders,
+        frequencyDays: habit.frequencyDays,
+        targetGoal: habit.targetGoal,
+        allowExceedGoal: habit.allowExceedGoal,
+      );
+
+      // Use the new AtomicDataService for habit creation
+      final result = await _dataAccessService.atomicDataService.createHabit(
+        habitData: habitData,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'addHabit',
+        ),
+      );
+
+      if (result.success && result.data != null) {
         // Add to local state directly
-        _habits.insert(0, result.savedHabit!); // Add at the beginning
+        _habits.insert(0, result.data!); // Add at the beginning
 
         // Cache the new habit metadata
-        final metadata = HabitMetadata.fromHabit(result.savedHabit!);
-        _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
+        final metadata = HabitMetadata.fromHabit(result.data!);
+        _metadataCache.cacheHabitMetadata(result.data!.id, metadata);
 
         // Update persistent cache immediately after database operation
-        await _updateHabitInCache(result.savedHabit!);
+        await _updateHabitInCache(result.data!);
 
         notifyListeners();
       }
-      return result;
+
+      // Convert back to HabitSaveResult for backward compatibility
+      return result.success
+          ? HabitSaveResult.success(result.data!)
+          : HabitSaveResult.error(result.errorMessage ?? 'Unknown error');
     } catch (e) {
       return HabitSaveResult.error('Failed to add habit: $e');
     }

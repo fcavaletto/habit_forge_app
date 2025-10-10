@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../repositories/sqlite_habit_repository.dart';
+import '../services/habit_metadata_cache_service.dart';
 import 'caching_service.dart';
+import 'row_processor.dart';
 
 /// Context information for logging and debugging data access operations
 class DataAccessContext {
   final String component; // Which UI component is making the request
   final String operation; // What operation is being performed
   final Map<String, dynamic> parameters; // Additional context parameters
-  final DateTime timestamp;
+  final DateTime? timestamp;
 
   DataAccessContext({
     required this.component,
@@ -227,6 +229,89 @@ abstract class IAtomicDataService {
   Future<void> clearCache();
 }
 
+/// Interface for atomic row processing operations
+///
+/// Replaces the monolithic _rowToHabit method with focused, testable operations
+abstract class IRowProcessor {
+  /// Process basic habit metadata from database row
+  ///
+  /// [row] - Database row containing habit table data
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns processed metadata without completions, reminders, or frequency data
+  Future<DataAccessResult<HabitMetadata>> processHabitMetadata({
+    required Map<String, dynamic> row,
+    required DataAccessContext context,
+  });
+
+  /// Process completion data for a habit with optional date filtering
+  ///
+  /// [habitId] - ID of the habit to load completions for
+  /// [config] - Loading configuration including date range
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns processed completion data or empty map if no completions loaded
+  Future<DataAccessResult<ProcessedCompletions>> processCompletions({
+    required String habitId,
+    required HabitLoadConfig config,
+    required DataAccessContext context,
+  });
+
+  /// Process reminder settings for a habit
+  ///
+  /// [habitId] - ID of the habit to load reminders for
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns processed reminder settings or defaults if none found
+  Future<DataAccessResult<ProcessedReminders>> processReminders({
+    required String habitId,
+    required DataAccessContext context,
+  });
+
+  /// Process frequency days for a habit
+  ///
+  /// [row] - Database row containing frequency_days JSON
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns processed frequency data or defaults if parsing fails
+  Future<DataAccessResult<ProcessedFrequency>> processFrequencyDays({
+    required Map<String, dynamic> row,
+    required DataAccessContext context,
+  });
+
+  /// Assemble complete Habit object from processed components
+  ///
+  /// [metadata] - Basic habit metadata
+  /// [completions] - Optional completion data
+  /// [reminders] - Optional reminder settings
+  /// [frequency] - Optional frequency settings
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns fully assembled Habit object ready for use
+  Future<DataAccessResult<Habit>> assembleHabit({
+    required HabitMetadata metadata,
+    ProcessedCompletions? completions,
+    ProcessedReminders? reminders,
+    ProcessedFrequency? frequency,
+    required DataAccessContext context,
+  });
+
+  /// Process complete habit from database row (convenience method)
+  ///
+  /// [row] - Database row containing habit data
+  /// [habitId] - ID of the habit (for loading completions and reminders)
+  /// [config] - Loading configuration
+  /// [context] - Logging context for the operation
+  ///
+  /// This method combines all atomic operations for backward compatibility
+  Future<DataAccessResult<Habit>> processHabitFromRow({
+    required Map<String, dynamic> row,
+    required String habitId,
+    required HabitLoadConfig config,
+    required DataAccessContext context,
+  });
+}
+
 /// Interface for data preparation services
 ///
 /// These services combine atomic operations to provide UI-ready data structures
@@ -261,12 +346,15 @@ abstract class IDataPreparationService {
 class AtomicDataService implements IAtomicDataService {
   final SqliteHabitRepository _repository;
   final ICachingService _cache;
+  final IRowProcessor _rowProcessor;
 
   AtomicDataService({
     required SqliteHabitRepository repository,
     required ICachingService cache,
+    required IRowProcessor rowProcessor,
   })  : _repository = repository,
-        _cache = cache;
+        _cache = cache,
+        _rowProcessor = rowProcessor;
 
   @override
   Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
@@ -278,7 +366,7 @@ class AtomicDataService implements IAtomicDataService {
     try {
       debugPrint('🔍 [ATOMIC] getHabitFeatures called: ${context.component}.${context.operation}');
 
-      // Get habit metadata from repository
+      // Get habit metadata from repository (still using existing method for now)
       final habits = await _repository.getActiveHabitsForReordering();
 
       // Filter by habit IDs if provided
@@ -344,21 +432,35 @@ class AtomicDataService implements IAtomicDataService {
 
       final result = <String, Map<DateTime, int>>{};
 
-      // Get completion data for each habit
+      // Get completion data for each habit using new RowProcessor
       for (final habit in filteredHabits) {
-        final completionRecords = await _repository.getCompletionDataForHabit(
-          habit.id,
-          startDate,
-          endDate,
+        final config = HabitLoadConfig(
+          startDate: startDate,
+          endDate: endDate,
+          convertToLocal: false, // Keep UTC for calculations
+          loadCompletions: true,
+          loadReminders: false,
+          loadFrequencyDays: false,
         );
 
-        // Extract just the counts
-        final completions = <DateTime, int>{};
-        for (final entry in completionRecords.entries) {
-          completions[entry.key] = entry.value.count;
-        }
+        final completionResult = await _rowProcessor.processCompletions(
+          habitId: habit.id,
+          config: config,
+          context: DataAccessContext(
+            component: 'AtomicDataService',
+            operation: 'processCompletions',
+            parameters: {'habitId': habit.id},
+          ),
+        );
 
-        result[habit.id] = completions;
+        if (completionResult.success) {
+          // Extract just the counts
+          final completions = <DateTime, int>{};
+          for (final entry in completionResult.data.completions.entries) {
+            completions[entry.key] = entry.value.count;
+          }
+          result[habit.id] = completions;
+        }
       }
 
       stopwatch.stop();
@@ -416,15 +518,30 @@ class AtomicDataService implements IAtomicDataService {
 
       final result = <String, Map<DateTime, CompletionRecord>>{};
 
-      // Get completion data for each habit
+      // Get completion data for each habit using new RowProcessor
       for (final habit in filteredHabits) {
-        final completionRecords = await _repository.getCompletionDataForHabit(
-          habit.id,
-          startDate,
-          endDate,
+        final config = HabitLoadConfig(
+          startDate: startDate,
+          endDate: endDate,
+          convertToLocal: true, // Convert to local time for display
+          loadCompletions: true,
+          loadReminders: false,
+          loadFrequencyDays: false,
         );
 
-        result[habit.id] = completionRecords;
+        final completionResult = await _rowProcessor.processCompletions(
+          habitId: habit.id,
+          config: config,
+          context: DataAccessContext(
+            component: 'AtomicDataService',
+            operation: 'processCompletions',
+            parameters: {'habitId': habit.id},
+          ),
+        );
+
+        if (completionResult.success) {
+          result[habit.id] = completionResult.data.completions;
+        }
       }
 
       stopwatch.stop();
@@ -878,74 +995,3 @@ class HabitData {
   }
 }
 
-/// Simplified habit metadata for efficient loading
-class HabitMetadata {
-  final String id;
-  final String name;
-  final String description;
-  final int colorIndex;
-  final String iconName;
-  final DateTime createdAt;
-  final bool isArchived;
-  final double? orderValue;
-  final Map<String, int> frequencyDays;
-  final int targetGoal;
-  final bool allowExceedGoal;
-  final TimeOfDay? reminderTime;
-  final bool enableReminders;
-
-  const HabitMetadata({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.colorIndex,
-    required this.iconName,
-    required this.createdAt,
-    required this.isArchived,
-    this.orderValue,
-    required this.frequencyDays,
-    required this.targetGoal,
-    required this.allowExceedGoal,
-    this.reminderTime,
-    required this.enableReminders,
-  });
-
-  /// Create HabitMetadata from a Habit object
-  factory HabitMetadata.fromHabit(Habit habit) {
-    return HabitMetadata(
-      id: habit.id,
-      name: habit.name,
-      description: habit.description,
-      colorIndex: habit.colorIndex,
-      iconName: habit.iconName,
-      createdAt: habit.createdAt,
-      isArchived: habit.isArchived,
-      orderValue: habit.orderValue,
-      frequencyDays: habit.frequencyDays,
-      targetGoal: habit.targetGoal,
-      allowExceedGoal: habit.allowExceedGoal,
-      reminderTime: habit.reminderTime,
-      enableReminders: habit.enableReminders,
-    );
-  }
-
-  /// Convert back to a Habit object with empty completions
-  Habit toHabit() {
-    return Habit(
-      id: id,
-      name: name,
-      description: description,
-      colorIndex: colorIndex,
-      createdAt: createdAt,
-      completions: {}, // Empty completions for metadata-only habit
-      iconName: iconName,
-      reminderTime: reminderTime,
-      enableReminders: enableReminders,
-      isArchived: isArchived,
-      orderValue: orderValue,
-      frequencyDays: frequencyDays,
-      targetGoal: targetGoal,
-      allowExceedGoal: allowExceedGoal,
-    );
-  }
-}

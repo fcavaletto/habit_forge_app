@@ -5,6 +5,7 @@ import 'atomic_data_service.dart';
 import 'caching_service.dart';
 import 'data_preparation_service.dart';
 import 'data_access_monitor.dart';
+import 'row_processor.dart';
 
 /// Service Factory for Dependency Injection
 ///
@@ -15,6 +16,7 @@ class ServiceFactory {
   static DatabaseService? _databaseService;
   static SqliteHabitRepository? _habitRepository;
   static ICachingService? _cachingService;
+  static IRowProcessor? _rowProcessor;
 
   // Atomic services
   static IAtomicDataService? _atomicDataService;
@@ -39,10 +41,33 @@ class ServiceFactory {
       // Initialize repository
       _habitRepository ??= SqliteHabitRepository(_databaseService!);
 
+      // Initialize row processor with caching
+      _rowProcessor ??= RowProcessorFactory.create(_databaseService!, _cachingService!);
+
+      // Initialize smaller processors for composition
+      final metadataProcessor = MetadataProcessor();
+      final completionProcessor = CompletionProcessor(_databaseService!);
+      final reminderProcessor = ReminderProcessor(_databaseService!);
+      final frequencyProcessor = FrequencyProcessor();
+      final habitAssembler = HabitAssembler();
+
+      // Replace with composed processor (keeping cached version for now)
+      _rowProcessor ??= CachedRowProcessor(
+        RowProcessor(
+          metadataProcessor: metadataProcessor,
+          completionProcessor: completionProcessor,
+          reminderProcessor: reminderProcessor,
+          frequencyProcessor: frequencyProcessor,
+          habitAssembler: habitAssembler,
+        ),
+        _cachingService!,
+      );
+
       // Initialize atomic data service
       _atomicDataService ??= AtomicDataService(
         repository: _habitRepository!,
         cache: _cachingService!,
+        rowProcessor: _rowProcessor!,
       );
 
       // Initialize data preparation services
@@ -103,6 +128,7 @@ class ServiceFactory {
     _databaseService = null;
     _habitRepository = null;
     _cachingService = null;
+    _rowProcessor = null;
     _atomicDataService = null;
     _dashboardDataService = null;
     _statsDataService = null;

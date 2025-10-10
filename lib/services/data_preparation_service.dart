@@ -72,7 +72,22 @@ class DashboardDataPreparationService implements IDataPreparationService {
         final habitCompletions = completionsResult.data[metadata.id] ?? {};
 
         // Create habit with combined data
-        final habit = metadata.toHabit().copyWith(completions: habitCompletions);
+        final habit = Habit(
+          id: metadata.id,
+          name: metadata.name,
+          description: metadata.description,
+          colorIndex: metadata.colorIndex,
+          createdAt: metadata.createdAt,
+          completions: habitCompletions,
+          iconName: metadata.iconName,
+          reminderTime: metadata.reminderTime,
+          enableReminders: metadata.enableReminders,
+          isArchived: metadata.isArchived,
+          orderValue: metadata.orderValue,
+          frequencyDays: metadata.frequencyDays,
+          targetGoal: metadata.targetGoal,
+          allowExceedGoal: metadata.allowExceedGoal,
+        );
         dashboardHabits.add(habit);
       }
 
@@ -161,7 +176,22 @@ class DashboardDataPreparationService implements IDataPreparationService {
         final habitCompletions = completionsResult.data[metadata.id] ?? {};
 
         // Create habit with combined data
-        final habit = metadata.toHabit().copyWith(completions: habitCompletions);
+        final habit = Habit(
+          id: metadata.id,
+          name: metadata.name,
+          description: metadata.description,
+          colorIndex: metadata.colorIndex,
+          createdAt: metadata.createdAt,
+          completions: habitCompletions,
+          iconName: metadata.iconName,
+          reminderTime: metadata.reminderTime,
+          enableReminders: metadata.enableReminders,
+          isArchived: metadata.isArchived,
+          orderValue: metadata.orderValue,
+          frequencyDays: metadata.frequencyDays,
+          targetGoal: metadata.targetGoal,
+          allowExceedGoal: metadata.allowExceedGoal,
+        );
         statsHabits.add(habit);
       }
 
@@ -264,7 +294,22 @@ class DashboardDataPreparationService implements IDataPreparationService {
         final habitCompletions = completionsResult.data[metadata.id] ?? {};
 
         // Create habit with combined data
-        final habit = metadata.toHabit().copyWith(completions: habitCompletions);
+        final habit = Habit(
+          id: metadata.id,
+          name: metadata.name,
+          description: metadata.description,
+          colorIndex: metadata.colorIndex,
+          createdAt: metadata.createdAt,
+          completions: habitCompletions,
+          iconName: metadata.iconName,
+          reminderTime: metadata.reminderTime,
+          enableReminders: metadata.enableReminders,
+          isArchived: metadata.isArchived,
+          orderValue: metadata.orderValue,
+          frequencyDays: metadata.frequencyDays,
+          targetGoal: metadata.targetGoal,
+          allowExceedGoal: metadata.allowExceedGoal,
+        );
         calendarHabits.add(habit);
       }
 
@@ -324,7 +369,22 @@ class DashboardDataPreparationService implements IDataPreparationService {
 
       // Convert metadata to habits (empty completions for reordering)
       final reorderableHabits = metadataResult.data
-          .map((metadata) => metadata.toHabit())
+          .map((metadata) => Habit(
+            id: metadata.id,
+            name: metadata.name,
+            description: metadata.description,
+            colorIndex: metadata.colorIndex,
+            createdAt: metadata.createdAt,
+            completions: {}, // Empty completions for reordering
+            iconName: metadata.iconName,
+            reminderTime: metadata.reminderTime,
+            enableReminders: metadata.enableReminders,
+            isArchived: metadata.isArchived,
+            orderValue: metadata.orderValue,
+            frequencyDays: metadata.frequencyDays,
+            targetGoal: metadata.targetGoal,
+            allowExceedGoal: metadata.allowExceedGoal,
+          ))
           .toList();
 
       // Sort by display order

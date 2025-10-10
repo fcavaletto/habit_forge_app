@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'caching_service.dart';
 import '../models/habit.dart';
 import '../models/cache_metadata.dart';
 
@@ -30,7 +31,7 @@ import '../models/cache_metadata.dart';
 /// - **No loading screen needed**
 /// - **Immediate data display**
 /// - **Reduced database queries**
-class PersistentCacheService {
+class PersistentCacheService implements ICachingService {
   static const String _habitsKey = 'cached_habits';
   static const String _metadataKey = 'cache_metadata';
   static const String _backupKey = 'cached_habits_backup';
@@ -536,5 +537,71 @@ class PersistentCacheService {
     if (_prefs == null) {
       await initialize();
     }
+  }
+
+  // ICachingService interface implementation
+  @override
+  Future<void> cacheMetadata(List<String> habitIds, Map<String, dynamic> metadata) async {
+    await _ensureInitialized();
+    // Store metadata in persistent cache
+    final metadataJson = jsonEncode(metadata);
+    await _prefs!.setString('metadata_${habitIds.first}', metadataJson);
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getCachedMetadata(String habitId) async {
+    await _ensureInitialized();
+    // Load metadata for this specific habit
+    final metadataJson = _prefs!.getString('metadata_$habitId');
+    if (metadataJson != null) {
+      return jsonDecode(metadataJson) as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> invalidateMetadata() async {
+    await _ensureInitialized();
+    await clearCache();
+  }
+
+  @override
+  Future<void> cacheCompletion(String habitId, DateTime date, int count) async {
+    await _ensureInitialized();
+    // This would need to be implemented properly
+    // For now, just mark as completed
+  }
+
+  @override
+  Future<int?> getCachedCompletion(String habitId, DateTime date) async {
+    await _ensureInitialized();
+    // This would need to be implemented properly
+    return null;
+  }
+
+  @override
+  Future<void> invalidateCompletion(String habitId, DateTime date) async {
+    await _ensureInitialized();
+    // This would need to be implemented properly
+  }
+
+  @override
+  Future<void> invalidateAllCompletions() async {
+    await _ensureInitialized();
+    // This would need to be implemented properly
+  }
+
+  @override
+  Future<Map<String, dynamic>> getStats() async {
+    await _ensureInitialized();
+    return {
+      'total_entries': _prefs?.getKeys().length ?? 0,
+      'last_updated': _prefs?.getString('last_updated'),
+    };
+  }
+
+  @override
+  Future<void> clearAll() async {
+    await clearCache();
   }
 }
