@@ -279,10 +279,12 @@ class HabitState extends ChangeNotifier {
     }
   }
 
-  /// Add a new habit
+  /// Add a new habit with incremental update (no full reload)
   Future<HabitSaveResult> addHabit(Habit habit) async {
     try {
-      // Convert Habit to HabitData for the new service
+      debugPrint('🎯 [ADD_HABIT] Starting incremental habit creation');
+      
+      // Step 1: Convert Habit to HabitData for the atomic service
       final habitData = HabitData(
         name: habit.name,
         description: habit.description,
@@ -295,34 +297,95 @@ class HabitState extends ChangeNotifier {
         allowExceedGoal: habit.allowExceedGoal,
       );
 
-      // Use the new AtomicDataService for habit creation
+      // Step 2: Create habit in database (atomic operation)
       final result = await _dataAccessService.atomicDataService.createHabit(
         habitData: habitData,
         context: DataAccessContext(
           component: 'HabitProvider',
           operation: 'addHabit',
+          parameters: {'name': habit.name},
         ),
       );
 
-      if (result.success && result.data != null) {
-        // Add to local state directly
-        _habits.insert(0, result.data!); // Add at the beginning
+      if (!result.success || result.data == null) {
+        return HabitSaveResult.error(result.errorMessage ?? 'Unknown error');
+      }
+      
+      final newHabit = result.data!;
+      debugPrint('✅ [ADD_HABIT] Habit created in database: ${newHabit.id}');
 
-        // Cache the new habit metadata
-        final metadata = HabitMetadata.fromHabit(result.data!);
-        _metadataCache.cacheHabitMetadata(result.data!.id, metadata);
+      // Step 3: Add to local state (incremental - no reload)
+      _habits.insert(0, newHabit);
+      debugPrint('✅ [ADD_HABIT] Habit added to local state');
 
-        // Update persistent cache immediately after database operation
-        await _updateHabitInCache(result.data!);
+      // Step 4: Update cache using additive method (no clear!)
+      final metadata = HabitMetadata.fromHabit(newHabit);
+      await _dataAccessService.cache.addHabitToMetadata(newHabit.id, {
+        'id': metadata.id,
+        'name': metadata.name,
+        'description': metadata.description,
+        'colorIndex': metadata.colorIndex,
+        'iconName': metadata.iconName,
+        'createdAt': metadata.createdAt.toIso8601String(),
+        'reminderTime': metadata.reminderTime != null 
+            ? '${metadata.reminderTime!.hour}:${metadata.reminderTime!.minute}'
+            : null,
+        'enableReminders': metadata.enableReminders,
+        'isArchived': metadata.isArchived,
+        'orderValue': metadata.orderValue,
+        'frequencyDays': metadata.frequencyDays,
+        'targetGoal': metadata.targetGoal,
+        'allowExceedGoal': metadata.allowExceedGoal,
+      });
+      _metadataCache.cacheHabitMetadata(newHabit.id, metadata);
+      debugPrint('✅ [ADD_HABIT] Habit added to cache (additive)');
 
-        notifyListeners();
+      // Step 5: Load ONLY new habit's completions (last 7 days for dashboard)
+      final today = DateTime.now();
+      final last7Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 6));
+      
+      debugPrint('🔍 [ADD_HABIT] Loading completions for new habit only (last 7 days)');
+      
+      final completionResult = await _dataAccessService.atomicDataService.getCompletionTimestamps(
+        startDate: last7Days,
+        endDate: today,
+        habitIds: [newHabit.id], // ← ONLY the new habit!
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'loadNewHabitCompletions',
+        ),
+      );
+
+      if (completionResult.success) {
+        final completions = completionResult.data[newHabit.id] ?? {};
+        
+        // Update habit with completion data
+        final habitWithCompletions = newHabit.copyWith(completions: completions);
+        _habits[0] = habitWithCompletions;
+        
+        // Cache completions
+        for (final entry in completions.entries) {
+          await _dataAccessService.cache.cacheCompletion(
+            newHabit.id,
+            entry.key,
+            entry.value.count,
+          );
+        }
+        
+        debugPrint('✅ [ADD_HABIT] Loaded ${completions.length} completion records for new habit');
       }
 
-      // Convert back to HabitSaveResult for backward compatibility
-      return result.success
-          ? HabitSaveResult.success(result.data!)
-          : HabitSaveResult.error(result.errorMessage ?? 'Unknown error');
-    } catch (e) {
+      // Step 6: Single notification (no cascade)
+      notifyListeners();
+      
+      debugPrint('🎯 [ADD_HABIT] Completed successfully - NO full reload!');
+      debugPrint('📊 [ADD_HABIT] Total habits in state: ${_habits.length}');
+      
+      return HabitSaveResult.success(_habits[0]);
+      
+    } catch (e, stackTrace) {
+      debugPrint('❌ [ADD_HABIT] Failed: $e');
+      debugPrint('Stack trace: $stackTrace');
       return HabitSaveResult.error('Failed to add habit: $e');
     }
   }
@@ -398,19 +461,32 @@ class HabitState extends ChangeNotifier {
       final difference = count - currentCount;
 
       if (difference > 0) {
-        // Add completions using DataAccessService
-        await _dataAccessService.addCompletions(habitId, date, difference);
-        // Invalidate cache for this habit and date
-        _completionCache.invalidateCompletion(habitId, date);
+        // Add completions using AtomicDataService
+        await _dataAccessService.atomicDataService.addCompletions(
+          habitId: habitId,
+          date: date,
+          count: difference,
+          context: DataAccessContext(
+            component: 'HabitProvider',
+            operation: 'addCompletions',
+          ),
+        );
+        // Update cache for this habit and date
+        await _dataAccessService.cache.cacheCompletion(habitId, date, count);
       } else if (difference < 0) {
-        // Remove completions using DataAccessService
-        await _dataAccessService.removeCompletions(habitId, date, -difference);
-        // Invalidate cache for this habit and date
-        _completionCache.invalidateCompletion(habitId, date);
+        // Remove completions using AtomicDataService
+        await _dataAccessService.atomicDataService.removeCompletions(
+          habitId: habitId,
+          date: date,
+          count: -difference,
+          context: DataAccessContext(
+            component: 'HabitProvider',
+            operation: 'removeCompletions',
+          ),
+        );
+        // Update cache for this habit and date
+        await _dataAccessService.cache.cacheCompletion(habitId, date, count);
       }
-
-      // Update persistent cache immediately after database operation
-      await _updateCompletionInCache(habitId, date, count);
 
       debugPrint(
         '✅ Database sync successful: $habitId on ${date.toIso8601String().split('T')[0]} = $count',
@@ -540,27 +616,40 @@ class HabitState extends ChangeNotifier {
       final currentCount = originalHabit.getCompletionCount(date);
 
       if (newCount > currentCount) {
-        // INCREASE: Add additional completions using DataAccessService
+        // INCREASE: Add additional completions using AtomicDataService
         final additionalCount = newCount - currentCount;
-        await _dataAccessService.addCompletions(habitId, date, additionalCount);
+        await _dataAccessService.atomicDataService.addCompletions(
+          habitId: habitId,
+          date: date,
+          count: additionalCount,
+          context: DataAccessContext(
+            component: 'HabitProvider',
+            operation: 'addCompletions',
+          ),
+        );
         debugPrint(
           '📈 Incremental increase: Added $additionalCount completions ($currentCount → $newCount)',
         );
       } else if (newCount < currentCount) {
-        // DECREASE: Remove completions using DataAccessService
+        // DECREASE: Remove completions using AtomicDataService
         final countToRemove = currentCount - newCount;
-        await _dataAccessService.removeCompletions(habitId, date, countToRemove);
+        await _dataAccessService.atomicDataService.removeCompletions(
+          habitId: habitId,
+          date: date,
+          count: countToRemove,
+          context: DataAccessContext(
+            component: 'HabitProvider',
+            operation: 'removeCompletions',
+          ),
+        );
         debugPrint(
           '📉 Incremental decrease: Removed $countToRemove newest completions ($currentCount → $newCount)',
         );
       }
       // If newCount == currentCount, no database operation needed
 
-      // Invalidate cache for this habit and date
-      _completionCache.invalidateCompletion(habitId, date);
-
-      // Update persistent cache immediately after database operation
-      await _updateCompletionInCache(habitId, date, newCount);
+      // Update cache for this habit and date
+      await _dataAccessService.cache.cacheCompletion(habitId, date, newCount);
 
       debugPrint(
         '✅ Database custom completion successful: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount',
@@ -580,14 +669,19 @@ class HabitState extends ChangeNotifier {
     int habitIndex,
   ) async {
     try {
-      // Remove all completions using DataAccessService
-      await _dataAccessService.removeCompletions(habitId, date, 999); // Remove all completions
+      // Remove all completions using AtomicDataService
+      await _dataAccessService.atomicDataService.removeCompletions(
+        habitId: habitId,
+        date: date,
+        count: 999, // Remove all completions
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'removeCompletions',
+        ),
+      );
 
-      // Invalidate cache for this habit and date
-      _completionCache.invalidateCompletion(habitId, date);
-
-      // Update persistent cache immediately after database operation
-      await _updateCompletionInCache(habitId, date, 0);
+      // Update cache for this habit and date
+      await _dataAccessService.cache.cacheCompletion(habitId, date, 0);
 
       debugPrint(
         '✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]}',
@@ -836,8 +930,27 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Archive a habit
+  /// Archive a habit with optimistic UI update and rollback on failure
   Future<bool> archiveHabit(String habitId) async {
+    debugPrint('🗄️ [ARCHIVE] Starting optimistic archive for habit $habitId');
+    
+    // Find habit in local state
+    final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
+    if (habitIndex < 0) {
+      debugPrint('❌ [ARCHIVE] Habit not found: $habitId');
+      return false;
+    }
+    
+    final originalHabit = _habits[habitIndex];
+    
     try {
+      // OPTIMISTIC UPDATE: Remove from UI immediately
+      _habits.removeAt(habitIndex);
+      notifyListeners(); // Instant UI update
+      
+      debugPrint('⚡ [ARCHIVE] Optimistic update: Removed habit $habitId from UI');
+      
+      // BACKGROUND DATABASE SYNC: Archive in database
       final result = await _dataAccessService.atomicDataService.archiveHabit(
         habitId: habitId,
         context: DataAccessContext(
@@ -847,29 +960,38 @@ class HabitState extends ChangeNotifier {
       );
 
       if (result.success) {
-        // Update local state directly
-        final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
-        if (habitIndex >= 0) {
-          _habits.removeAt(habitIndex); // Remove from active habits list
-
-          // Update persistent cache immediately after database operation
-          await _updateCacheAfterDatabaseOperation();
-
-          notifyListeners();
-        }
+        // Update cache using selective method (no full rebuild)
+        await _dataAccessService.cache.removeHabitFromMetadata(habitId);
+        
+        debugPrint('✅ [ARCHIVE] Database sync successful for habit $habitId');
+        return true;
+      } else {
+        // ROLLBACK: Database operation failed, restore habit
+        debugPrint('❌ [ARCHIVE] Database sync failed, rolling back');
+        _habits.insert(habitIndex, originalHabit);
+        notifyListeners();
+        
+        _error = 'Failed to archive habit: ${result.errorMessage}';
+        return false;
       }
-
-      return result.success;
+      
     } catch (e) {
-      _error = 'Failed to archive habit: $e';
+      // ROLLBACK: Exception occurred, restore habit
+      debugPrint('❌ [ARCHIVE] Exception occurred, rolling back: $e');
+      _habits.insert(habitIndex, originalHabit);
       notifyListeners();
+      
+      _error = 'Failed to archive habit: $e';
       return false;
     }
   }
 
-  /// Unarchive a habit
+  /// Unarchive a habit with incremental update (no full reload)
   Future<bool> unarchiveHabit(String habitId) async {
+    debugPrint('📤 [UNARCHIVE] Starting incremental unarchive for habit $habitId');
+    
     try {
+      // Step 1: Unarchive in database
       final result = await _dataAccessService.atomicDataService.unarchiveHabit(
         habitId: habitId,
         context: DataAccessContext(
@@ -878,25 +1000,138 @@ class HabitState extends ChangeNotifier {
         ),
       );
 
-      if (result.success) {
-        // Reload habits to get the unarchived habit back
-        await loadHabits();
-
-        // Update persistent cache immediately after database operation
-        await _updateCacheAfterDatabaseOperation();
+      if (!result.success) {
+        _error = 'Failed to unarchive habit: ${result.errorMessage}';
+        notifyListeners();
+        return false;
       }
+      
+      debugPrint('✅ [UNARCHIVE] Habit unarchived in database: $habitId');
 
-      return result.success;
+      // Step 2: Fetch the unarchived habit's metadata
+      final metadataResult = await _dataAccessService.atomicDataService.getHabitFeatures(
+        habitIds: [habitId],
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'fetchUnarchivedHabitMetadata',
+        ),
+      );
+      
+      if (!metadataResult.success || metadataResult.data.isEmpty) {
+        _error = 'Failed to fetch unarchived habit metadata';
+        notifyListeners();
+        return false;
+      }
+      
+      final habitMetadata = metadataResult.data.first;
+
+      // Step 3: Load completions for the unarchived habit (last 7 days)
+      final today = DateTime.now();
+      final last7Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 6));
+      
+      final completionResult = await _dataAccessService.atomicDataService.getCompletionTimestamps(
+        startDate: last7Days,
+        endDate: today,
+        habitIds: [habitId],
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'loadUnarchivedHabitCompletions',
+        ),
+      );
+
+      Map<DateTime, CompletionRecord> completions = {};
+      if (completionResult.success) {
+        completions = completionResult.data[habitId] ?? {};
+      }
+      
+      // Build full habit with metadata + completions
+      final habitWithCompletions = Habit(
+        id: habitMetadata.id,
+        name: habitMetadata.name,
+        description: habitMetadata.description,
+        colorIndex: habitMetadata.colorIndex,
+        createdAt: habitMetadata.createdAt,
+        completions: completions,
+        iconName: habitMetadata.iconName,
+        reminderTime: habitMetadata.reminderTime,
+        enableReminders: habitMetadata.enableReminders,
+        isArchived: habitMetadata.isArchived,
+        orderValue: habitMetadata.orderValue,
+        frequencyDays: habitMetadata.frequencyDays,
+        targetGoal: habitMetadata.targetGoal,
+        allowExceedGoal: habitMetadata.allowExceedGoal,
+      );
+      
+      // Step 4: Add to local state (incremental - no reload!)
+      _habits.insert(0, habitWithCompletions);
+      
+      // Step 5: Update cache using additive method
+      final metadata = HabitMetadata.fromHabit(habitWithCompletions);
+      await _dataAccessService.cache.addHabitToMetadata(habitWithCompletions.id, {
+        'id': metadata.id,
+        'name': metadata.name,
+        'description': metadata.description,
+        'colorIndex': metadata.colorIndex,
+        'iconName': metadata.iconName,
+        'createdAt': metadata.createdAt.toIso8601String(),
+        'reminderTime': metadata.reminderTime != null 
+            ? '${metadata.reminderTime!.hour}:${metadata.reminderTime!.minute}'
+            : null,
+        'enableReminders': metadata.enableReminders,
+        'isArchived': metadata.isArchived,
+        'orderValue': metadata.orderValue,
+        'frequencyDays': metadata.frequencyDays,
+        'targetGoal': metadata.targetGoal,
+        'allowExceedGoal': metadata.allowExceedGoal,
+      });
+      _metadataCache.cacheHabitMetadata(habitWithCompletions.id, metadata);
+      
+      // Cache completions
+      for (final entry in completions.entries) {
+        await _dataAccessService.cache.cacheCompletion(
+          habitWithCompletions.id,
+          entry.key,
+          entry.value.count,
+        );
+      }
+      
+      debugPrint('✅ [UNARCHIVE] Habit added to local state with ${completions.length} completions');
+
+      // Step 6: Single notification
+      notifyListeners();
+      
+      debugPrint('🎯 [UNARCHIVE] Completed successfully - NO full reload!');
+      return true;
+      
     } catch (e) {
+      debugPrint('❌ [UNARCHIVE] Failed: $e');
       _error = 'Failed to unarchive habit: $e';
       notifyListeners();
       return false;
     }
   }
 
-  /// Delete a habit
+  /// Delete a habit with optimistic UI update and rollback on failure
   Future<void> deleteHabit(String habitId) async {
+    debugPrint('🗑️ [DELETE] Starting optimistic delete for habit $habitId');
+    
+    // Find habit in local state
+    final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
+    if (habitIndex < 0) {
+      debugPrint('❌ [DELETE] Habit not found: $habitId');
+      return;
+    }
+    
+    final originalHabit = _habits[habitIndex];
+    
     try {
+      // OPTIMISTIC UPDATE: Remove from UI immediately
+      _habits.removeAt(habitIndex);
+      notifyListeners(); // Instant UI update
+      
+      debugPrint('⚡ [DELETE] Optimistic update: Removed habit $habitId from UI');
+      
+      // BACKGROUND DATABASE SYNC: Delete from database
       final result = await _dataAccessService.atomicDataService.deleteHabit(
         habitId: habitId,
         context: DataAccessContext(
@@ -906,24 +1141,31 @@ class HabitState extends ChangeNotifier {
       );
 
       if (result.success) {
-        // Update local state directly
-        _habits.removeWhere((habit) => habit.id == habitId);
-
-        // Invalidate metadata cache for deleted habit
+        // Update cache using selective method (remove specific habit)
+        await _dataAccessService.cache.invalidateHabit(habitId);
         _metadataCache.invalidateHabit(habitId);
-
-        // Update persistent cache immediately after database operation
-        await _updateCacheAfterDatabaseOperation();
-
+        
+        debugPrint('✅ [DELETE] Database sync successful for habit $habitId');
+      } else {
+        // ROLLBACK: Database operation failed, restore habit
+        debugPrint('❌ [DELETE] Database sync failed, rolling back');
+        _habits.insert(habitIndex, originalHabit);
         notifyListeners();
+        
+        _error = 'Failed to delete habit: ${result.errorMessage}';
       }
+      
     } catch (e) {
-      _error = 'Failed to delete habit: $e';
+      // ROLLBACK: Exception occurred, restore habit
+      debugPrint('❌ [DELETE] Exception occurred, rolling back: $e');
+      _habits.insert(habitIndex, originalHabit);
       notifyListeners();
+      
+      _error = 'Failed to delete habit: $e';
     }
   }
 
-  /// Overwrite archived habit
+  /// Overwrite archived habit with incremental cache update
   Future<HabitSaveResult> overwriteArchivedHabit(
     String archivedHabitId,
     Habit newHabit,
@@ -937,12 +1179,26 @@ class HabitState extends ChangeNotifier {
         // Add the unarchived habit to local state
         _habits.insert(0, result.savedHabit!);
 
-        // Cache the new habit metadata
+        // Cache using additive method (no full rebuild)
         final metadata = HabitMetadata.fromHabit(result.savedHabit!);
+        await _dataAccessService.cache.addHabitToMetadata(result.savedHabit!.id, {
+          'id': metadata.id,
+          'name': metadata.name,
+          'description': metadata.description,
+          'colorIndex': metadata.colorIndex,
+          'iconName': metadata.iconName,
+          'createdAt': metadata.createdAt.toIso8601String(),
+          'reminderTime': metadata.reminderTime != null 
+              ? '${metadata.reminderTime!.hour}:${metadata.reminderTime!.minute}'
+              : null,
+          'enableReminders': metadata.enableReminders,
+          'isArchived': metadata.isArchived,
+          'orderValue': metadata.orderValue,
+          'frequencyDays': metadata.frequencyDays,
+          'targetGoal': metadata.targetGoal,
+          'allowExceedGoal': metadata.allowExceedGoal,
+        });
         _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
-
-        // Update persistent cache immediately after database operation
-        await _updateHabitInCache(result.savedHabit!);
 
         notifyListeners();
       }
@@ -1113,94 +1369,10 @@ class HabitState extends ChangeNotifier {
     return totalCompletionPercentage / _habits.length;
   }
 
-  /// Update cache immediately after successful database operation
-  /// 
-  /// This method ensures the persistent cache is updated with the current
-  /// habit state after any database modification. It's designed to be
-  /// non-critical - if cache update fails, the operation continues.
-  /// 
-  /// Features:
-  /// - Retry mechanism for transient failures
-  /// - Graceful degradation on persistent failures
-  /// - Comprehensive error logging
-  /// - Data validation before cache operations
-  Future<void> _updateCacheAfterDatabaseOperation() async {
-    if (_habits.isEmpty) {
-      debugPrint('⚠️ Skipping cache update - no habits to cache');
-      return;
-    }
-
-    const maxRetries = 3;
-    const retryDelay = Duration(milliseconds: 100);
-    
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        // Validate data before caching
-        if (!_validateHabitsForCaching()) {
-          debugPrint('❌ Cache update skipped - data validation failed');
-          return;
-        }
-
-        await _persistentCache.saveDashboardHabits(_habits);
-        debugPrint('✅ Dashboard-optimized cache updated after database operation (attempt $attempt)');
-        return;
-      } catch (e) {
-        debugPrint('⚠️ Cache update attempt $attempt failed: $e');
-        
-        if (attempt == maxRetries) {
-          debugPrint('❌ Cache update failed after $maxRetries attempts - operation continues');
-          _logCacheError('_updateCacheAfterDatabaseOperation', e);
-        } else {
-          // Wait before retry
-          await Future.delayed(retryDelay * attempt);
-        }
-      }
-    }
-  }
-
-  /// Update specific habit in cache after database operation
-  /// 
-  /// This method updates a single habit in the cache, which is more
-  /// efficient than updating the entire cache for single habit changes.
-  /// 
-  /// Features:
-  /// - Retry mechanism for transient failures
-  /// - Habit validation before caching
-  /// - Graceful degradation on failures
-  /// - Comprehensive error logging
-  Future<void> _updateHabitInCache(Habit habit) async {
-    if (habit.id.isEmpty) {
-      debugPrint('❌ Skipping cache update - habit has empty ID');
-      return;
-    }
-
-    const maxRetries = 3;
-    const retryDelay = Duration(milliseconds: 100);
-    
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        // Validate habit before caching
-        if (!_validateHabitForCaching(habit)) {
-          debugPrint('❌ Cache update skipped - habit validation failed');
-          return;
-        }
-
-        await _persistentCache.updateHabit(habit);
-        debugPrint('✅ Habit ${habit.id} updated in cache (attempt $attempt)');
-        return;
-      } catch (e) {
-        debugPrint('⚠️ Habit cache update attempt $attempt failed: $e');
-        
-        if (attempt == maxRetries) {
-          debugPrint('❌ Habit cache update failed after $maxRetries attempts - operation continues');
-          _logCacheError('_updateHabitInCache', e, habitId: habit.id);
-        } else {
-          // Wait before retry
-          await Future.delayed(retryDelay * attempt);
-        }
-      }
-    }
-  }
+  // NOTE: Old cache methods removed - now using additive cache updates
+  // (_updateCacheAfterDatabaseOperation and _updateHabitInCache)
+  // New approach: Use addHabitToMetadata, updateHabitInMetadata, removeHabitFromMetadata
+  // for surgical cache updates instead of rebuilding entire cache
 
   /// Update completion in cache after database operation
   /// 
@@ -1398,11 +1570,8 @@ Cache Service: ${_persistentCache.runtimeType}
     try {
       debugPrint('🔄 Attempting cache recovery...');
       
-      // Reload habits from database
+      // Reload habits from database (loadHabits handles caching internally)
       await loadHabits(forceRefresh: true);
-      
-      // Update cache with fresh data
-      await _updateCacheAfterDatabaseOperation();
       
       debugPrint('✅ Cache recovery completed successfully');
       return true;
@@ -1613,9 +1782,6 @@ class HabitProvider extends HabitState {
       await _dataAccessService.reorderHabits(draggedId, newPosition);
       debugPrint('✅ Successfully reordered habit $draggedId in database');
 
-      // Update persistent cache immediately after database operation
-      await _updateCacheAfterDatabaseOperation();
-
       // Increment reorder counter and normalize if needed
       _reorderCount++;
       if (_reorderCount >= 10) {
@@ -1625,8 +1791,6 @@ class HabitProvider extends HabitState {
         _reorderCount = 0;
         // Reload habits to get normalized order values
         await loadHabits(forceRefresh: true);
-        // Update cache after normalization
-        await _updateCacheAfterDatabaseOperation();
       }
     } catch (e) {
       // Rollback on error - reload habits from database
@@ -1668,9 +1832,6 @@ class HabitProvider extends HabitState {
         '✅ Successfully reordered habit $draggedId in database with context',
       );
 
-      // Update persistent cache immediately after database operation
-      await _updateCacheAfterDatabaseOperation();
-
       // Increment reorder counter and normalize if needed
       _reorderCount++;
       if (_reorderCount >= 10) {
@@ -1680,8 +1841,6 @@ class HabitProvider extends HabitState {
         _reorderCount = 0;
         // Reload habits to get normalized order values (use dashboard-optimized loading)
         await loadHabitsForDashboard(forceRefresh: true);
-        // Update cache after normalization
-        await _updateCacheAfterDatabaseOperation();
       }
     } catch (e) {
       // Rollback on error - reload habits from database (use dashboard-optimized loading)
@@ -1692,55 +1851,6 @@ class HabitProvider extends HabitState {
     }
   }
 
-  /// Enhanced unarchive with surgical reload for better performance
-  @override
-  Future<bool> unarchiveHabit(String habitId) async {
-    try {
-      final result = await _dataAccessService.atomicDataService.unarchiveHabit(
-        habitId: habitId,
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'unarchiveHabit',
-        ),
-      );
-
-      if (result.success) {
-        // Surgical reload: fetch only the restored habit and insert at top
-        final restoredHabit = await _dataAccessService.getHabitById(habitId);
-        if (restoredHabit != null) {
-          // Insert at the top of the habits list
-          _habits.insert(0, restoredHabit);
-
-          // Cache the restored habit metadata
-          final metadata = HabitMetadata.fromHabit(restoredHabit);
-          _metadataCache.cacheHabitMetadata(restoredHabit.id, metadata);
-
-          // Update persistent cache immediately after database operation
-          await _updateHabitInCache(restoredHabit);
-
-          // Single, targeted UI update
-          notifyListeners();
-          debugPrint(
-            '✅ Unarchived habit $habitId and positioned at top (surgical reload)',
-          );
-        } else {
-          // Fallback: if habit not found, do full reload
-          debugPrint(
-            '⚠️ Restored habit not found, falling back to full reload',
-          );
-          await loadHabits(forceRefresh: true);
-          // Update cache after full reload
-          await _updateCacheAfterDatabaseOperation();
-        }
-      }
-      return result.success;
-    } catch (e) {
-      _error = 'Failed to unarchive habit: $e';
-      notifyListeners();
-      debugPrint('❌ Error unarchiving habit: $e');
-      return false;
-    }
-  }
 
   /// Update the selected date for filtering
   void updateSelectedDate(DateTime newDate) {

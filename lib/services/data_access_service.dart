@@ -34,6 +34,9 @@ class DataAccessService {
 
   /// Get the atomic data service for new architecture operations
   AtomicDataService get atomicDataService => _atomicDataService;
+  
+  /// Get the caching service for cache operations
+  ICachingService get cache => _cache;
 
   /// Loads habit metadata only (no completion data)
   /// 

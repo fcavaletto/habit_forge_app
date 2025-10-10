@@ -604,4 +604,37 @@ class PersistentCacheService implements ICachingService {
   Future<void> clearAll() async {
     await clearCache();
   }
+  
+  @override
+  Future<void> addHabitToMetadata(String habitId, Map<String, dynamic> metadata) async {
+    await _ensureInitialized();
+    // PersistentCache stores full habits, not individual metadata
+    // This is a no-op for persistent cache; in-memory cache handles this
+    debugPrint('💾 [PERSISTENT] addHabitToMetadata called (no-op)');
+  }
+  
+  @override
+  Future<void> updateHabitInMetadata(String habitId, Map<String, dynamic> metadata) async {
+    await _ensureInitialized();
+    // PersistentCache stores full habits, not individual metadata
+    // This is a no-op for persistent cache; in-memory cache handles this
+    debugPrint('💾 [PERSISTENT] updateHabitInMetadata called (no-op)');
+  }
+  
+  @override
+  Future<void> removeHabitFromMetadata(String habitId) async {
+    await _ensureInitialized();
+    // PersistentCache stores full habits, not individual metadata
+    // This is a no-op for persistent cache; in-memory cache handles this
+    debugPrint('💾 [PERSISTENT] removeHabitFromMetadata called (no-op)');
+  }
+  
+  @override
+  Future<void> invalidateHabit(String habitId) async {
+    await _ensureInitialized();
+    // PersistentCache stores full habits, not individual habits
+    // Invalidating requires clearing all habits (for now)
+    debugPrint('💾 [PERSISTENT] invalidateHabit called (clearing all cache)');
+    await clearCache();
+  }
 }

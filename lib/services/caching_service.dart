@@ -13,6 +13,15 @@ abstract class ICachingService {
 
   /// Invalidate habit metadata cache
   Future<void> invalidateMetadata();
+  
+  /// Add a single habit to metadata cache (additive - no clear)
+  Future<void> addHabitToMetadata(String habitId, Map<String, dynamic> metadata);
+  
+  /// Update a single habit in metadata cache (selective update)
+  Future<void> updateHabitInMetadata(String habitId, Map<String, dynamic> metadata);
+  
+  /// Remove a single habit from metadata cache (selective remove)
+  Future<void> removeHabitFromMetadata(String habitId);
 
   /// Cache completion data for a habit and date
   Future<void> cacheCompletion(String habitId, DateTime date, int count);
@@ -25,6 +34,9 @@ abstract class ICachingService {
 
   /// Invalidate all completion caches
   Future<void> invalidateAllCompletions();
+  
+  /// Invalidate all caches for a specific habit (metadata + completions)
+  Future<void> invalidateHabit(String habitId);
 
   /// Get cache statistics
   Future<Map<String, dynamic>> getStats();
@@ -76,6 +88,36 @@ class MemoryCachingService implements ICachingService {
   Future<void> invalidateMetadata() async {
     _metadataCache.clear();
     debugPrint('🗑️ Metadata cache invalidated');
+  }
+  
+  @override
+  Future<void> addHabitToMetadata(String habitId, Map<String, dynamic> metadata) async {
+    final entry = _CacheEntry(
+      data: metadata,
+      timestamp: DateTime.now(),
+      ttl: _defaultTtl,
+    );
+    
+    _metadataCache[habitId] = entry;
+    debugPrint('💾 [ADDITIVE] Added habit $habitId to metadata cache');
+  }
+  
+  @override
+  Future<void> updateHabitInMetadata(String habitId, Map<String, dynamic> metadata) async {
+    final entry = _CacheEntry(
+      data: metadata,
+      timestamp: DateTime.now(),
+      ttl: _defaultTtl,
+    );
+    
+    _metadataCache[habitId] = entry;
+    debugPrint('💾 [SELECTIVE] Updated habit $habitId in metadata cache');
+  }
+  
+  @override
+  Future<void> removeHabitFromMetadata(String habitId) async {
+    _metadataCache.remove(habitId);
+    debugPrint('💾 [SELECTIVE] Removed habit $habitId from metadata cache');
   }
 
   @override
@@ -129,6 +171,13 @@ class MemoryCachingService implements ICachingService {
   Future<void> invalidateAllCompletions() async {
     _completionCache.clear();
     debugPrint('🗑️ All completion caches invalidated');
+  }
+  
+  @override
+  Future<void> invalidateHabit(String habitId) async {
+    _metadataCache.remove(habitId);
+    _completionCache.remove(habitId);
+    debugPrint('🗑️ All caches invalidated for habit $habitId');
   }
 
   @override
