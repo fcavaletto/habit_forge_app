@@ -237,12 +237,12 @@ class HabitState extends ChangeNotifier {
         ),
       );
       
-      if (!result.success) {
+      if (!result.success || result.data == null) {
         throw Exception(result.errorMessage ?? 'Failed to load dashboard habits');
       }
       
       // Update local state with prepared data
-      _habits = result.data;
+      _habits = result.data!;  // Safe now - we checked for null above
 
       // Warm cache with completion data for current date
       await _warmCompletionCache();
@@ -260,7 +260,24 @@ class HabitState extends ChangeNotifier {
       );
     } catch (e) {
       _isLoading = false;
-      _error = 'Failed to load habits for dashboard: $e';
+      
+      // Check if this is a ServiceFactory initialization error - if so, fall back to old method temporarily
+      if (e.toString().contains('Service Factory not initialized')) {
+        debugPrint('⚠️ HabitProvider: ServiceFactory not ready, falling back to legacy load method');
+        _error = null;  // Clear error since we're retrying with fallback
+        
+        try {
+          // Fallback to old loading method if ServiceFactory isn't ready yet
+          await _performLoad(forceRefresh);
+          return;
+        } catch (fallbackError) {
+          _error = 'Failed to load habits: $fallbackError';
+          debugPrint('❌ HabitProvider: Fallback load also failed: $fallbackError');
+        }
+      } else {
+        _error = 'Failed to load habits for dashboard: $e';
+      }
+      
       notifyListeners();
       debugPrint('❌ HabitProvider: Failed to load habits for dashboard: $e');
     }
@@ -343,8 +360,8 @@ class HabitState extends ChangeNotifier {
         ),
       );
 
-      if (completionResult.success) {
-        final completions = completionResult.data[newHabit.id] ?? {};
+      if (completionResult.success && completionResult.data != null) {
+        final completions = completionResult.data![newHabit.id] ?? {};
         
         // Update habit with completion data
         final habitWithCompletions = newHabit.copyWith(completions: completions);

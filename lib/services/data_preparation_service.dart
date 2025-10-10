@@ -29,7 +29,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
         ),
       );
 
-      if (!metadataResult.success) {
+      if (!metadataResult.success || metadataResult.data == null) {
         stopwatch.stop();
         return DataAccessResult.failure(
           errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
@@ -52,7 +52,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
         ),
       );
 
-      if (!completionsResult.success) {
+      if (!completionsResult.success || completionsResult.data == null) {
         stopwatch.stop();
         return DataAccessResult.failure(
           errorMessage: 'Failed to get completion data: ${completionsResult.errorMessage}',
@@ -64,12 +64,12 @@ class DashboardDataPreparationService implements IDataPreparationService {
       // Combine metadata with completion data
       final dashboardHabits = <Habit>[];
 
-      for (final metadata in metadataResult.data) {
+      for (final metadata in metadataResult.data!) {
         // Skip archived habits for dashboard
         if (metadata.isArchived) continue;
 
         // Get completion data for this habit
-        final habitCompletions = completionsResult.data[metadata.id] ?? {};
+        final habitCompletions = completionsResult.data![metadata.id] ?? {};
 
         // Create habit with combined data
         final habit = Habit(
@@ -136,7 +136,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
         ),
       );
 
-      if (!metadataResult.success) {
+      if (!metadataResult.success || metadataResult.data == null) {
         stopwatch.stop();
         return DataAccessResult.failure(
           errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
@@ -159,7 +159,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
         ),
       );
 
-      if (!completionsResult.success) {
+      if (!completionsResult.success || completionsResult.data == null) {
         stopwatch.stop();
         return DataAccessResult.failure(
           errorMessage: 'Failed to get completion data: ${completionsResult.errorMessage}',
@@ -171,9 +171,9 @@ class DashboardDataPreparationService implements IDataPreparationService {
       // Combine metadata with completion data
       final statsHabits = <Habit>[];
 
-      for (final metadata in metadataResult.data) {
+      for (final metadata in metadataResult.data!) {
         // Get completion data for this habit
-        final habitCompletions = completionsResult.data[metadata.id] ?? {};
+        final habitCompletions = completionsResult.data![metadata.id] ?? {};
 
         // Create habit with combined data
         final habit = Habit(
@@ -257,7 +257,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
         ),
       );
 
-      if (!metadataResult.success) {
+      if (!metadataResult.success || metadataResult.data == null) {
         stopwatch.stop();
         return DataAccessResult.failure(
           errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
@@ -277,7 +277,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
         ),
       );
 
-      if (!completionsResult.success) {
+      if (!completionsResult.success || completionsResult.data == null) {
         stopwatch.stop();
         return DataAccessResult.failure(
           errorMessage: 'Failed to get completion data: ${completionsResult.errorMessage}',
@@ -289,9 +289,9 @@ class DashboardDataPreparationService implements IDataPreparationService {
       // Combine metadata with completion data
       final calendarHabits = <Habit>[];
 
-      for (final metadata in metadataResult.data) {
+      for (final metadata in metadataResult.data!) {
         // Get completion data for this habit
-        final habitCompletions = completionsResult.data[metadata.id] ?? {};
+        final habitCompletions = completionsResult.data![metadata.id] ?? {};
 
         // Create habit with combined data
         final habit = Habit(
@@ -358,7 +358,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
         ),
       );
 
-      if (!metadataResult.success) {
+      if (!metadataResult.success || metadataResult.data == null) {
         stopwatch.stop();
         return DataAccessResult.failure(
           errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
@@ -368,7 +368,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       }
 
       // Convert metadata to habits (empty completions for reordering)
-      final reorderableHabits = metadataResult.data
+      final reorderableHabits = metadataResult.data!
           .map((metadata) => Habit(
             id: metadata.id,
             name: metadata.name,

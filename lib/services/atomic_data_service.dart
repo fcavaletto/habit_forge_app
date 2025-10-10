@@ -27,14 +27,14 @@ class DataAccessContext {
 
 /// Result wrapper for atomic data operations
 class DataAccessResult<T> {
-  final T data;
+  final T? data;  // Made nullable to support failure cases
   final bool success;
   final String? errorMessage;
   final DataAccessContext context;
   final Duration executionTime;
 
   const DataAccessResult.success({
-    required this.data,
+    required T this.data,  // Still requires non-null data for success
     required this.context,
     required this.executionTime,
   })  : success = true,
@@ -45,7 +45,7 @@ class DataAccessResult<T> {
     required this.context,
     required this.executionTime,
   })  : success = false,
-        data = null as T;
+        data = null;  // No cast needed - data is now nullable
 
   @override
   String toString() {
