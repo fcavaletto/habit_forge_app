@@ -197,6 +197,28 @@ abstract class IAtomicDataService {
     required DataAccessContext context,
   });
 
+  /// Archive a habit (move to archived state)
+  ///
+  /// [habitId] - ID of the habit to archive
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns success/failure status
+  Future<DataAccessResult<void>> archiveHabit({
+    required String habitId,
+    required DataAccessContext context,
+  });
+
+  /// Unarchive a habit (restore from archived state)
+  ///
+  /// [habitId] - ID of the habit to unarchive
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns success/failure status
+  Future<DataAccessResult<void>> unarchiveHabit({
+    required String habitId,
+    required DataAccessContext context,
+  });
+
   /// Delete a habit and all its associated data
   ///
   /// [habitId] - ID of the habit to delete
@@ -794,6 +816,80 @@ class AtomicDataService implements IAtomicDataService {
 
       return DataAccessResult.failure(
         errorMessage: 'Failed to create habit: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<void>> archiveHabit({
+    required String habitId,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] archiveHabit called: ${context.component}.${context.operation}');
+
+      // Archive habit using repository
+      final success = await _repository.archiveHabit(habitId);
+
+      // Invalidate caches
+      await _cache.invalidateMetadata();
+      await _cache.invalidateAllCompletions();
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] archiveHabit completed: $habitId in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: null,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] archiveHabit failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to archive habit: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<void>> unarchiveHabit({
+    required String habitId,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] unarchiveHabit called: ${context.component}.${context.operation}');
+
+      // Unarchive habit using repository
+      final success = await _repository.unarchiveHabit(habitId);
+
+      // Invalidate caches
+      await _cache.invalidateMetadata();
+      await _cache.invalidateAllCompletions();
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] unarchiveHabit completed: $habitId in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: null,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] unarchiveHabit failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to unarchive habit: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );

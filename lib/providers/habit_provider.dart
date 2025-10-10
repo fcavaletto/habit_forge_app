@@ -838,20 +838,28 @@ class HabitState extends ChangeNotifier {
   /// Archive a habit
   Future<bool> archiveHabit(String habitId) async {
     try {
-      final success = await _dataAccessService.archiveHabit(habitId);
-      if (success) {
+      final result = await _dataAccessService.atomicDataService.archiveHabit(
+        habitId: habitId,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'archiveHabit',
+        ),
+      );
+
+      if (result.success) {
         // Update local state directly
         final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
         if (habitIndex >= 0) {
           _habits.removeAt(habitIndex); // Remove from active habits list
-          
+
           // Update persistent cache immediately after database operation
           await _updateCacheAfterDatabaseOperation();
-          
+
           notifyListeners();
         }
       }
-      return success;
+
+      return result.success;
     } catch (e) {
       _error = 'Failed to archive habit: $e';
       notifyListeners();
@@ -862,15 +870,23 @@ class HabitState extends ChangeNotifier {
   /// Unarchive a habit
   Future<bool> unarchiveHabit(String habitId) async {
     try {
-      final success = await _dataAccessService.unarchiveHabit(habitId);
-      if (success) {
+      final result = await _dataAccessService.atomicDataService.unarchiveHabit(
+        habitId: habitId,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'unarchiveHabit',
+        ),
+      );
+
+      if (result.success) {
         // Reload habits to get the unarchived habit back
         await loadHabits();
-        
+
         // Update persistent cache immediately after database operation
         await _updateCacheAfterDatabaseOperation();
       }
-      return success;
+
+      return result.success;
     } catch (e) {
       _error = 'Failed to unarchive habit: $e';
       notifyListeners();
@@ -881,17 +897,26 @@ class HabitState extends ChangeNotifier {
   /// Delete a habit
   Future<void> deleteHabit(String habitId) async {
     try {
-      await _dataAccessService.deleteHabit(habitId);
-      // Update local state directly
-      _habits.removeWhere((habit) => habit.id == habitId);
+      final result = await _dataAccessService.atomicDataService.deleteHabit(
+        habitId: habitId,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'deleteHabit',
+        ),
+      );
 
-      // Invalidate metadata cache for deleted habit
-      _metadataCache.invalidateHabit(habitId);
+      if (result.success) {
+        // Update local state directly
+        _habits.removeWhere((habit) => habit.id == habitId);
 
-      // Update persistent cache immediately after database operation
-      await _updateCacheAfterDatabaseOperation();
+        // Invalidate metadata cache for deleted habit
+        _metadataCache.invalidateHabit(habitId);
 
-      notifyListeners();
+        // Update persistent cache immediately after database operation
+        await _updateCacheAfterDatabaseOperation();
+
+        notifyListeners();
+      }
     } catch (e) {
       _error = 'Failed to delete habit: $e';
       notifyListeners();
@@ -1671,8 +1696,15 @@ class HabitProvider extends HabitState {
   @override
   Future<bool> unarchiveHabit(String habitId) async {
     try {
-      final success = await _dataAccessService.unarchiveHabit(habitId);
-      if (success) {
+      final result = await _dataAccessService.atomicDataService.unarchiveHabit(
+        habitId: habitId,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'unarchiveHabit',
+        ),
+      );
+
+      if (result.success) {
         // Surgical reload: fetch only the restored habit and insert at top
         final restoredHabit = await _dataAccessService.getHabitById(habitId);
         if (restoredHabit != null) {
@@ -1701,7 +1733,7 @@ class HabitProvider extends HabitState {
           await _updateCacheAfterDatabaseOperation();
         }
       }
-      return success;
+      return result.success;
     } catch (e) {
       _error = 'Failed to unarchive habit: $e';
       notifyListeners();
