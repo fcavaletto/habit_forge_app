@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import '../lib/models/habit.dart';
 import '../lib/services/atomic_data_service.dart';
 import '../lib/services/caching_service.dart';
-import '../lib/services/row_processor.dart';
-import '../lib/services/data_preparation_service.dart';
 import '../lib/services/habit_metadata_cache_service.dart';
+import '../lib/services/row_processor.dart';
 
 void main() {
   group('New Architecture Integration Tests', () {

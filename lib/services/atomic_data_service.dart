@@ -833,7 +833,7 @@ class AtomicDataService implements IAtomicDataService {
       debugPrint('🔍 [ATOMIC] archiveHabit called: ${context.component}.${context.operation}');
 
       // Archive habit using repository
-      final success = await _repository.archiveHabit(habitId);
+      await _repository.archiveHabit(habitId);
 
       // Invalidate caches
       await _cache.invalidateMetadata();
@@ -870,7 +870,7 @@ class AtomicDataService implements IAtomicDataService {
       debugPrint('🔍 [ATOMIC] unarchiveHabit called: ${context.component}.${context.operation}');
 
       // Unarchive habit using repository
-      final success = await _repository.unarchiveHabit(habitId);
+      await _repository.unarchiveHabit(habitId);
 
       // Invalidate caches
       await _cache.invalidateMetadata();
