@@ -536,9 +536,10 @@ class DataAccessService {
   }
 
   /// Logs query execution with parameters
+  /// Stack traces are only logged on errors, not on every query
   void _logQuery(String method, Map<String, dynamic> params) {
     debugPrint('🔍 [DATA_ACCESS] $method called with params: $params');
-    debugPrint('🔍 [DATA_ACCESS] Stack trace: ${StackTrace.current}');
+    // Stack trace removed - only log on errors for better performance
   }
 
   /// Measures and logs execution time
