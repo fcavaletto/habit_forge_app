@@ -93,6 +93,17 @@ abstract class IAtomicDataService {
     required DataAccessContext context,
   });
 
+  /// Get all habits including archived ones (returns full Habit objects)
+  ///
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns all habits in the system, both active and archived.
+  /// This is primarily used for operations that need to check existence or
+  /// restore archived habits (e.g., Add Sample Habits functionality).
+  Future<DataAccessResult<List<Habit>>> getAllHabitsIncludingArchived({
+    required DataAccessContext context,
+  });
+
   /// Get completion counts for habits within a date range
   ///
   /// [startDate] - Start of date range (inclusive)
@@ -413,6 +424,38 @@ class AtomicDataService implements IAtomicDataService {
 
       return DataAccessResult.failure(
         errorMessage: 'Failed to get habit features: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getAllHabitsIncludingArchived({
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] getAllHabitsIncludingArchived called: ${context.component}.${context.operation}');
+
+      // Get all habits (active + archived) from repository
+      final habits = await _repository.getAllHabits();
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] getAllHabitsIncludingArchived completed: ${habits.length} habits in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: habits,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] getAllHabitsIncludingArchived failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to get all habits including archived: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );

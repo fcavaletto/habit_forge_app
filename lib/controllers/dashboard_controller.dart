@@ -3,6 +3,7 @@ import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
 import '../utils/data_freshness.dart';
 import '../services/virtual_date_service.dart';
+import '../services/atomic_data_service.dart';
 
 /// Controller class that handles all business logic for the dashboard
 ///
@@ -271,8 +272,20 @@ class DashboardController {
   /// Add sample habits
   Future<void> addSampleHabits(BuildContext context) async {
     try {
-      // Get all habits (including archived) to check for existing samples
-      final allHabits = await _appState.habitProvider.dataAccessService.getAllHabits();
+      // Get all habits (including archived) to check for existing samples using atomic service
+      final result = await _appState.habitProvider.dataAccessService.atomicDataService
+          .getAllHabitsIncludingArchived(
+        context: DataAccessContext(
+          component: 'DashboardController',
+          operation: 'addSampleHabits',
+        ),
+      );
+      
+      if (!result.success) {
+        throw Exception(result.errorMessage ?? 'Failed to get habits');
+      }
+      
+      final allHabits = result.data!;
       final archivedHabits = allHabits.where((h) => h.isArchived).toList();
 
       int retrievedCount = 0; // Counter for habits restored from archive

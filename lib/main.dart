@@ -6,6 +6,7 @@ import 'screens/dashboard_screen.dart';
 import 'providers/app_state_provider.dart';
 import 'providers/habit_provider.dart';
 import 'widgets/error_boundary.dart';
+import 'services/service_factory.dart';
 
 /// Application entry point with persistent cache initialization
 ///
@@ -24,6 +25,11 @@ Future<void> main() async {
   debugPrint('🚀 Starting Flutter app with persistent cache initialization...');
 
   GlobalErrorHandler.setup();
+  
+  // Initialize ServiceFactory before creating any providers
+  debugPrint('🏭 Initializing ServiceFactory...');
+  await ServiceFactory.initialize();
+  debugPrint('✅ ServiceFactory initialized successfully');
 
   // Create app state and start immediately
   final appState = AppStateProvider.create();
