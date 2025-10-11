@@ -131,22 +131,16 @@ class IconSelector extends StatelessWidget {
   }
 
   Widget _buildIconGrid(BuildContext context, int totalIcons, int rows) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Calculate layout parameters based on available width
-        final layout = _calculateLayout(constraints.maxWidth);
-        
-        // Debug information
-        debugPrint('🎯 LayoutBuilder Icon Grid Debug:');
-        debugPrint('   - Available width: ${constraints.maxWidth}');
-        debugPrint('   - Calculated icon size: ${layout.iconSize}');
-        debugPrint('   - Visible columns: ${layout.visibleColumns}');
-        debugPrint('   - Total columns: ${layout.totalColumns}');
-        debugPrint('   - Scrollable width: ${layout.scrollableWidth}');
-        debugPrint('   - Is portrait: ${layout.isPortrait}');
-        
-        return _buildAdaptiveIconGrid(context, totalIcons, rows, layout);
-      },
+    // Wrap LayoutBuilder with RepaintBoundary to isolate rebuilds
+    return RepaintBoundary(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate layout parameters based on available width
+          final layout = _calculateLayout(constraints.maxWidth);
+          
+          return _buildAdaptiveIconGrid(context, totalIcons, rows, layout);
+        },
+      ),
     );
   }
 
@@ -250,41 +244,44 @@ class IconSelector extends StatelessWidget {
     final isSelected = iconName == selectedIconName;
     final iconLabel = iconName.replaceAll('_', ' ');
 
-    return Padding(
-      padding: EdgeInsets.only(right: rightSpacing),
-      child: Semantics(
-        label: '$iconLabel icon${isSelected ? ', selected' : ''}',
-        hint: isSelected ? 'Currently selected icon' : 'Tap to select this icon',
-        button: true,
-        selected: isSelected,
-        child: GestureDetector(
-          onTap: () => onIconSelected(iconName),
-          child: Focus(
-            autofocus: isSelected,
-            child: Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.blue[50] : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected ? Colors.blue : Colors.grey[300]!,
-                  width: isSelected ? 2 : 1,
+    // Wrap each icon button with RepaintBoundary for isolated repaints
+    return RepaintBoundary(
+      child: Padding(
+        padding: EdgeInsets.only(right: rightSpacing),
+        child: Semantics(
+          label: '$iconLabel icon${isSelected ? ', selected' : ''}',
+          hint: isSelected ? 'Currently selected icon' : 'Tap to select this icon',
+          button: true,
+          selected: isSelected,
+          child: GestureDetector(
+            onTap: () => onIconSelected(iconName),
+            child: Focus(
+              autofocus: isSelected,
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.blue[50] : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? Colors.blue : Colors.grey[300]!,
+                    width: isSelected ? 2 : 1,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: Colors.blue.withValues(alpha: 0.3),
+                            spreadRadius: 2,
+                            blurRadius: 4,
+                          )
+                        ]
+                      : null,
                 ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: Colors.blue.withValues(alpha: 0.3),
-                          spreadRadius: 2,
-                          blurRadius: 4,
-                        )
-                      ]
-                    : null,
-              ),
-              child: Icon(
-                iconName.toIconData,
-                color: isSelected ? Colors.blue : Colors.black,
-                size: size * 0.5, // Icon size is half of container size
+                child: Icon(
+                  iconName.toIconData,
+                  color: isSelected ? Colors.blue : Colors.black,
+                  size: size * 0.5, // Icon size is half of container size
+                ),
               ),
             ),
           ),

@@ -632,9 +632,15 @@ class PersistentCacheService implements ICachingService {
   @override
   Future<void> invalidateHabit(String habitId) async {
     await _ensureInitialized();
-    // PersistentCache stores full habits, not individual habits
-    // Invalidating requires clearing all habits (for now)
-    debugPrint('💾 [PERSISTENT] invalidateHabit called (clearing all cache)');
-    await clearCache();
+    // For persistent cache, invalidating one habit means removing it
+    // This is more efficient than clearing all cache
+    try {
+      await removeHabit(habitId);
+      debugPrint('💾 [PERSISTENT] invalidateHabit: removed $habitId from cache');
+    } catch (e) {
+      debugPrint('⚠️ [PERSISTENT] Failed to invalidate habit $habitId: $e');
+      // If removal fails, clear entire cache as fallback
+      await clearCache();
+    }
   }
 }

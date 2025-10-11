@@ -41,15 +41,16 @@ class ColorSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        final isExtendedMode = appState.isExtendedColorPalette;
+    // Use Selector instead of Consumer to only rebuild when extended palette setting changes
+    return Selector<AppState, bool>(
+      selector: (context, appState) => appState.isExtendedColorPalette,
+      builder: (context, isExtendedMode, child) {
         final colors = Theme.of(context).colorScheme.habitColors;
         const totalColors = 48; // Always use full palette, limit display based on mode
         final rows = isExtendedMode ? 4 : 2;
         
-    return Semantics(
-      label: 'Color selection',
+        return Semantics(
+          label: 'Color selection',
           hint: 'Choose a color for your habit. Swipe horizontally to see more colors.',
           child: _buildColorGrid(context, colors, totalColors, rows),
         );
@@ -58,22 +59,16 @@ class ColorSelector extends StatelessWidget {
   }
 
   Widget _buildColorGrid(BuildContext context, List<Color> colors, int totalColors, int rows) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Calculate layout parameters based on available width
-        final layout = _calculateLayout(constraints.maxWidth);
-        
-        // Debug information
-        debugPrint('🎨 LayoutBuilder Color Grid Debug:');
-        debugPrint('   - Available width: ${constraints.maxWidth}');
-        debugPrint('   - Calculated color size: ${layout.colorSize}');
-        debugPrint('   - Visible columns: ${layout.visibleColumns}');
-        debugPrint('   - Total columns: ${layout.totalColumns}');
-        debugPrint('   - Scrollable width: ${layout.scrollableWidth}');
-        debugPrint('   - Is portrait: ${layout.isPortrait}');
-        
-        return _buildAdaptiveColorGrid(context, colors, totalColors, rows, layout);
-      },
+    // Wrap LayoutBuilder with RepaintBoundary to isolate rebuilds
+    return RepaintBoundary(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate layout parameters based on available width
+          final layout = _calculateLayout(constraints.maxWidth);
+          
+          return _buildAdaptiveColorGrid(context, colors, totalColors, rows, layout);
+        },
+      ),
     );
   }
 
@@ -176,50 +171,53 @@ class ColorSelector extends StatelessWidget {
 
 
   Widget _buildColorButton(BuildContext context, Color color, int index, double size, double rightSpacing) {
-          final isSelected = index == selectedColorIndex;
-          final colorName = _getColorName(index);
+    final isSelected = index == selectedColorIndex;
+    final colorName = _getColorName(index);
 
-    return Padding(
-      padding: EdgeInsets.only(right: rightSpacing),
-      child: Semantics(
-            label: '$colorName color${isSelected ? ', selected' : ''}',
-            hint: isSelected ? 'Currently selected color' : 'Tap to select this color',
-            button: true,
-            selected: isSelected,
-            child: GestureDetector(
-              onTap: () => onColorSelected(index),
-              child: Focus(
-                autofocus: isSelected,
-                child: Container(
-              width: size,
-              height: size,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected ? Colors.white : Colors.transparent,
-                      width: 3,
-                    ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: color.withValues(alpha: 0.3),
-                              spreadRadius: 2,
-                              blurRadius: 4,
-                            )
-                          ]
-                        : null,
+    // Wrap each color button with RepaintBoundary for isolated repaints
+    return RepaintBoundary(
+      child: Padding(
+        padding: EdgeInsets.only(right: rightSpacing),
+        child: Semantics(
+          label: '$colorName color${isSelected ? ', selected' : ''}',
+          hint: isSelected ? 'Currently selected color' : 'Tap to select this color',
+          button: true,
+          selected: isSelected,
+          child: GestureDetector(
+            onTap: () => onColorSelected(index),
+            child: Focus(
+              autofocus: isSelected,
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? Colors.white : Colors.transparent,
+                    width: 3,
                   ),
-                  child: isSelected
-                      ? const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 24,
-                        )
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.3),
+                            spreadRadius: 2,
+                            blurRadius: 4,
+                          )
+                        ]
                       : null,
                 ),
+                child: isSelected
+                    ? const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 24,
+                      )
+                    : null,
               ),
             ),
+          ),
+        ),
       ),
     );
   }

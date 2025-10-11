@@ -147,6 +147,48 @@ class HabitState extends ChangeNotifier {
     });
   }
 
+  /// Refresh data from database silently without showing loading UI
+  ///
+  /// This method updates data from the database in the background without
+  /// setting loading states. The UI remains responsive and doesn't show
+  /// loading spinners. Used for background refresh after cache preload.
+  Future<void> refreshDataSilently() async {
+    try {
+      debugPrint('🔄 Silently refreshing data from database...');
+      
+      // Load fresh data using DataPreparationService (NO _isLoading = true)
+      final result = await ServiceFactory.dashboardDataService.getDashboardHabits(
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'silentRefresh',
+        ),
+      );
+      
+      if (result.success && result.data != null) {
+        // Update local state silently
+        _habits = result.data!;
+        _lastLoadTime = VirtualDateService().currentDate;
+        
+        // Update persistent cache with fresh data
+        await _persistentCache.saveHabits(_habits);
+        
+        // Warm in-memory caches
+        await _warmCompletionCache();
+        await _warmMetadataCache();
+        
+        // Notify listeners of updated data (smooth transition, no loading state)
+        notifyListeners();
+        
+        debugPrint('✅ Silent refresh completed with ${_habits.length} habits');
+      } else {
+        debugPrint('⚠️ Silent refresh failed: ${result.errorMessage}');
+      }
+    } catch (e) {
+      debugPrint('❌ Silent refresh error: $e');
+      // Don't throw - app continues with cached data
+    }
+  }
+
   /// Internal method to perform the actual load operation
   Future<void> _performLoad(bool forceRefresh) async {
     // Skip reload if data is fresh and not forcing refresh
@@ -379,7 +421,16 @@ class HabitState extends ChangeNotifier {
         debugPrint('✅ [ADD_HABIT] Loaded ${completions.length} completion records for new habit');
       }
 
-      // Step 6: Single notification (no cascade)
+      // Step 6: Update persistent cache incrementally
+      try {
+        await _persistentCache.updateHabit(_habits[0]);
+        debugPrint('✅ [ADD_HABIT] Persistent cache updated');
+      } catch (e) {
+        debugPrint('⚠️ [ADD_HABIT] Failed to update persistent cache: $e');
+        // Non-fatal - app continues with in-memory data
+      }
+
+      // Step 7: Single notification (no cascade)
       notifyListeners();
       
       debugPrint('🎯 [ADD_HABIT] Completed successfully - NO full reload!');
@@ -967,6 +1018,14 @@ class HabitState extends ChangeNotifier {
         // Update cache using selective method (no full rebuild)
         await _dataAccessService.cache.removeHabitFromMetadata(habitId);
         
+        // Update persistent cache (remove archived habit)
+        try {
+          await _persistentCache.removeHabit(habitId);
+          debugPrint('✅ [ARCHIVE] Persistent cache updated');
+        } catch (e) {
+          debugPrint('⚠️ [ARCHIVE] Failed to update persistent cache: $e');
+        }
+        
         debugPrint('✅ [ARCHIVE] Database sync successful for habit $habitId');
         return true;
       } else {
@@ -1101,7 +1160,16 @@ class HabitState extends ChangeNotifier {
       
       debugPrint('✅ [UNARCHIVE] Habit added to local state with ${completions.length} completions');
 
-      // Step 6: Single notification
+      // Step 6: Update persistent cache incrementally
+      try {
+        await _persistentCache.updateHabit(habitWithCompletions);
+        debugPrint('✅ [UNARCHIVE] Persistent cache updated');
+      } catch (e) {
+        debugPrint('⚠️ [UNARCHIVE] Failed to update persistent cache: $e');
+        // Non-fatal - app continues with in-memory data
+      }
+
+      // Step 7: Single notification
       notifyListeners();
       
       debugPrint('🎯 [UNARCHIVE] Completed successfully - NO full reload!');
@@ -1148,6 +1216,14 @@ class HabitState extends ChangeNotifier {
         // Update cache using selective method (remove specific habit)
         await _dataAccessService.cache.invalidateHabit(habitId);
         _metadataCache.invalidateHabit(habitId);
+        
+        // Update persistent cache (remove deleted habit)
+        try {
+          await _persistentCache.removeHabit(habitId);
+          debugPrint('✅ [DELETE] Persistent cache updated');
+        } catch (e) {
+          debugPrint('⚠️ [DELETE] Failed to update persistent cache: $e');
+        }
         
         debugPrint('✅ [DELETE] Database sync successful for habit $habitId');
       } else {

@@ -218,11 +218,13 @@ class _AddHabitViewState extends State<AddHabitView> {
   }
 
   Widget _buildSectionTitle(String title) {
+    // Extract theme outside to make widget more efficient
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        style: theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w600,
         ),
       ),

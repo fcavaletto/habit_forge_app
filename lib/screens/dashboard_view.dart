@@ -196,9 +196,11 @@ class _DashboardViewState extends State<DashboardView>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        debugPrint('🎨 Consumer<AppState> builder called with ${appState.habitProvider.filteredHabits.length} filtered habits');
+    // Use Selector to only rebuild when filtered habits count changes
+    return Selector<AppState, int>(
+      selector: (context, appState) => appState.habitProvider.filteredHabits.length,
+      builder: (context, filteredCount, child) {
+        final appState = context.read<AppState>();
         return Semantics(
           label: 'Habit Forge Dashboard',
           hint: 'Main screen showing your habits and progress',
@@ -249,6 +251,9 @@ class _DashboardViewState extends State<DashboardView>
   /// 
   /// This method uses selective consumers to avoid rebuilding
   /// the entire dashboard when only specific parts change.
+  /// 
+  /// Note: No loading spinner is shown because data is preloaded before
+  /// the UI is rendered. Dashboard always has data ready.
   Widget _buildOptimizedBody(AppState appState) {
     // Use Consumer<HabitProvider> to listen only to habit list changes
     // This prevents rebuilding when individual habit completions change
@@ -257,9 +262,8 @@ class _DashboardViewState extends State<DashboardView>
         final filteredHabits = habitProvider.filteredHabits;
         debugPrint('🔄 Optimized DashboardView building with ${filteredHabits.length} filtered habits');
 
-        if (appState.isLoadingHabits) {
-          return const Center(child: CircularProgressIndicator());
-        }
+        // No loading spinner - data is preloaded before UI shows
+        // Background refresh happens silently without loading states
 
         if (filteredHabits.isEmpty) {
           debugPrint('📭 No habits found for selected date, showing empty state');
@@ -421,9 +425,11 @@ class _DashboardViewState extends State<DashboardView>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Date selector
-        Consumer<AppState>(
-          builder: (context, appState, child) {
+        // Date selector - Use Selector to only rebuild when selected date changes
+        Selector<AppState, DateTime>(
+          selector: (context, appState) => appState.habitProvider.selectedDate,
+          builder: (context, selectedDate, child) {
+            final appState = context.read<AppState>();
             return _buildDateSelector(appState);
           },
         ),
@@ -447,16 +453,20 @@ class _DashboardViewState extends State<DashboardView>
           },
         ),
         const SizedBox(height: 16),
-        Consumer<AppState>(
-          builder: (context, appState, child) {
+        // Habit filter dropdown - Use Selector to only rebuild when filter changes
+        Selector<AppState, bool>(
+          selector: (context, appState) => appState.habitProvider.isShowingAllHabits,
+          builder: (context, isShowingAll, child) {
+            final appState = context.read<AppState>();
             return _buildHabitFilterDropdown(appState);
           },
         ),
         const SizedBox(height: 8),
-        // Show completion count text if enabled in settings
-        Consumer<AppState>(
-          builder: (context, appState, child) {
-            if (appState.showCompletionCount) {
+        // Show completion count text if enabled in settings - Use Selector to only rebuild when setting changes
+        Selector<AppState, bool>(
+          selector: (context, appState) => appState.showCompletionCount,
+          builder: (context, showCompletionCount, child) {
+            if (showCompletionCount) {
               // Completion count message (no date context needed)
               
               return Column(

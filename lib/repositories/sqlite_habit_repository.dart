@@ -494,12 +494,21 @@ class SqliteHabitRepository {
       final normalizedDate = DateTime(date.year, date.month, date.day);
       final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
       
-      // Get current habit to get the goal (only once, not per completion)
-      final habit = await getHabitById(habitId);
-      if (habit == null) {
+      // Get just the goal field - don't load all completion data!
+      final db = await _databaseService.database;
+      final goalResult = await db.query(
+        'habits',
+        columns: ['target_goal'],
+        where: 'id = ?',
+        whereArgs: [habitId],
+      );
+      
+      if (goalResult.isEmpty) {
         debugPrint('❌ Habit not found: $habitId');
         return;
       }
+      
+      final goal = goalResult.first['target_goal'] as int;
       
       await _databaseService.transaction((txn) async {
         // Check if completion record exists
@@ -515,7 +524,7 @@ class SqliteHabitRepository {
             'habit_completions',
             {
               'completion_count': (existingRecord.first['completion_count'] as int) + count,
-              'goal_at_completion': habit.targetGoal,
+              'goal_at_completion': goal,
             },
             where: 'habit_id = ? AND completion_date = ?',
             whereArgs: [habitId, dateTimestamp],
@@ -528,7 +537,7 @@ class SqliteHabitRepository {
               'habit_id': habitId,
               'completion_date': dateTimestamp,
               'completion_count': count,
-              'goal_at_completion': habit.targetGoal,
+              'goal_at_completion': goal,
             },
           );
         }
@@ -632,12 +641,21 @@ class SqliteHabitRepository {
       final normalizedDate = DateTime(date.year, date.month, date.day);
       final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
       
-      // Get current habit to get the goal
-      final habit = await getHabitById(habitId);
-      if (habit == null) {
+      // Get just the goal field - don't load all completion data!
+      final db = await _databaseService.database;
+      final goalResult = await db.query(
+        'habits',
+        columns: ['target_goal'],
+        where: 'id = ?',
+        whereArgs: [habitId],
+      );
+      
+      if (goalResult.isEmpty) {
         debugPrint('❌ Habit not found: $habitId');
         return;
       }
+      
+      final goal = goalResult.first['target_goal'] as int;
       
       await _databaseService.transaction((txn) async {
         if (count > 0) {
@@ -648,7 +666,7 @@ class SqliteHabitRepository {
               'habit_id': habitId,
               'completion_date': dateTimestamp,
               'completion_count': count,
-              'goal_at_completion': habit.targetGoal,
+              'goal_at_completion': goal,
             },
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
@@ -720,12 +738,21 @@ class SqliteHabitRepository {
       final normalizedDate = DateTime(date.year, date.month, date.day);
       final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
       
-      // Get current habit to get the goal
-      final habit = await getHabitById(habitId);
-      if (habit == null) {
+      // Get just the goal field - don't load all completion data!
+      final db = await _databaseService.database;
+      final goalResult = await db.query(
+        'habits',
+        columns: ['target_goal'],
+        where: 'id = ?',
+        whereArgs: [habitId],
+      );
+      
+      if (goalResult.isEmpty) {
         debugPrint('❌ Habit not found: $habitId');
         return;
       }
+      
+      final goal = goalResult.first['target_goal'] as int;
       
       await _databaseService.transaction((txn) async {
         // Update completion count in habit_completions table
@@ -741,7 +768,7 @@ class SqliteHabitRepository {
             'habit_completions',
             {
               'completion_count': (existingRecord.first['completion_count'] as int) + additionalCount,
-              'goal_at_completion': habit.targetGoal,
+              'goal_at_completion': goal,
             },
             where: 'habit_id = ? AND completion_date = ?',
             whereArgs: [habitId, dateTimestamp],
@@ -754,7 +781,7 @@ class SqliteHabitRepository {
               'habit_id': habitId,
               'completion_date': dateTimestamp,
               'completion_count': additionalCount,
-              'goal_at_completion': habit.targetGoal,
+              'goal_at_completion': goal,
             },
           );
         }

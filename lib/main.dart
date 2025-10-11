@@ -8,21 +8,21 @@ import 'providers/habit_provider.dart';
 import 'widgets/error_boundary.dart';
 import 'services/service_factory.dart';
 
-/// Application entry point with persistent cache initialization
+/// Application entry point with persistent cache preloading
 ///
-/// This implementation provides instant app startup by leveraging persistent
-/// caching. The app loads cached habit data immediately while initializing
-/// services in the background, eliminating loading screens and empty states.
+/// This implementation ensures zero loading screens by preloading all cached
+/// data BEFORE showing the UI. The app stays on the splash screen until data
+/// is ready, then shows the dashboard fully populated.
 ///
 /// ## Key Benefits:
-/// - Instant startup with cached data (20-30x faster)
-/// - No loading screen or empty dashboard flash
-/// - Graceful background initialization
-/// - Automatic cache refresh after startup
+/// - No loading spinner ever shown to user
+/// - No empty dashboard flash
+/// - Dashboard appears fully populated immediately
+/// - Background refresh for fresh data without UI disruption
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  debugPrint('🚀 Starting Flutter app with persistent cache initialization...');
+  debugPrint('🚀 Starting Flutter app with cache preloading...');
 
   GlobalErrorHandler.setup();
   
@@ -31,10 +31,13 @@ Future<void> main() async {
   await ServiceFactory.initialize();
   debugPrint('✅ ServiceFactory initialized successfully');
 
-  // Create app state and start immediately
-  final appState = AppStateProvider.create();
+  // CRITICAL: Preload cache data BEFORE showing UI
+  // This keeps app on splash screen until data is ready
+  debugPrint('📦 Preloading cache data before UI initialization...');
+  final appState = await AppStateProvider.preload();
+  debugPrint('✅ Cache preloaded with ${appState.habits.length} habits');
   
-  // Start the app immediately - persistent cache will load data instantly
+  // Start the app - data is ALREADY loaded, no loading screen needed
   runApp(
     ErrorBoundary(
       onError: (error) {
@@ -63,40 +66,47 @@ Future<void> main() async {
     ),
   );
 
-  // Initialize services in background
-  _initializeServicesInBackground(appState);
+  // Refresh data from database in background (silent, no loading state)
+  _refreshDataInBackground(appState);
 
-  debugPrint('✅ Flutter app started with immediate UI');
+  debugPrint('✅ Flutter app started with preloaded data');
 }
 
-/// Initializes services in the background without blocking the UI
+/// Refreshes data from database in background without showing loading UI
 ///
-/// This method handles the asynchronous initialization of all app services
-/// while the UI remains responsive. With persistent caching, this mainly
-/// refreshes data from the database and initializes secondary services.
-Future<void> _initializeServicesInBackground(AppState appState) async {
+/// This method silently updates data from the database after the UI has been
+/// shown with cached data. Updates are applied smoothly without loading screens.
+/// Secondary services are also initialized here without blocking the UI.
+Future<void> _refreshDataInBackground(AppState appState) async {
   try {
-    debugPrint('🔄 Starting background service initialization...');
+    debugPrint('🔄 Starting silent background data refresh...');
 
-    // Initialize with timeout - persistent cache already loaded data
-    await appState.initialize().timeout(
-      const Duration(seconds: 5), // Reasonable timeout since cache is loaded
+    // Small delay to let UI render first
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Refresh data from database silently (without setting loading states)
+    await appState.habitProvider.refreshDataSilently();
+
+    // Initialize secondary services in parallel
+    debugPrint('🔧 Initializing secondary services in background...');
+    await Future.wait([
+      appState.notificationProvider.initialize(),
+      appState.completionCountProvider.loadCompletionCountSetting(),
+      appState.extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
+      appState.proSubscriptionProvider.loadProSubscriptionSetting(),
+      appState.streakSettingsProvider.loadStreakSetting(),
+      appState.loadTimeOverrideSetting(),
+    ]).timeout(
+      const Duration(seconds: 3),
       onTimeout: () {
-        debugPrint('⚠️ Service initialization timed out - continuing with cached data');
-        throw TimeoutException(
-          'Service initialization timed out',
-          const Duration(seconds: 5),
-        );
+        debugPrint('⚠️ Secondary services initialization timed out');
+        return List<void>.filled(6, null); // Return empty list on timeout
       },
     );
 
-    debugPrint('✅ Background service initialization completed successfully');
+    debugPrint('✅ Background refresh completed successfully');
   } catch (error) {
-    debugPrint('❌ Background service initialization failed: $error');
-    debugPrint('⚠️ App will continue with cached data');
-
-    // Ensure app state remains initialized
-    appState.setInitialized(true);
-    debugPrint('🔄 App state marked as initialized for continued operation');
+    debugPrint('❌ Background refresh failed: $error');
+    debugPrint('⚠️ App continues with cached data, will retry on next interaction');
   }
 }
