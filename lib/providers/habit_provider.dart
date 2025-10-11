@@ -1714,7 +1714,8 @@ class HabitProvider extends HabitState {
   /// Performs habit loading with recovery mechanisms
   Future<void> _performLoadWithRecovery(bool showLoading) async {
     try {
-      await _performLoad(showLoading);
+      // Use new dashboard load method (last 7 days, optimized)
+      await _performDashboardLoad(false);
     } catch (e) {
       debugPrint('❌ Habit loading failed: $e');
 
@@ -1725,7 +1726,7 @@ class HabitProvider extends HabitState {
         try {
           // Wait a bit and try again
           await Future.delayed(const Duration(milliseconds: 500));
-          await _performLoad(showLoading);
+          await _performDashboardLoad(false);
           debugPrint('✅ Habit loading recovery successful');
           return;
         } catch (recoveryError) {
