@@ -65,21 +65,59 @@ class SqliteHabitRepository {
         ORDER BY o.order_value DESC
       ''');
       
-      final habits = <Habit>[];
-      for (final row in results) {
-        final habit = await _rowToHabit(
-          row,
-          startDate: null, // No date filtering
-          endDate: null,   // No date filtering  
-          convertToLocal: false, // No timezone conversion needed
-          loadCompletions: false, // Skip completion data entirely
-        );
-        if (habit != null) {
-          habits.add(habit);
-        }
+      if (results.isEmpty) {
+        debugPrint('📖 Retrieved 0 active habits for reordering');
+        return [];
       }
       
-      debugPrint('📖 Retrieved ${habits.length} active habits for reordering (minimal data only)');
+      // Batch convert all creation timestamps at once
+      final createdAtTimestamps = results.map((row) => row['created_at'] as int).toList();
+      final createdAtDates = TimezoneUtils.batchFromUtcTimestamp(
+        createdAtTimestamps,
+        context: 'Batch habit creation dates for reordering',
+      );
+      
+      // Build habits directly without _rowToHabit
+      final habits = <Habit>[];
+      for (int i = 0; i < results.length; i++) {
+        final row = results[i];
+        
+        // Parse reminder time if present
+        TimeOfDay? reminderTime;
+        final reminderTimeStr = row['reminder_time'] as String?;
+        if (reminderTimeStr != null && reminderTimeStr.isNotEmpty) {
+          final parts = reminderTimeStr.split(':');
+          if (parts.length == 2) {
+            reminderTime = TimeOfDay(
+              hour: int.parse(parts[0]),
+              minute: int.parse(parts[1]),
+            );
+          }
+        }
+        
+        // Parse frequency days
+        final frequencyDaysJson = row['frequency_days'] as String;
+        final frequencyDays = Map<String, int>.from(jsonDecode(frequencyDaysJson));
+        
+        habits.add(Habit(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          description: row['description'] as String? ?? '',
+          colorIndex: row['color_index'] as int,
+          createdAt: createdAtDates[i], // From batch conversion
+          completions: const {}, // Empty - not loading completion data
+          iconName: row['icon_name'] as String? ?? 'check_circle',
+          reminderTime: reminderTime,
+          enableReminders: (row['enable_reminders'] as int) == 1,
+          isArchived: (row['is_archived'] as int) == 1,
+          orderValue: row['order_value'] as double?,
+          frequencyDays: frequencyDays,
+          targetGoal: row['target_goal'] as int? ?? 1,
+          allowExceedGoal: (row['allow_exceed_goal'] as int? ?? 1) == 1,
+        ));
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits for reordering (metadata only, batch converted)');
       return habits;
     } catch (e) {
       debugPrint('❌ Error getting active habits for reordering: $e');

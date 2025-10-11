@@ -67,7 +67,13 @@ Future<void> main() async {
   );
 
   // Refresh data from database in background (silent, no loading state)
-  _refreshDataInBackground(appState);
+  // Only refresh if data was loaded from cache (skip if we just loaded from DB)
+  if (appState.habitProvider.loadedFromCache) {
+    debugPrint('🔄 Data was from cache, starting background refresh');
+    _refreshDataInBackground(appState);
+  } else {
+    debugPrint('⏭️ Data was from database, skipping redundant refresh');
+  }
 
   debugPrint('✅ Flutter app started with preloaded data');
 }

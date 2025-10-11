@@ -74,6 +74,7 @@ class HabitState extends ChangeNotifier {
   late TimeOfDay _selectedTime; // Selected time for completion timestamps
   bool _showAllHabits =
       false; // Whether to show all habits or just today's habits
+  bool _loadedFromCache = false; // Track if last load was from cache (to skip redundant refresh)
 
   HabitState(this._habitRepository, this._settingsRepository) {
     // Initialize DataAccessService with repository and cache
@@ -99,6 +100,7 @@ class HabitState extends ChangeNotifier {
       _lastLoadTime == null ||
       DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
   bool get isSortingMode => _isSortingMode;
+  bool get loadedFromCache => _loadedFromCache;
   DateTime get selectedDate => _selectedDate;
   TimeOfDay get selectedTime => _selectedTime;
   bool get isShowingAllHabits => _showAllHabits;
@@ -1696,6 +1698,7 @@ class HabitProvider extends HabitState {
           _habits = cachedHabits;
           _isLoading = false;
           _lastLoadTime = VirtualDateService().currentDate;
+          _loadedFromCache = true; // Mark as loaded from cache
           notifyListeners();
           
           debugPrint('✅ Loaded ${_habits.length} habits from persistent cache');
@@ -1705,6 +1708,7 @@ class HabitProvider extends HabitState {
       }
 
       debugPrint('📱 No valid cache found, loading from database...');
+      _loadedFromCache = false; // Mark as loaded from database
 
       // Initialize database with timeout and recovery
       final databaseService = DatabaseService();
