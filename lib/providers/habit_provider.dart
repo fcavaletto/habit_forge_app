@@ -1308,7 +1308,19 @@ class HabitState extends ChangeNotifier {
   /// Get habits that need attention
   Future<List<Habit>> getHabitsNeedingAttention() async {
     try {
-      return await _dataAccessService.getHabitsNeedingAttention();
+      final result = await _dataAccessService.atomicDataService.getHabitsNeedingAttention(
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'getHabitsNeedingAttention',
+        ),
+      );
+      
+      if (result.success && result.data != null) {
+        return result.data!;
+      } else {
+        debugPrint('❌ Failed to get habits needing attention: ${result.errorMessage}');
+        return [];
+      }
     } catch (e) {
       _error = 'Failed to get habits needing attention: $e';
       notifyListeners();
@@ -1331,11 +1343,23 @@ class HabitState extends ChangeNotifier {
     String? excludeHabitId,
   }) async {
     try {
-      return await _dataAccessService.hasDuplicateHabit(
-        name,
-        iconName,
+      final result = await _dataAccessService.atomicDataService.hasDuplicateHabit(
+        name: name,
+        iconName: iconName,
         excludeHabitId: excludeHabitId,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'hasDuplicateHabit',
+          parameters: {'name': name, 'iconName': iconName},
+        ),
       );
+      
+      if (result.success && result.data != null) {
+        return result.data!;
+      } else {
+        debugPrint('❌ Failed to check for duplicate habit: ${result.errorMessage}');
+        return false;
+      }
     } catch (e) {
       debugPrint('❌ Error checking for duplicate habit: $e');
       return false; // Fail safe - allow creation if check fails
@@ -1357,11 +1381,23 @@ class HabitState extends ChangeNotifier {
     String newIconName,
   ) async {
     try {
-      return await _dataAccessService.canUpdateHabit(
-        habitId,
-        newName,
-        newIconName,
+      final result = await _dataAccessService.atomicDataService.canUpdateHabit(
+        habitId: habitId,
+        newName: newName,
+        newIconName: newIconName,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'canUpdateHabit',
+          parameters: {'habitId': habitId, 'newName': newName, 'newIconName': newIconName},
+        ),
       );
+      
+      if (result.success && result.data != null) {
+        return result.data!;
+      } else {
+        debugPrint('❌ Failed to check if habit can be updated: ${result.errorMessage}');
+        return false;
+      }
     } catch (e) {
       debugPrint('❌ Error checking if habit can be updated: $e');
       return false; // Fail safe - prevent update if check fails
@@ -1394,12 +1430,42 @@ class HabitState extends ChangeNotifier {
       
       debugPrint('🎲 Generated ${sampleHabits.length} sample habits');
       
-      // Import habits using repository
+      // Import habits using atomic service
       int importedCount;
       if (clearExisting) {
-        importedCount = await _dataAccessService.importSampleHabits(sampleHabits, clearExisting: true);
+        final result = await _dataAccessService.atomicDataService.importSampleHabits(
+          sampleHabits: sampleHabits,
+          clearExisting: true,
+          context: DataAccessContext(
+            component: 'HabitProvider',
+            operation: 'importSampleHabits',
+            parameters: {'clearExisting': true, 'count': sampleHabits.length},
+          ),
+        );
+        
+        if (result.success && result.data != null) {
+          importedCount = result.data!;
       } else {
-        importedCount = await _dataAccessService.importSampleHabits(sampleHabits, onProgress: onProgress);
+          debugPrint('❌ Failed to import sample habits: ${result.errorMessage}');
+          importedCount = 0;
+        }
+      } else {
+        final result = await _dataAccessService.atomicDataService.importSampleHabits(
+          sampleHabits: sampleHabits,
+          onProgress: onProgress,
+          context: DataAccessContext(
+            component: 'HabitProvider',
+            operation: 'importSampleHabits',
+            parameters: {'count': sampleHabits.length},
+          ),
+        );
+        
+        if (result.success && result.data != null) {
+          importedCount = result.data!;
+        } else {
+          debugPrint('❌ Failed to import sample habits: ${result.errorMessage}');
+          importedCount = 0;
+        }
       }
       
       if (importedCount > 0) {
@@ -1767,16 +1833,42 @@ class HabitProvider extends HabitState {
       );
       notifyListeners();
 
-      // Perform actual reordering in database
-      await _dataAccessService.reorderHabits(draggedId, newPosition);
+      // Perform actual reordering in database using atomic service
+      final result = await _dataAccessService.atomicDataService.reorderHabits(
+        draggedId: draggedId,
+        newPosition: newPosition,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'reorderHabits',
+          parameters: {'draggedId': draggedId, 'newPosition': newPosition},
+        ),
+      );
+      
+      if (result.success) {
       debugPrint('✅ Successfully reordered habit $draggedId in database');
+      } else {
+        debugPrint('❌ Failed to reorder habit: ${result.errorMessage}');
+        throw Exception('Failed to reorder habit: ${result.errorMessage}');
+      }
 
       // Increment reorder counter and normalize if needed
       _reorderCount++;
       if (_reorderCount >= 10) {
-        // Normalize every 10 reorders
+        // Normalize every 10 reorders using atomic service
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
-        await _dataAccessService.normalizeOrderValues();
+        final result = await _dataAccessService.atomicDataService.normalizeOrderValues(
+          context: DataAccessContext(
+            component: 'HabitProvider',
+            operation: 'normalizeOrderValues',
+            parameters: {'reorderCount': _reorderCount},
+          ),
+        );
+        
+        if (result.success) {
+          debugPrint('✅ Successfully normalized order values');
+        } else {
+          debugPrint('❌ Failed to normalize order values: ${result.errorMessage}');
+        }
         _reorderCount = 0;
         // Reload habits to get normalized order values
         await loadHabitsForDashboard(forceRefresh: true);
@@ -1824,9 +1916,21 @@ class HabitProvider extends HabitState {
       // Increment reorder counter and normalize if needed
       _reorderCount++;
       if (_reorderCount >= 10) {
-        // Normalize every 10 reorders
+        // Normalize every 10 reorders using atomic service
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
-        await _dataAccessService.normalizeOrderValues();
+        final result = await _dataAccessService.atomicDataService.normalizeOrderValues(
+        context: DataAccessContext(
+          component: 'HabitProvider',
+            operation: 'normalizeOrderValues',
+            parameters: {'reorderCount': _reorderCount},
+        ),
+      );
+
+      if (result.success) {
+          debugPrint('✅ Successfully normalized order values');
+        } else {
+          debugPrint('❌ Failed to normalize order values: ${result.errorMessage}');
+        }
         _reorderCount = 0;
         // Reload habits to get normalized order values (use dashboard-optimized loading)
         await loadHabitsForDashboard(forceRefresh: true);
