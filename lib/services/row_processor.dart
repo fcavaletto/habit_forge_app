@@ -482,7 +482,7 @@ class CachedRowProcessor implements IRowProcessor {
 
     // Try to get from cache first
     final cachedData = await _cache.getCachedMetadata(cacheKey);
-    if (cachedData != null && cachedData is Map<String, dynamic>) {
+    if (cachedData != null) {
       final metadataData = cachedData['metadata'];
       if (metadataData != null && metadataData is Map<String, dynamic>) {
         final metadata = HabitMetadata(
@@ -569,7 +569,7 @@ class CachedRowProcessor implements IRowProcessor {
     final cacheKey = 'reminders:$habitId';
     final cached = await _cache.getCachedMetadata(cacheKey);
 
-    if (cached != null && cached is Map<String, dynamic>) {
+    if (cached != null) {
       final remindersData = cached['reminders'];
       if (remindersData != null) {
         final reminders = ProcessedReminders(
@@ -629,7 +629,7 @@ class CachedRowProcessor implements IRowProcessor {
 
     final cached = await _cache.getCachedMetadata(cacheKey);
 
-    if (cached != null && cached is Map<String, dynamic>) {
+    if (cached != null) {
       final frequencyData = cached['frequency'];
       if (frequencyData != null) {
         final frequency = ProcessedFrequency(frequencyData as Map<String, int>);

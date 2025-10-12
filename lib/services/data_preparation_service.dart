@@ -632,9 +632,10 @@ class ArchiveDataPreparationService implements IDataPreparationService {
   }
 
   /// Get archived habits (metadata only - no completion data needed)
-  /// 
+  ///
   /// Archived habits don't need completion data since they're not actively being completed.
   /// This method loads only metadata for optimal performance.
+  @override
   Future<DataAccessResult<List<Habit>>> getArchivedHabits({
     required DataAccessContext context,
   }) async {

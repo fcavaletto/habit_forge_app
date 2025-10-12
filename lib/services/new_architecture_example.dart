@@ -24,9 +24,9 @@ class NewArchitectureExample {
         ),
       );
 
-      if (result.success) {
-        debugPrint('✅ Loaded ${result.data.length} dashboard habits');
-        return result.data;
+      if (result.success && result.data != null) {
+        debugPrint('✅ Loaded ${result.data!.length} dashboard habits');
+        return result.data!;
       } else {
         debugPrint('❌ Failed to load dashboard habits: ${result.errorMessage}');
         return [];
@@ -64,7 +64,7 @@ class NewArchitectureExample {
   /// Example: Create a new habit
   static Future<Habit?> createNewHabit() async {
     try {
-      final habitData = HabitData(
+      final habitData = const HabitData(
         name: 'Morning Exercise',
         description: 'Daily morning workout routine',
         colorIndex: 1,
@@ -84,9 +84,9 @@ class NewArchitectureExample {
         ),
       );
 
-      if (result.success) {
-        debugPrint('✅ Created habit: ${result.data.name}');
-        return result.data;
+      if (result.success && result.data != null) {
+        debugPrint('✅ Created habit: ${result.data!.name}');
+        return result.data!;
       } else {
         debugPrint('❌ Failed to create habit: ${result.errorMessage}');
         return null;
@@ -117,9 +117,9 @@ class NewArchitectureExample {
         ),
       );
 
-      if (result.success) {
-        debugPrint('✅ Loaded ${result.data.length} habits for stats');
-        return result.data;
+      if (result.success && result.data != null) {
+        debugPrint('✅ Loaded ${result.data!.length} habits for stats');
+        return result.data!;
       } else {
         debugPrint('❌ Failed to load stats data: ${result.errorMessage}');
         return [];
@@ -146,9 +146,9 @@ class NewArchitectureExample {
         ),
       );
 
-      if (result.success) {
-        debugPrint('✅ Loaded ${result.data.length} habits for calendar');
-        return result.data;
+      if (result.success && result.data != null) {
+        debugPrint('✅ Loaded ${result.data!.length} habits for calendar');
+        return result.data!;
       } else {
         debugPrint('❌ Failed to load calendar data: ${result.errorMessage}');
         return [];
@@ -183,9 +183,9 @@ class MigrationGuide {
       ),
     );
 
-    if (result.success) {
+    if (result.success && result.data != null) {
       // Ready-to-use data - variable used to avoid warning
-      final habits = result.data;
+      final habits = result.data!;
       debugPrint('Loaded ${habits.length} habits');
     }
   }
@@ -249,7 +249,7 @@ class MigrationGuide {
       ),
     );
 
-    final dashboardHabits = result.success ? result.data : <Habit>[];
+    final dashboardHabits = result.success && result.data != null ? result.data! : <Habit>[];
     return dashboardHabits;
   }
 

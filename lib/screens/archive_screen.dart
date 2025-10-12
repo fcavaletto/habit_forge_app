@@ -6,7 +6,6 @@ import '../providers/app_state_provider.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/icon_utils.dart';
 import '../services/service_factory.dart';
-import '../services/data_access_monitor.dart';
 import '../services/atomic_data_service.dart';
 
 /// Archive Screen - Displays archived habits with restore functionality

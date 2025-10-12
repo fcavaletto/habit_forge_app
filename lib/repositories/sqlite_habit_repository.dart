@@ -1749,7 +1749,7 @@ class SqliteHabitRepository {
       final asOfTimestamp = TimezoneUtils.toUtcTimestamp(asOfDate);
       
       // Query to find the current streak by counting consecutive days backwards
-      final query = '''
+      const query = '''
         WITH RECURSIVE streak_days AS (
           -- Start from the asOfDate
           SELECT ? as check_date, 0 as streak_count
@@ -1803,7 +1803,7 @@ class SqliteHabitRepository {
       final db = await _databaseService.database;
       
       // Query to find the maximum streak by analyzing all completion data
-      final query = '''
+      const query = '''
         WITH completion_dates AS (
           SELECT DISTINCT completion_date
           FROM habit_completions
