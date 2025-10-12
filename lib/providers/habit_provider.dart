@@ -1456,117 +1456,6 @@ class HabitState extends ChangeNotifier {
   // New approach: Use addHabitToMetadata, updateHabitInMetadata, removeHabitFromMetadata
   // for surgical cache updates instead of rebuilding entire cache
 
-  /// Update completion in cache after database operation
-  /// 
-  /// This method updates completion data for a specific habit and date
-  /// in the cache, maintaining cache consistency.
-  /// 
-  /// Features:
-  /// - Retry mechanism for transient failures
-  /// - Input validation before caching
-  /// - Graceful degradation on failures
-  /// - Comprehensive error logging
-  Future<void> _updateCompletionInCache(String habitId, DateTime date, int count) async {
-    debugPrint('🔧 _updateCompletionInCache called for habit $habitId with count $count');
-    
-    if (habitId.isEmpty) {
-      debugPrint('❌ Skipping completion cache update - empty habit ID');
-      return;
-    }
-
-    if (count < 0) {
-      debugPrint('❌ Skipping completion cache update - negative count: $count');
-      return;
-    }
-
-    const maxRetries = 3;
-    const retryDelay = Duration(milliseconds: 100);
-    
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        await _persistentCache.updateCompletion(habitId, date, count);
-        debugPrint('✅ Completion updated in cache for $habitId (attempt $attempt)');
-        return;
-      } catch (e) {
-        debugPrint('⚠️ Completion cache update attempt $attempt failed: $e');
-        
-        if (attempt == maxRetries) {
-          debugPrint('❌ Completion cache update failed after $maxRetries attempts - operation continues');
-          _logCacheError('_updateCompletionInCache', e, habitId: habitId);
-        } else {
-          // Wait before retry
-          await Future.delayed(retryDelay * attempt);
-        }
-      }
-    }
-  }
-
-  /// Validate habits list before caching operations
-  /// 
-  /// Ensures data integrity and prevents caching of invalid data.
-  bool _validateHabitsForCaching() {
-    try {
-      if (_habits.isEmpty) {
-        debugPrint('⚠️ Validation: Empty habits list');
-        return false;
-      }
-
-      // Check for duplicate IDs
-      final ids = _habits.map((h) => h.id).toList();
-      final uniqueIds = ids.toSet();
-      if (ids.length != uniqueIds.length) {
-        debugPrint('❌ Validation: Duplicate habit IDs detected');
-        return false;
-      }
-
-      // Check for empty IDs
-      if (ids.any((id) => id.isEmpty)) {
-        debugPrint('❌ Validation: Empty habit IDs detected');
-        return false;
-      }
-
-      // Check for null habits (this check is actually unnecessary in Dart with null safety)
-      // if (_habits.any((habit) => habit == null)) {
-      //   debugPrint('❌ Validation: Null habits detected');
-      //   return false;
-      // }
-
-      debugPrint('✅ Validation: Habits list is valid for caching');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Validation: Error validating habits: $e');
-      return false;
-    }
-  }
-
-  /// Validate individual habit before caching operations
-  /// 
-  /// Ensures habit data integrity and prevents caching of invalid habits.
-  bool _validateHabitForCaching(Habit habit) {
-    try {
-      if (habit.id.isEmpty) {
-        debugPrint('❌ Validation: Habit has empty ID');
-        return false;
-      }
-
-      if (habit.name.isEmpty) {
-        debugPrint('❌ Validation: Habit has empty name');
-        return false;
-      }
-
-      if (habit.targetGoal <= 0) {
-        debugPrint('❌ Validation: Habit has invalid target goal: ${habit.targetGoal}');
-        return false;
-      }
-
-      debugPrint('✅ Validation: Habit ${habit.id} is valid for caching');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Validation: Error validating habit: $e');
-      return false;
-    }
-  }
-
   /// Log cache errors with context for debugging
   /// 
   /// Provides comprehensive error logging for troubleshooting cache issues.
@@ -1627,10 +1516,10 @@ Cache Service: ${_persistentCache.runtimeType}
       }
 
       // Check habits data integrity
-      if (!_validateHabitsForCaching()) {
-        healthReport['issues'].add('Habits data integrity issues detected');
-        healthReport['overallHealth'] = 'critical';
-        healthReport['recommendations'].add('Reload habits from database');
+      if (_habits.isEmpty) {
+        healthReport['issues'].add('No habits data available');
+        healthReport['overallHealth'] = 'warning';
+        healthReport['recommendations'].add('Load habits from database');
       }
 
       debugPrint('🔍 Cache health check completed: ${healthReport['overallHealth']}');
