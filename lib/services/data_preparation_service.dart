@@ -2,6 +2,36 @@ import 'package:flutter/foundation.dart';
 import '../models/habit.dart';
 import 'atomic_data_service.dart';
 
+/// Interface for data preparation services
+abstract class IDataPreparationService {
+  /// Get habits optimized for dashboard display
+  Future<DataAccessResult<List<Habit>>> getDashboardHabits({
+    required DataAccessContext context,
+  });
+
+  /// Get habits optimized for stats display
+  Future<DataAccessResult<List<Habit>>> getStatsHabits({
+    required DataAccessContext context,
+  });
+
+  /// Get habits optimized for calendar display
+  Future<DataAccessResult<List<Habit>>> getCalendarHabits({
+    required DateTime startDate,
+    required DateTime endDate,
+    required DataAccessContext context,
+  });
+
+  /// Get habits optimized for reordering
+  Future<DataAccessResult<List<Habit>>> getReorderableHabits({
+    required DataAccessContext context,
+  });
+
+  /// Get archived habits (metadata only)
+  Future<DataAccessResult<List<Habit>>> getArchivedHabits({
+    required DataAccessContext context,
+  });
+}
+
 /// Dashboard Data Preparation Service
 ///
 /// Combines atomic data operations to provide UI-ready habit data for the dashboard.
@@ -413,6 +443,13 @@ class DashboardDataPreparationService implements IDataPreparationService {
       );
     }
   }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getArchivedHabits({
+    required DataAccessContext context,
+  }) async {
+    return ArchiveDataPreparationService(_atomicService).getArchivedHabits(context: context);
+  }
 }
 
 /// Factory for creating data preparation services
@@ -431,6 +468,10 @@ class DataPreparationServiceFactory {
 
   static IDataPreparationService createReorderService(IAtomicDataService atomicService) {
     return ReorderDataPreparationService(atomicService);
+  }
+
+  static IDataPreparationService createArchiveService(IAtomicDataService atomicService) {
+    return ArchiveDataPreparationService(atomicService);
   }
 }
 
@@ -467,6 +508,13 @@ class StatsDataPreparationService implements IDataPreparationService {
   Future<DataAccessResult<List<Habit>>> getReorderableHabits({required DataAccessContext context}) async {
     return DashboardDataPreparationService(_atomicService).getReorderableHabits(context: context);
   }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getArchivedHabits({
+    required DataAccessContext context,
+  }) async {
+    return ArchiveDataPreparationService(_atomicService).getArchivedHabits(context: context);
+  }
 }
 
 /// Calendar-specific data preparation service
@@ -502,6 +550,13 @@ class CalendarDataPreparationService implements IDataPreparationService {
   Future<DataAccessResult<List<Habit>>> getReorderableHabits({required DataAccessContext context}) async {
     return DashboardDataPreparationService(_atomicService).getReorderableHabits(context: context);
   }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getArchivedHabits({
+    required DataAccessContext context,
+  }) async {
+    return ArchiveDataPreparationService(_atomicService).getArchivedHabits(context: context);
+  }
 }
 
 /// Reorder-specific data preparation service
@@ -536,5 +591,116 @@ class ReorderDataPreparationService implements IDataPreparationService {
   @override
   Future<DataAccessResult<List<Habit>>> getReorderableHabits({required DataAccessContext context}) async {
     return DashboardDataPreparationService(_atomicService).getReorderableHabits(context: context);
+  }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getArchivedHabits({
+    required DataAccessContext context,
+  }) async {
+    return ArchiveDataPreparationService(_atomicService).getArchivedHabits(context: context);
+  }
+}
+
+/// Archive-specific data preparation service
+class ArchiveDataPreparationService implements IDataPreparationService {
+  final IAtomicDataService _atomicService;
+
+  ArchiveDataPreparationService(this._atomicService);
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getDashboardHabits({required DataAccessContext context}) {
+    throw UnimplementedError('Use DashboardDataPreparationService for dashboard data');
+  }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getStatsHabits({required DataAccessContext context}) {
+    throw UnimplementedError('Use StatsDataPreparationService for stats data');
+  }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getCalendarHabits({
+    required DateTime startDate,
+    required DateTime endDate,
+    required DataAccessContext context,
+  }) {
+    throw UnimplementedError('Use CalendarDataPreparationService for calendar data');
+  }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getReorderableHabits({required DataAccessContext context}) {
+    throw UnimplementedError('Use ReorderDataPreparationService for reorder data');
+  }
+
+  /// Get archived habits (metadata only - no completion data needed)
+  /// 
+  /// Archived habits don't need completion data since they're not actively being completed.
+  /// This method loads only metadata for optimal performance.
+  Future<DataAccessResult<List<Habit>>> getArchivedHabits({
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🗄️ [ARCHIVE] Preparing archived habits: ${context.component}.${context.operation}');
+
+      // Get archived habit metadata only (no completion data needed)
+      final metadataResult = await _atomicService.getArchivedHabitFeatures(
+        context: DataAccessContext(
+          component: 'ArchiveDataPreparation',
+          operation: 'getArchivedMetadata',
+          parameters: context.parameters,
+        ),
+      );
+
+      if (!metadataResult.success || metadataResult.data == null) {
+        stopwatch.stop();
+        return DataAccessResult.failure(
+          errorMessage: 'Failed to get archived habit metadata: ${metadataResult.errorMessage}',
+          context: context,
+          executionTime: stopwatch.elapsed,
+        );
+      }
+
+      // Convert metadata to Habit objects (no completion data)
+      final archivedHabits = metadataResult.data!.map((metadata) {
+        return Habit(
+          id: metadata.id,
+          name: metadata.name,
+          description: metadata.description,
+          colorIndex: metadata.colorIndex,
+          createdAt: metadata.createdAt,
+          completions: const {}, // Empty - archived habits don't need completion data
+          iconName: metadata.iconName,
+          reminderTime: metadata.reminderTime,
+          enableReminders: metadata.enableReminders,
+          isArchived: metadata.isArchived,
+          orderValue: metadata.orderValue,
+          frequencyDays: metadata.frequencyDays,
+          targetGoal: metadata.targetGoal,
+          allowExceedGoal: metadata.allowExceedGoal,
+        );
+      }).toList();
+
+      // Sort by creation date (most recent first)
+      archivedHabits.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      stopwatch.stop();
+      debugPrint('✅ [ARCHIVE] Prepared ${archivedHabits.length} archived habits in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: archivedHabits,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ARCHIVE] Failed to prepare archived habits after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to prepare archived habits: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
   }
 }

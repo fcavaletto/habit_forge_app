@@ -15,33 +15,81 @@ class SqliteHabitRepository {
   
   SqliteHabitRepository(this._databaseService);
   
-  Future<List<Habit>> getActiveHabits() async {
+  /// Get archived habits with metadata only (optimized)
+  /// 
+  /// This method loads only the metadata fields needed for archive operations
+  /// and uses batch timestamp conversions for better performance.
+  /// It bypasses _rowToHabit to avoid loading unnecessary completion data.
+  Future<List<Habit>> getArchivedHabitsForMetadata() async {
     try {
       final db = await _databaseService.database;
-      final results = await db.rawQuery('''
-        SELECT h.*, o.order_value
-        FROM habits h
-        INNER JOIN habit_display_order o ON h.id = o.habit_id
-        WHERE h.is_archived = 0
-        ORDER BY o.order_value DESC
-      ''');
+      final results = await db.query(
+        'habits',
+        where: 'is_archived = ?',
+        whereArgs: [1],
+        orderBy: 'created_at DESC',
+      );
       
-      final habits = <Habit>[];
-      for (final row in results) {
-        final habit = await _rowToHabit(row);
-        if (habit != null) {
-          habits.add(habit);
-        }
+      if (results.isEmpty) {
+        debugPrint('📖 Retrieved 0 archived habits for metadata');
+        return [];
       }
       
-      debugPrint('📖 Retrieved ${habits.length} active habits from SQLite (with custom ordering)');
+      // Batch convert all creation timestamps at once
+      final createdAtTimestamps = results.map((row) => row['created_at'] as int).toList();
+      final createdAtDates = TimezoneUtils.batchFromUtcTimestamp(
+        createdAtTimestamps,
+        context: 'Batch archived habit creation dates',
+      );
+      
+      // Build habits directly without _rowToHabit
+      final habits = <Habit>[];
+      for (int i = 0; i < results.length; i++) {
+        final row = results[i];
+        
+        // Parse reminder time if present
+        TimeOfDay? reminderTime;
+        final reminderTimeStr = row['reminder_time'] as String?;
+        if (reminderTimeStr != null && reminderTimeStr.isNotEmpty) {
+          final parts = reminderTimeStr.split(':');
+          if (parts.length == 2) {
+            reminderTime = TimeOfDay(
+              hour: int.parse(parts[0]),
+              minute: int.parse(parts[1]),
+            );
+          }
+        }
+        
+        // Parse frequency days
+        final frequencyDaysJson = row['frequency_days'] as String;
+        final frequencyDays = Map<String, int>.from(jsonDecode(frequencyDaysJson));
+        
+        habits.add(Habit(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          description: row['description'] as String? ?? '',
+          colorIndex: row['color_index'] as int,
+          createdAt: createdAtDates[i], // From batch conversion
+          completions: const {}, // Empty - not loading completion data
+          iconName: row['icon_name'] as String? ?? 'check_circle',
+          reminderTime: reminderTime,
+          enableReminders: (row['enable_reminders'] as int) == 1,
+          isArchived: (row['is_archived'] as int) == 1,
+          orderValue: row['order_value'] as double?, // Cast to double?
+          frequencyDays: frequencyDays,
+          targetGoal: row['target_goal'] as int? ?? 1,
+          allowExceedGoal: (row['allow_exceed_goal'] as int? ?? 1) == 1,
+        ));
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} archived habits for metadata (batch converted)');
       return habits;
     } catch (e) {
-      debugPrint('❌ Error getting active habits: $e');
+      debugPrint('❌ Error getting archived habits for metadata: $e');
       return [];
     }
   }
-  
+
   /// Get active habits with minimal data for reordering operations
   /// 
   /// This method loads habits with only essential metadata (name, description, 
@@ -125,7 +173,11 @@ class SqliteHabitRepository {
     }
   }
   
-  Future<List<Habit>> getAllHabits() async {
+  /// Get all habits including archived ones (returns full Habit objects)
+  /// 
+  /// This method loads all habits (both active and archived) with full completion data.
+  /// It's primarily used for operations that need to check existence or restore archived habits.
+  Future<List<Habit>> getAllHabitsIncludingArchived() async {
     try {
       final db = await _databaseService.database;
       final results = await db.query(
@@ -141,13 +193,14 @@ class SqliteHabitRepository {
         }
       }
       
-      debugPrint('📖 Retrieved ${habits.length} total habits from SQLite');
+      debugPrint('📖 Retrieved ${habits.length} total habits from SQLite (including archived)');
       return habits;
     } catch (e) {
-      debugPrint('❌ Error getting all habits: $e');
+      debugPrint('❌ Error getting all habits including archived: $e');
       return [];
     }
   }
+
   
   Future<List<Habit>> getArchivedHabits() async {
     try {
@@ -265,10 +318,12 @@ class SqliteHabitRepository {
     }
   }
 
-  /// Get active habits optimized for stats screen (last 30 days, local timezone)
+  /// Get active habits optimized for stats screen (metadata only)
   /// 
-  /// This method loads only the last 30 days of completion data, which is
-  /// sufficient for most stats screen operations and improves performance.
+  /// This method loads only metadata fields needed for stats operations
+  /// and uses batch timestamp conversions for better performance.
+  /// It bypasses _rowToHabit to avoid loading unnecessary completion data.
+  /// Stats screen can load completion data separately if needed.
   Future<List<Habit>> getActiveHabitsForStats() async {
     try {
       final db = await _databaseService.database;
@@ -280,23 +335,59 @@ class SqliteHabitRepository {
         ORDER BY o.order_value DESC
       ''');
       
-      final habits = <Habit>[];
-      final today = VirtualDateService().currentDate;
-      final last30Days = today.subtract(const Duration(days: 29));
-      
-      for (final row in results) {
-        final habit = await _rowToHabit(
-          row,
-          startDate: last30Days,
-          endDate: today,
-          convertToLocal: true, // Stats screen needs local timezone for display
-        );
-        if (habit != null) {
-          habits.add(habit);
-        }
+      if (results.isEmpty) {
+        debugPrint('📖 Retrieved 0 active habits for stats');
+        return [];
       }
       
-      debugPrint('📖 Retrieved ${habits.length} active habits for stats (last 30 days only)');
+      // Batch convert all creation timestamps at once
+      final createdAtTimestamps = results.map((row) => row['created_at'] as int).toList();
+      final createdAtDates = TimezoneUtils.batchFromUtcTimestamp(
+        createdAtTimestamps,
+        context: 'Batch habit creation dates for stats',
+      );
+      
+      // Build habits directly without _rowToHabit
+      final habits = <Habit>[];
+      for (int i = 0; i < results.length; i++) {
+        final row = results[i];
+        
+        // Parse reminder time if present
+        TimeOfDay? reminderTime;
+        final reminderTimeStr = row['reminder_time'] as String?;
+        if (reminderTimeStr != null && reminderTimeStr.isNotEmpty) {
+          final parts = reminderTimeStr.split(':');
+          if (parts.length == 2) {
+            reminderTime = TimeOfDay(
+              hour: int.parse(parts[0]),
+              minute: int.parse(parts[1]),
+            );
+          }
+        }
+        
+        // Parse frequency days
+        final frequencyDaysJson = row['frequency_days'] as String;
+        final frequencyDays = Map<String, int>.from(jsonDecode(frequencyDaysJson));
+        
+        habits.add(Habit(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          description: row['description'] as String? ?? '',
+          colorIndex: row['color_index'] as int,
+          createdAt: createdAtDates[i], // From batch conversion
+          completions: const {}, // Empty - not loading completion data
+          iconName: row['icon_name'] as String? ?? 'check_circle',
+          reminderTime: reminderTime,
+          enableReminders: (row['enable_reminders'] as int) == 1,
+          isArchived: (row['is_archived'] as int) == 1,
+          orderValue: row['order_value'] as double?, // Cast to double?
+          frequencyDays: frequencyDays,
+          targetGoal: row['target_goal'] as int? ?? 1,
+          allowExceedGoal: (row['allow_exceed_goal'] as int? ?? 1) == 1,
+        ));
+      }
+      
+      debugPrint('📖 Retrieved ${habits.length} active habits for stats (metadata only, batch converted)');
       return habits;
     } catch (e) {
       debugPrint('❌ Error getting active habits for stats: $e');
@@ -1098,7 +1189,7 @@ class SqliteHabitRepository {
   
   Future<Map<String, dynamic>> getStatistics() async {
     try {
-      final habits = await getActiveHabits();
+      final habits = await getActiveHabitsForReordering();
       
       if (habits.isEmpty) {
         return {
@@ -1133,7 +1224,7 @@ class SqliteHabitRepository {
   
   Future<List<Habit>> getHabitsNeedingAttention() async {
     try {
-      final habits = await getActiveHabits();
+      final habits = await getActiveHabitsForReordering();
       final now = VirtualDateService().currentDate;
       
       return habits.where((habit) {
@@ -1331,7 +1422,7 @@ class SqliteHabitRepository {
   /// Reorder habits using fractional positioning
   Future<void> reorderHabits(String draggedId, int newPosition) async {
     try {
-      final habits = await getActiveHabits();
+      final habits = await getActiveHabitsForReordering();
       double newOrderValue;
       
       if (newPosition == 0) {
@@ -1433,7 +1524,7 @@ class SqliteHabitRepository {
   /// Normalize order values to prevent precision issues
   Future<void> normalizeOrderValues() async {
     try {
-      final habits = await getActiveHabits();
+      final habits = await getActiveHabitsForReordering();
       await _databaseService.transaction((txn) async {
         for (int i = 0; i < habits.length; i++) {
           await txn.update(

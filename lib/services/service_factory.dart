@@ -26,6 +26,7 @@ class ServiceFactory {
   static IDataPreparationService? _statsDataService;
   static IDataPreparationService? _calendarDataService;
   static IDataPreparationService? _reorderDataService;
+  static IDataPreparationService? _archiveDataService;
 
   /// Initialize all core services
   static Future<void> initialize() async {
@@ -75,6 +76,7 @@ class ServiceFactory {
       _statsDataService ??= DataPreparationServiceFactory.createStatsService(_atomicDataService!);
       _calendarDataService ??= DataPreparationServiceFactory.createCalendarService(_atomicDataService!);
       _reorderDataService ??= DataPreparationServiceFactory.createReorderService(_atomicDataService!);
+      _archiveDataService ??= DataPreparationServiceFactory.createArchiveService(_atomicDataService!);
 
       debugPrint('✅ Service Factory initialized successfully');
     } catch (e) {
@@ -123,6 +125,14 @@ class ServiceFactory {
     return _reorderDataService!;
   }
 
+  /// Get the archive data preparation service
+  static IDataPreparationService get archiveDataService {
+    if (_archiveDataService == null) {
+      throw StateError('Service Factory not initialized. Call initialize() first.');
+    }
+    return _archiveDataService!;
+  }
+
   /// Reset all services (useful for testing)
   static void reset() {
     _databaseService = null;
@@ -134,6 +144,7 @@ class ServiceFactory {
     _statsDataService = null;
     _calendarDataService = null;
     _reorderDataService = null;
+    _archiveDataService = null;
 
     PerformanceMonitor.resetMetrics();
     debugPrint('🔄 Service Factory reset');

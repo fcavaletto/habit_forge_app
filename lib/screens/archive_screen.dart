@@ -5,6 +5,9 @@ import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/icon_utils.dart';
+import '../services/service_factory.dart';
+import '../services/data_access_monitor.dart';
+import '../services/atomic_data_service.dart';
 
 /// Archive Screen - Displays archived habits with restore functionality
 ///
@@ -48,23 +51,33 @@ class _ArchiveScreenState extends State<ArchiveScreen> with WidgetsBindingObserv
     debugPrint('🔄 Archive Screen: Starting to load archived habits...');
     setState(() => _isLoading = true);
     try {
-      final appState = Provider.of<AppState>(context, listen: false);
-      final habitProvider = appState.habitProvider;
-      debugPrint('🔄 Archive Screen: HabitProvider obtained through AppState, calling repository...');
-      final archivedHabits = await habitProvider.dataAccessService.getArchivedHabits();
-      debugPrint('🔄 Archive Screen: Retrieved ${archivedHabits.length} archived habits');
+      // Use the new ArchiveDataPreparationService for optimized loading
+      final result = await ServiceFactory.archiveDataService.getArchivedHabits(
+        context: DataAccessContext(
+          component: 'ArchiveScreen',
+          operation: 'loadArchivedHabits',
+        ),
+      );
       
-      // Log each habit for debugging
-      for (int i = 0; i < archivedHabits.length; i++) {
-        final habit = archivedHabits[i];
-        debugPrint('📦 Archived Habit $i: ${habit.name} (ID: ${habit.id}, Archived: ${habit.isArchived})');
+      if (result.success && result.data != null) {
+        final archivedHabits = result.data!;
+        debugPrint('🔄 Archive Screen: Retrieved ${archivedHabits.length} archived habits via DataPreparationService');
+        
+        // Log each habit for debugging
+        for (int i = 0; i < archivedHabits.length; i++) {
+          final habit = archivedHabits[i];
+          debugPrint('📦 Archived Habit $i: ${habit.name} (ID: ${habit.id}, Archived: ${habit.isArchived})');
+        }
+        
+        setState(() {
+          _archivedHabits = archivedHabits;
+          _isLoading = false;
+        });
+        debugPrint('✅ Archive Screen: Successfully loaded ${_archivedHabits.length} archived habits');
+      } else {
+        setState(() => _isLoading = false);
+        debugPrint('❌ Archive Screen: Failed to load archived habits: ${result.errorMessage}');
       }
-      
-      setState(() {
-        _archivedHabits = archivedHabits;
-        _isLoading = false;
-      });
-      debugPrint('✅ Archive Screen: Successfully loaded ${_archivedHabits.length} archived habits');
     } catch (e) {
       setState(() => _isLoading = false);
       debugPrint('❌ Archive Screen: Failed to load archived habits: $e');

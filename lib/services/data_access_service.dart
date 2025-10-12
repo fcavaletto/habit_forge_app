@@ -341,7 +341,7 @@ class DataAccessService {
     _logQuery('getAllHabits', {});
 
     return await _withTiming('getAllHabits', () async {
-      return await _repository.getAllHabits();
+      return await _repository.getAllHabitsIncludingArchived();
     });
   }
 
