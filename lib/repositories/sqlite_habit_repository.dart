@@ -36,7 +36,7 @@ class SqliteHabitRepository {
       }
       
       // Batch convert all creation timestamps at once
-      final createdAtTimestamps = results.map((row) => row['created_at'] as int).toList();
+      final createdAtTimestamps = results.map((row) => row['created_at'] as int? ?? 0).toList();
       final createdAtDates = TimezoneUtils.batchFromUtcTimestamp(
         createdAtTimestamps,
         context: 'Batch archived habit creation dates',
@@ -68,13 +68,13 @@ class SqliteHabitRepository {
           id: row['id'] as String,
           name: row['name'] as String,
           description: row['description'] as String? ?? '',
-          colorIndex: row['color_index'] as int,
+          colorIndex: row['color_index'] as int? ?? 0,
           createdAt: createdAtDates[i], // From batch conversion
           completions: const {}, // Empty - not loading completion data
           iconName: row['icon_name'] as String? ?? 'check_circle',
           reminderTime: reminderTime,
-          enableReminders: (row['enable_reminders'] as int) == 1,
-          isArchived: (row['is_archived'] as int) == 1,
+          enableReminders: (row['enable_reminders'] as int? ?? 0) == 1,
+          isArchived: (row['is_archived'] as int? ?? 0) == 1,
           orderValue: row['order_value'] as double?, // Cast to double?
           frequencyDays: frequencyDays,
           targetGoal: row['target_goal'] as int? ?? 1,
@@ -89,7 +89,7 @@ class SqliteHabitRepository {
       return [];
     }
   }
-
+  
   /// Get active habits with minimal data for reordering operations
   /// 
   /// This method loads habits with only essential metadata (name, description, 
@@ -119,7 +119,7 @@ class SqliteHabitRepository {
       }
       
       // Batch convert all creation timestamps at once
-      final createdAtTimestamps = results.map((row) => row['created_at'] as int).toList();
+      final createdAtTimestamps = results.map((row) => row['created_at'] as int? ?? 0).toList();
       final createdAtDates = TimezoneUtils.batchFromUtcTimestamp(
         createdAtTimestamps,
         context: 'Batch habit creation dates for reordering',
@@ -151,13 +151,13 @@ class SqliteHabitRepository {
           id: row['id'] as String,
           name: row['name'] as String,
           description: row['description'] as String? ?? '',
-          colorIndex: row['color_index'] as int,
+          colorIndex: row['color_index'] as int? ?? 0,
           createdAt: createdAtDates[i], // From batch conversion
           completions: const {}, // Empty - not loading completion data
           iconName: row['icon_name'] as String? ?? 'check_circle',
           reminderTime: reminderTime,
-          enableReminders: (row['enable_reminders'] as int) == 1,
-          isArchived: (row['is_archived'] as int) == 1,
+          enableReminders: (row['enable_reminders'] as int? ?? 0) == 1,
+          isArchived: (row['is_archived'] as int? ?? 0) == 1,
           orderValue: row['order_value'] as double?,
           frequencyDays: frequencyDays,
           targetGoal: row['target_goal'] as int? ?? 1,
@@ -341,7 +341,7 @@ class SqliteHabitRepository {
       }
       
       // Batch convert all creation timestamps at once
-      final createdAtTimestamps = results.map((row) => row['created_at'] as int).toList();
+      final createdAtTimestamps = results.map((row) => row['created_at'] as int? ?? 0).toList();
       final createdAtDates = TimezoneUtils.batchFromUtcTimestamp(
         createdAtTimestamps,
         context: 'Batch habit creation dates for stats',
@@ -373,13 +373,13 @@ class SqliteHabitRepository {
           id: row['id'] as String,
           name: row['name'] as String,
           description: row['description'] as String? ?? '',
-          colorIndex: row['color_index'] as int,
+          colorIndex: row['color_index'] as int? ?? 0,
           createdAt: createdAtDates[i], // From batch conversion
           completions: const {}, // Empty - not loading completion data
           iconName: row['icon_name'] as String? ?? 'check_circle',
           reminderTime: reminderTime,
-          enableReminders: (row['enable_reminders'] as int) == 1,
-          isArchived: (row['is_archived'] as int) == 1,
+          enableReminders: (row['enable_reminders'] as int? ?? 0) == 1,
+          isArchived: (row['is_archived'] as int? ?? 0) == 1,
           orderValue: row['order_value'] as double?, // Cast to double?
           frequencyDays: frequencyDays,
           targetGoal: row['target_goal'] as int? ?? 1,
