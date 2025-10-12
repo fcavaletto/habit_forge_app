@@ -1201,17 +1201,23 @@ class HabitState extends ChangeNotifier {
     Habit newHabit,
   ) async {
     try {
-      final result = await _dataAccessService.overwriteArchivedHabit(
-        archivedHabitId,
-        newHabit,
+      final result = await _dataAccessService.atomicDataService.overwriteArchivedHabit(
+        archivedHabitId: archivedHabitId,
+        newHabit: newHabit,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'overwriteArchivedHabit',
+          parameters: {'archivedHabitId': archivedHabitId, 'newHabitName': newHabit.name},
+        ),
       );
-      if (result.success && result.savedHabit != null) {
+      
+      if (result.success && result.data != null) {
         // Add the unarchived habit to local state
-        _habits.insert(0, result.savedHabit!);
+        _habits.insert(0, result.data!);
 
         // Cache using additive method (no full rebuild)
-        final metadata = HabitMetadata.fromHabit(result.savedHabit!);
-        await _dataAccessService.cache.addHabitToMetadata(result.savedHabit!.id, {
+        final metadata = HabitMetadata.fromHabit(result.data!);
+        await _dataAccessService.cache.addHabitToMetadata(result.data!.id, {
           'id': metadata.id,
           'name': metadata.name,
           'description': metadata.description,
@@ -1228,11 +1234,13 @@ class HabitState extends ChangeNotifier {
           'targetGoal': metadata.targetGoal,
           'allowExceedGoal': metadata.allowExceedGoal,
         });
-        _metadataCache.cacheHabitMetadata(result.savedHabit!.id, metadata);
+        _metadataCache.cacheHabitMetadata(result.data!.id, metadata);
 
         notifyListeners();
+        return HabitSaveResult.success(result.data!);
+      } else {
+        return HabitSaveResult.error('Failed to overwrite archived habit: ${result.errorMessage}');
       }
-      return result;
     } catch (e) {
       return HabitSaveResult.error('Failed to overwrite archived habit: $e');
     }
@@ -1839,15 +1847,24 @@ class HabitProvider extends HabitState {
       );
       notifyListeners();
 
-      // Perform actual reordering in database with context
-      await _dataAccessService.reorderHabitsInContext(
-        draggedId,
-        newPosition,
-        visibleHabitIds,
+      // Perform actual reordering in database with context using atomic service
+      final result = await _dataAccessService.atomicDataService.reorderHabitsInContext(
+        draggedId: draggedId,
+        newPosition: newPosition,
+        visibleHabitIds: visibleHabitIds,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'reorderHabitsInContext',
+          parameters: {'draggedId': draggedId, 'newPosition': newPosition, 'visibleCount': visibleHabitIds.length},
+        ),
       );
-      debugPrint(
-        '✅ Successfully reordered habit $draggedId in database with context',
-      );
+      
+      if (result.success) {
+        debugPrint('✅ Successfully reordered habit $draggedId in database with context');
+      } else {
+        debugPrint('❌ Failed to reorder habit: ${result.errorMessage}');
+        throw Exception('Failed to reorder habit: ${result.errorMessage}');
+      }
 
       // Increment reorder counter and normalize if needed
       _reorderCount++;

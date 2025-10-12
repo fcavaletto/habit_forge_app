@@ -308,6 +308,19 @@ abstract class IAtomicDataService {
     required DataAccessContext context,
   });
 
+  /// Reorder habits with filtering context - handles filtered views correctly
+  ///
+  /// [draggedId] - ID of the habit being moved
+  /// [newPosition] - New position in the filtered list
+  /// [visibleHabitIds] - List of habit IDs currently visible in the filtered view
+  /// [context] - Logging context for the operation
+  Future<DataAccessResult<void>> reorderHabitsInContext({
+    required String draggedId,
+    required int newPosition,
+    required List<String> visibleHabitIds,
+    required DataAccessContext context,
+  });
+
   /// Normalize order values to prevent gaps
   ///
   /// [context] - Logging context for the operation
@@ -1542,6 +1555,41 @@ class AtomicDataService implements IAtomicDataService {
 
       return DataAccessResult.failure(
         errorMessage: 'Failed to reorder habits: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<void>> reorderHabitsInContext({
+    required String draggedId,
+    required int newPosition,
+    required List<String> visibleHabitIds,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] reorderHabitsInContext called: ${context.component}.${context.operation}');
+
+      // Use repository method for reordering with context
+      await _repository.reorderHabitsInContext(draggedId, newPosition, visibleHabitIds);
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] reorderHabitsInContext completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: null,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] reorderHabitsInContext failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to reorder habits in context: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );
