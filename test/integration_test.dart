@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import '../lib/models/habit.dart';
-import '../lib/services/atomic_data_service.dart';
-import '../lib/services/caching_service.dart';
-import '../lib/services/habit_metadata_cache_service.dart';
-import '../lib/services/row_processor.dart';
+import 'package:habit_forge_app/models/habit.dart';
+import 'package:habit_forge_app/services/atomic_data_service.dart';
+import 'package:habit_forge_app/services/caching_service.dart';
+import 'package:habit_forge_app/services/habit_metadata_cache_service.dart';
+import 'package:habit_forge_app/services/row_processor.dart';
 
 void main() {
   group('New Architecture Integration Tests', () {
