@@ -9,6 +9,17 @@ import '../services/row_processor.dart';
 
 /// Centralized service for all database queries with mandatory date ranges
 /// and comprehensive logging to prevent data access issues.
+///
+/// ⚠️ TRANSITIONAL ARCHITECTURE:
+/// This service is in a transitional state during migration to the Atomic Data Service
+/// architecture. Some methods here are wrappers around the old architecture and should
+/// be gradually replaced with calls to AtomicDataService.
+///
+/// NEW CODE SHOULD USE:
+/// - `atomicDataService` for fine-grained data operations (preferred)
+/// - `IDataPreparationService` implementations for UI-specific data preparation
+///
+/// Existing methods remain for backward compatibility but may be deprecated in the future.
 class DataAccessService {
   final SqliteHabitRepository _repository;
   final ICachingService _cache;
@@ -33,12 +44,17 @@ class DataAccessService {
   }
 
   /// Get the atomic data service for new architecture operations
+  ///
+  /// ✅ RECOMMENDED: Use this for all new data access code
   AtomicDataService get atomicDataService => _atomicDataService;
   
   /// Get the caching service for cache operations
   ICachingService get cache => _cache;
 
   /// Loads habit metadata only (no completion data)
+  /// 
+  /// ⚠️ TRANSITIONAL: Consider using `atomicDataService.getHabitFeatures()` directly
+  /// for better control and observability.
   /// 
   /// [habitIds] - Optional list of specific habit IDs to load.
   ///              If null, loads all active habits.
@@ -61,6 +77,9 @@ class DataAccessService {
   }
 
   /// Loads completion counts by date for specified habits
+  /// 
+  /// ⚠️ TRANSITIONAL: Consider using `atomicDataService.getCompletionDays()` directly
+  /// for better control and observability.
   /// 
   /// [startDate] - Start date for completion data (mandatory)
   /// [endDate] - End date for completion data (mandatory)
@@ -116,6 +135,9 @@ class DataAccessService {
   }
 
   /// Loads detailed completion records with timestamps
+  /// 
+  /// ⚠️ TRANSITIONAL: Consider using `atomicDataService.getCompletionTimestamps()` directly
+  /// for better control and observability.
   /// 
   /// [startDate] - Start date for completion data (mandatory)
   /// [endDate] - End date for completion data (mandatory)
@@ -325,6 +347,10 @@ class DataAccessService {
 
   /// Gets archived habits
   /// 
+  /// ⚠️ DEPRECATED: Use `IDataPreparationService.getArchivedHabits()` instead.
+  /// This method loads full completion data which is inefficient for archived habits.
+  /// The new architecture uses metadata-only loading for better performance.
+  /// 
   /// Returns: List of archived habits
   Future<List<Habit>> getArchivedHabits() async {
     _logQuery('getArchivedHabits', {});
@@ -335,6 +361,10 @@ class DataAccessService {
   }
 
   /// Gets all habits (including archived)
+  /// 
+  /// ⚠️ TRANSITIONAL: This loads full completion data for all habits, which may be
+  /// inefficient. Consider using `atomicDataService.getHabitFeatures()` for metadata-only
+  /// loading, or `IDataPreparationService` implementations for specific use cases.
   /// 
   /// Returns: List of all habits
   Future<List<Habit>> getAllHabits() async {

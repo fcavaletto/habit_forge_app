@@ -2,11 +2,51 @@ import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
 
+/// Log levels for controlling logging verbosity
+enum LogLevel {
+  debug(0),    // Detailed diagnostic information for development
+  info(1),     // General informational messages (cache hits, successful operations)
+  warning(2),  // Warnings that don't prevent operation (cache misses, retries)
+  error(3);    // Errors that require attention (failures, exceptions)
+
+  final int severity;
+  const LogLevel(this.severity);
+
+  bool shouldLog(LogLevel configuredLevel) {
+    return severity >= configuredLevel.severity;
+  }
+}
+
 /// Structured logging for data access operations
 ///
-/// Provides context-aware logging with performance metrics and error tracking
+/// Provides context-aware logging with performance metrics and error tracking.
+/// Log levels can be configured to control verbosity in different environments:
+/// - Development: LogLevel.debug (all logs)
+/// - Production: LogLevel.warning or LogLevel.error (reduce noise)
 class DataAccessLogger {
   static const String _logPrefix = '[DATA_ACCESS]';
+  
+  /// Current log level - controls which logs are emitted
+  /// Set to LogLevel.warning or LogLevel.error in production for better performance
+  static LogLevel _logLevel = kDebugMode ? LogLevel.debug : LogLevel.warning;
+
+  /// Configure the logging level
+  ///
+  /// Example:
+  /// ```dart
+  /// // Production: Only warnings and errors
+  /// DataAccessLogger.setLogLevel(LogLevel.warning);
+  ///
+  /// // Development: All logs including debug
+  /// DataAccessLogger.setLogLevel(LogLevel.debug);
+  /// ```
+  static void setLogLevel(LogLevel level) {
+    _logLevel = level;
+    debugPrint('📊 $_logPrefix Log level set to: ${level.name}');
+  }
+
+  /// Get current log level
+  static LogLevel get logLevel => _logLevel;
 
   /// Log successful operation
   static void logSuccess({
@@ -16,6 +56,8 @@ class DataAccessLogger {
     Map<String, dynamic>? parameters,
     Map<String, dynamic>? metadata,
   }) {
+    if (!LogLevel.info.shouldLog(_logLevel)) return;
+
     final context = _buildContext(operation, component, parameters);
     final message = '✅ $_logPrefix $context - Completed in ${executionTime.inMilliseconds}ms';
 
@@ -32,6 +74,8 @@ class DataAccessLogger {
     required String component,
     Map<String, dynamic>? parameters,
   }) {
+    if (!LogLevel.debug.shouldLog(_logLevel)) return;
+
     final context = _buildContext(operation, component, parameters);
     debugPrint('🔍 $_logPrefix $context - Started');
   }
@@ -45,6 +89,8 @@ class DataAccessLogger {
     Map<String, dynamic>? parameters,
     StackTrace? stackTrace,
   }) {
+    if (!LogLevel.error.shouldLog(_logLevel)) return;
+
     final context = _buildContext(operation, component, parameters);
     final message = '❌ $_logPrefix $context - Failed after ${executionTime.inMilliseconds}ms: $error';
 
@@ -62,6 +108,8 @@ class DataAccessLogger {
     required String message,
     Map<String, dynamic>? parameters,
   }) {
+    if (!LogLevel.warning.shouldLog(_logLevel)) return;
+
     final context = _buildContext(operation, component, parameters);
     debugPrint('⚠️ $_logPrefix $context - Warning: $message');
   }
@@ -74,6 +122,8 @@ class DataAccessLogger {
     int? recordCount,
     Map<String, dynamic>? parameters,
   }) {
+    if (!LogLevel.debug.shouldLog(_logLevel)) return;
+
     final context = _buildContext(operation, component, parameters);
     final countInfo = recordCount != null ? ' | Records: $recordCount' : '';
     debugPrint('⏱️ $_logPrefix $context - Performance: ${executionTime.inMilliseconds}ms$countInfo');
@@ -86,6 +136,11 @@ class DataAccessLogger {
     String? key,
     bool hit = false,
   }) {
+    // Cache hits are info level (useful but not critical)
+    // Cache misses are debug level (noise in production)
+    final level = hit ? LogLevel.info : LogLevel.debug;
+    if (!level.shouldLog(_logLevel)) return;
+
     final status = hit ? 'HIT' : 'MISS';
     final keyInfo = key != null ? ' | Key: $key' : '';
     debugPrint('💾 $_logPrefix CACHE $status - $cacheType$keyInfo | Operation: $operation');
