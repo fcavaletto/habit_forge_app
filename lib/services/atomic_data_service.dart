@@ -253,6 +253,21 @@ abstract class IAtomicDataService {
     required DataAccessContext context,
   });
 
+  /// Get hourly completion data for histogram analysis
+  ///
+  /// [habitId] - ID of the habit to analyze
+  /// [startDate] - Start date for the data
+  /// [endDate] - End date for the data
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns map of hour -> completion count for histogram display
+  Future<DataAccessResult<Map<int, int>>> getHourlyCompletions({
+    required String habitId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required DataAccessContext context,
+  });
+
   /// Modify habit metadata
   ///
   /// [habitId] - ID of the habit to modify
@@ -1012,6 +1027,56 @@ class AtomicDataService implements IAtomicDataService {
   }
 
   @override
+  Future<DataAccessResult<Map<int, int>>> getHourlyCompletions({
+    required String habitId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      // Validate date range
+      if (startDate.isAfter(endDate)) {
+        throw DataValidationException(
+          'Start date cannot be after end date',
+          DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
+        );
+      }
+
+      if (endDate.difference(startDate).inDays > 365) {
+        throw DataValidationException(
+          'Date range cannot exceed 365 days',
+          DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
+        );
+      }
+
+      debugPrint('🔍 [ATOMIC] getHourlyCompletions called: ${context.component}.${context.operation}');
+
+      // Use repository method for hourly completions
+      final hourlyData = await _repository.getHourlyCompletions(habitId, startDate, endDate);
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] getHourlyCompletions completed: ${hourlyData.length} hours in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: hourlyData,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] getHourlyCompletions failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to get hourly completions: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
   Future<DataAccessResult<Habit>> modifyHabit({
     required String habitId,
     required Map<String, dynamic> updates,
@@ -1069,6 +1134,204 @@ class AtomicDataService implements IAtomicDataService {
 
       return DataAccessResult.failure(
         errorMessage: 'Failed to modify habit: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  Future<DataAccessResult<HabitMetadata>> processHabitMetadata({
+    required Map<String, dynamic> row,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] processHabitMetadata called: ${context.component}.${context.operation}');
+
+      // Use the row processor to process metadata
+      final result = await _rowProcessor.processHabitMetadata(
+        row: row,
+        context: context,
+      );
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] processHabitMetadata completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] processHabitMetadata failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to process habit metadata: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  Future<DataAccessResult<ProcessedCompletions>> processCompletions({
+    required String habitId,
+    required HabitLoadConfig config,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] processCompletions called: ${context.component}.${context.operation}');
+
+      // Use the row processor to process completions
+      final result = await _rowProcessor.processCompletions(
+        habitId: habitId,
+        config: config,
+        context: context,
+      );
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] processCompletions completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] processCompletions failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to process completions: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  Future<DataAccessResult<ProcessedReminders>> processReminders({
+    required String habitId,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] processReminders called: ${context.component}.${context.operation}');
+
+      // Use the row processor to process reminders
+      final result = await _rowProcessor.processReminders(
+        habitId: habitId,
+        context: context,
+      );
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] processReminders completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] processReminders failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to process reminders: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  Future<DataAccessResult<ProcessedFrequency>> processFrequencyDays({
+    required Map<String, dynamic> row,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] processFrequencyDays called: ${context.component}.${context.operation}');
+
+      // Use the row processor to process frequency days
+      final result = await _rowProcessor.processFrequencyDays(
+        row: row,
+        context: context,
+      );
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] processFrequencyDays completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] processFrequencyDays failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to process frequency days: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  Future<DataAccessResult<Habit>> assembleHabit({
+    required HabitMetadata metadata,
+    ProcessedCompletions? completions,
+    ProcessedReminders? reminders,
+    ProcessedFrequency? frequency,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] assembleHabit called: ${context.component}.${context.operation}');
+
+      // Use the row processor to assemble the habit
+      final result = await _rowProcessor.assembleHabit(
+        metadata: metadata,
+        completions: completions,
+        reminders: reminders,
+        frequency: frequency,
+        context: context,
+      );
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] assembleHabit completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] assembleHabit failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to assemble habit: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  Future<DataAccessResult<Habit>> processHabitFromRow({
+    required Map<String, dynamic> row,
+    required String habitId,
+    required HabitLoadConfig config,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] processHabitFromRow called: ${context.component}.${context.operation}');
+
+      // Use the row processor to process the habit from row
+      final result = await _rowProcessor.processHabitFromRow(
+        row: row,
+        habitId: habitId,
+        config: config,
+        context: context,
+      );
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] processHabitFromRow completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] processHabitFromRow failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to process habit from row: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );
