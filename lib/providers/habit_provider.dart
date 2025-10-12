@@ -310,7 +310,7 @@ class HabitState extends ChangeNotifier {
           debugPrint('❌ HabitProvider: Fallback load also failed: $fallbackError');
         }
       } else {
-        _error = 'Failed to load habits for dashboard: $e';
+      _error = 'Failed to load habits for dashboard: $e';
       }
       
       notifyListeners();
@@ -418,7 +418,7 @@ class HabitState extends ChangeNotifier {
       try {
         await _persistentCache.updateHabit(_habits[0]);
         debugPrint('✅ [ADD_HABIT] Persistent cache updated');
-      } catch (e) {
+    } catch (e) {
         debugPrint('⚠️ [ADD_HABIT] Failed to update persistent cache: $e');
         // Non-fatal - app continues with in-memory data
       }
@@ -928,20 +928,44 @@ class HabitState extends ChangeNotifier {
             case 'Last 7 Days':
               dateRange = DateRangeUtils.getLast7Days(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              hourlyCompletions = await _dataAccessService.getHourlyCompletions(
-                habitId,
-                dateRange.start,
-                dateRange.end,
+              final result = await _dataAccessService.atomicDataService.getHourlyCompletions(
+                habitId: habitId,
+                startDate: dateRange.start,
+                endDate: dateRange.end,
+                context: DataAccessContext(
+                  component: 'HabitProvider',
+                  operation: 'loadHourlyData',
+                  parameters: {'timeRange': timeRange, 'habitId': habitId},
+                ),
               );
+              
+              if (result.success && result.data != null) {
+                hourlyCompletions = result.data!;
+              } else {
+                debugPrint('❌ Failed to get hourly completions: ${result.errorMessage}');
+                hourlyCompletions = <int, int>{};
+              }
               break;
             case 'Last 30 Days':
               dateRange = DateRangeUtils.getLast30Days(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              hourlyCompletions = await _dataAccessService.getHourlyCompletions(
-                habitId,
-                dateRange.start,
-                dateRange.end,
+              final result = await _dataAccessService.atomicDataService.getHourlyCompletions(
+                habitId: habitId,
+                startDate: dateRange.start,
+                endDate: dateRange.end,
+                context: DataAccessContext(
+                  component: 'HabitProvider',
+                  operation: 'loadHourlyData',
+                  parameters: {'timeRange': timeRange, 'habitId': habitId},
+                ),
               );
+              
+              if (result.success && result.data != null) {
+                hourlyCompletions = result.data!;
+              } else {
+                debugPrint('❌ Failed to get hourly completions: ${result.errorMessage}');
+                hourlyCompletions = <int, int>{};
+              }
               break;
             case 'Total':
               dateRange = DateRangeUtils.getTotal(virtualDate);
@@ -1025,12 +1049,12 @@ class HabitState extends ChangeNotifier {
         // ROLLBACK: Database operation failed, restore habit
         debugPrint('❌ [ARCHIVE] Database sync failed, rolling back');
         _habits.insert(habitIndex, originalHabit);
-        notifyListeners();
+          notifyListeners();
         
         _error = 'Failed to archive habit: ${result.errorMessage}';
         return false;
       }
-      
+
     } catch (e) {
       // ROLLBACK: Exception occurred, restore habit
       debugPrint('❌ [ARCHIVE] Exception occurred, rolling back: $e');
@@ -1157,7 +1181,7 @@ class HabitState extends ChangeNotifier {
       try {
         await _persistentCache.updateHabit(habitWithCompletions);
         debugPrint('✅ [UNARCHIVE] Persistent cache updated');
-      } catch (e) {
+    } catch (e) {
         debugPrint('⚠️ [UNARCHIVE] Failed to update persistent cache: $e');
         // Non-fatal - app continues with in-memory data
       }
@@ -1209,7 +1233,7 @@ class HabitState extends ChangeNotifier {
         // Update cache using selective method (remove specific habit)
         await _dataAccessService.cache.invalidateHabit(habitId);
         _metadataCache.invalidateHabit(habitId);
-        
+
         // Update persistent cache (remove deleted habit)
         try {
           await _persistentCache.removeHabit(habitId);

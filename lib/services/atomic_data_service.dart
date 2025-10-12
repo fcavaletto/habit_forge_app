@@ -253,6 +253,91 @@ abstract class IAtomicDataService {
     required DataAccessContext context,
   });
 
+  /// Get habits that need attention (overdue, missed goals, etc.)
+  ///
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns habits that need user attention
+  Future<DataAccessResult<List<Habit>>> getHabitsNeedingAttention({
+    required DataAccessContext context,
+  });
+
+  /// Check if a habit with the same name and icon already exists
+  ///
+  /// [name] - Habit name to check
+  /// [iconName] - Icon name to check
+  /// [excludeHabitId] - Optional habit ID to exclude from check
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns true if duplicate exists, false otherwise
+  Future<DataAccessResult<bool>> hasDuplicateHabit({
+    required String name,
+    required String iconName,
+    String? excludeHabitId,
+    required DataAccessContext context,
+  });
+
+  /// Check if a habit can be updated without conflicts
+  ///
+  /// [habitId] - ID of the habit to update
+  /// [newName] - New name for the habit
+  /// [newIconName] - New icon name for the habit
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns true if update is allowed, false otherwise
+  Future<DataAccessResult<bool>> canUpdateHabit({
+    required String habitId,
+    required String newName,
+    required String newIconName,
+    required DataAccessContext context,
+  });
+
+  /// Import sample habits for new users
+  ///
+  /// [sampleHabits] - List of sample habits to import
+  /// [clearExisting] - Whether to clear existing habits first
+  /// [onProgress] - Optional progress callback
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns number of habits imported
+  Future<DataAccessResult<int>> importSampleHabits({
+    required List<Habit> sampleHabits,
+    bool clearExisting = false,
+    Function(int)? onProgress,
+    required DataAccessContext context,
+  });
+
+  /// Reorder habits by moving one habit to a new position
+  ///
+  /// [draggedId] - ID of the habit being moved
+  /// [newPosition] - New position for the habit
+  /// [context] - Logging context for the operation
+  Future<DataAccessResult<void>> reorderHabits({
+    required String draggedId,
+    required int newPosition,
+    required DataAccessContext context,
+  });
+
+  /// Normalize order values to prevent gaps
+  ///
+  /// [context] - Logging context for the operation
+  Future<DataAccessResult<void>> normalizeOrderValues({
+    required DataAccessContext context,
+  });
+
+  /// Overwrite an archived habit with new data
+  ///
+  /// [archivedHabitId] - ID of the archived habit to overwrite
+  /// [newHabit] - New habit data
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns the saved habit
+  Future<DataAccessResult<Habit>> overwriteArchivedHabit({
+    required String archivedHabitId,
+    required Habit newHabit,
+    required DataAccessContext context,
+  });
+
   /// Get hourly completion data for histogram analysis
   ///
   /// [habitId] - ID of the habit to analyze
@@ -1332,6 +1417,245 @@ class AtomicDataService implements IAtomicDataService {
 
       return DataAccessResult.failure(
         errorMessage: 'Failed to process habit from row: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<List<Habit>>> getHabitsNeedingAttention({
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] getHabitsNeedingAttention called: ${context.component}.${context.operation}');
+
+      // Use repository method for habits needing attention
+      final habits = await _repository.getHabitsNeedingAttention();
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] getHabitsNeedingAttention completed: ${habits.length} habits in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: habits,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] getHabitsNeedingAttention failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to get habits needing attention: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<bool>> hasDuplicateHabit({
+    required String name,
+    required String iconName,
+    String? excludeHabitId,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] hasDuplicateHabit called: ${context.component}.${context.operation}');
+
+      // Use repository method for duplicate check
+      final hasDuplicate = await _repository.hasDuplicateHabit(name, iconName, excludeHabitId: excludeHabitId);
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] hasDuplicateHabit completed: $hasDuplicate in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: hasDuplicate,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] hasDuplicateHabit failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to check for duplicate habit: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<bool>> canUpdateHabit({
+    required String habitId,
+    required String newName,
+    required String newIconName,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] canUpdateHabit called: ${context.component}.${context.operation}');
+
+      // Use repository method for update check
+      final canUpdate = await _repository.canUpdateHabit(habitId, newName, newIconName);
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] canUpdateHabit completed: $canUpdate in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: canUpdate,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] canUpdateHabit failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to check if habit can be updated: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<int>> importSampleHabits({
+    required List<Habit> sampleHabits,
+    bool clearExisting = false,
+    Function(int)? onProgress,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] importSampleHabits called: ${context.component}.${context.operation}');
+
+      // Use repository method for importing sample habits
+      final importedCount = await _repository.importHabits(sampleHabits, onProgress: (habitName, progress) {
+        onProgress?.call((progress * 100).round());
+      });
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] importSampleHabits completed: $importedCount habits in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: importedCount,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] importSampleHabits failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to import sample habits: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<void>> reorderHabits({
+    required String draggedId,
+    required int newPosition,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] reorderHabits called: ${context.component}.${context.operation}');
+
+      // Use repository method for reordering
+      await _repository.reorderHabits(draggedId, newPosition);
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] reorderHabits completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: null,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] reorderHabits failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to reorder habits: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<void>> normalizeOrderValues({
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] normalizeOrderValues called: ${context.component}.${context.operation}');
+
+      // Use repository method for normalizing order values
+      await _repository.normalizeOrderValues();
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] normalizeOrderValues completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: null,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] normalizeOrderValues failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to normalize order values: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<Habit>> overwriteArchivedHabit({
+    required String archivedHabitId,
+    required Habit newHabit,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] overwriteArchivedHabit called: ${context.component}.${context.operation}');
+
+      // Use repository method for overwriting archived habit
+      final result = await _repository.overwriteArchivedHabit(archivedHabitId, newHabit);
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] overwriteArchivedHabit completed in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: result.savedHabit!,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] overwriteArchivedHabit failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to overwrite archived habit: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );
