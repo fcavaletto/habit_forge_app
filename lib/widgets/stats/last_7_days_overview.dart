@@ -80,7 +80,7 @@ class Last7DaysOverview extends StatelessWidget {
     return Column(
       children: [
         GestureDetector(
-          onTap: () async => await DayDetailsDialog.show(context, date, record, habitId, dataAccessService),
+          onTap: () async => await DayDetailsDialog.show(context, date, record, habitId, dataAccessService.atomicDataService),
           child: Container(
             width: 40,
             height: 40,

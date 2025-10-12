@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
-import '../services/data_access_service.dart';
+import '../services/atomic_data_service.dart';
 
 /// Shared utility for displaying day details dialogs
 ///
@@ -13,22 +13,37 @@ class DayDetailsDialog {
   /// @param date The date to show details for
   /// @param record The completion record for that date (can be null)
   /// @param habitId The habit ID for fetching completion timestamps
-  /// @param dataAccessService The data access service for fetching timestamps
+  /// @param atomicDataService The atomic data service for fetching timestamps
   static Future<void> show(
     BuildContext context,
     DateTime date,
     CompletionRecord? record,
     String habitId,
-    DataAccessService dataAccessService,
+    IAtomicDataService atomicDataService,
   ) async {
     final fullDayName = _getFullDayName(date);
     final dateStr = '${date.day} ${_getMonthAbbreviation(date.month)}';
     
-    // Fetch completion timestamps for this day
+    // Fetch completion timestamps for this day using atomic service
     List<DateTime> completionTimes = [];
     if (record != null && record.count > 0) {
       try {
-        completionTimes = await dataAccessService.getCompletionTimestampsForDay(habitId, date);
+        final result = await atomicDataService.getCompletionTimestamps(
+          startDate: date,
+          endDate: date,
+          habitIds: [habitId],
+          context: DataAccessContext(
+            component: 'DayDetailsDialog',
+            operation: 'getCompletionTimestampsForDay',
+            parameters: {'habitId': habitId, 'date': date.toIso8601String()},
+          ),
+        );
+        
+        if (result.success && result.data != null) {
+          // Extract timestamps for this specific day
+          final dayCompletions = result.data![habitId] ?? {};
+          completionTimes = dayCompletions.keys.toList()..sort();
+        }
       } catch (e) {
         debugPrint('❌ Error fetching completion times: $e');
       }

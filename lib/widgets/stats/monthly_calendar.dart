@@ -212,7 +212,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                              date.day == widget.currentDate.day;
 
               return GestureDetector(
-                onTap: () async => await DayDetailsDialog.show(context, date, record, widget.habitId, widget.dataAccessService),
+                onTap: () async => await DayDetailsDialog.show(context, date, record, widget.habitId, widget.dataAccessService.atomicDataService),
                 child: Container(
                   decoration: BoxDecoration(
                     color: isFullyCompleted
