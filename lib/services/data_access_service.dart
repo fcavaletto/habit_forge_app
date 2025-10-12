@@ -342,19 +342,6 @@ class DataAccessService {
     });
   }
 
-  /// Gets archived habits
-  /// 
-  /// ✅ ATOMIC: Now uses atomic service internally for optimal performance.
-  /// This method loads full completion data which is efficient for archived habits.
-  /// 
-  /// Returns: List of archived habits
-  Future<List<Habit>> getArchivedHabits() async {
-    _logQuery('getArchivedHabits', {});
-
-    return await _withTiming('getArchivedHabits', () async {
-      return await _repository.getArchivedHabits();
-    });
-  }
 
   /// Gets all habits (including archived)
   /// 
@@ -366,22 +353,22 @@ class DataAccessService {
     _logQuery('getAllHabits', {});
 
     return await _withTiming('getAllHabits', () async {
-      return await _repository.getAllHabitsIncludingArchived();
+      final result = await atomicDataService.getAllHabitsIncludingArchived(
+        context: DataAccessContext(
+          component: 'DataAccessService',
+          operation: 'getAllHabits',
+          parameters: {},
+        ),
+      );
+      
+      if (result.success && result.data != null) {
+        return result.data!;
+      } else {
+        throw Exception('Failed to get all habits: ${result.errorMessage}');
+      }
     });
   }
 
-  /// Gets a specific habit by ID
-  /// 
-  /// [habitId] - ID of the habit to retrieve
-  /// 
-  /// Returns: The habit if found, null otherwise
-  Future<Habit?> getHabitById(String habitId) async {
-    _logQuery('getHabitById', {'habitId': habitId});
-
-    return await _withTiming('getHabitById', () async {
-      return await _repository.getHabitById(habitId);
-    });
-  }
 
   /// Checks if a habit name and icon combination already exists
   /// 

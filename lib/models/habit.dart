@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../services/virtual_date_service.dart';
+import '../services/habit_metadata_cache_service.dart';
 
 /// Represents a completion record for a specific date
 /// 
@@ -378,6 +379,32 @@ class Habit {
       frequencyDays: frequencyDays ?? defaultFrequencyDays,
       targetGoal: targetGoal,
       allowExceedGoal: allowExceedGoal,
+    );
+  }
+
+  /// Factory constructor to create a Habit from HabitMetadata
+  ///
+  /// Creates a Habit instance from metadata without completion data.
+  /// This is used for operations that only need habit metadata.
+  ///
+  /// @param metadata The HabitMetadata to convert
+  /// @return New Habit instance with empty completions
+  factory Habit.fromMetadata(HabitMetadata metadata) {
+    return Habit(
+      id: metadata.id,
+      name: metadata.name,
+      description: metadata.description,
+      colorIndex: metadata.colorIndex,
+      createdAt: metadata.createdAt,
+      completions: <DateTime, CompletionRecord>{}, // Empty completions
+      iconName: metadata.iconName,
+      reminderTime: metadata.reminderTime,
+      enableReminders: metadata.enableReminders,
+      isArchived: metadata.isArchived,
+      orderValue: metadata.orderValue,
+      frequencyDays: metadata.frequencyDays,
+      targetGoal: metadata.targetGoal,
+      allowExceedGoal: metadata.allowExceedGoal,
     );
   }
 

@@ -490,7 +490,7 @@ class AtomicDataService implements IAtomicDataService {
 
       // Get habit metadata from repository based on includeArchived flag
       final habits = includeArchived 
-          ? await _repository.getAllHabitsIncludingArchived()
+          ? await _getAllHabitsIncludingArchivedInternal()
           : await _repository.getActiveHabitsForReordering();
 
       // Filter by habit IDs if provided
@@ -521,6 +521,45 @@ class AtomicDataService implements IAtomicDataService {
     }
   }
 
+  /// Internal method to get all habits including archived (for metadata only)
+  Future<List<Habit>> _getAllHabitsIncludingArchivedInternal() async {
+    // Query database directly for all habits
+    final db = await _repository.database;
+    final results = await db.query(
+      'habits',
+      orderBy: 'created_at DESC',
+    );
+
+    final habits = <Habit>[];
+    
+    // Process each row using atomic RowProcessor
+    for (final row in results) {
+      final config = HabitLoadConfig(
+        loadCompletions: true,
+        loadReminders: true,
+        loadFrequencyDays: true,
+        convertToLocal: true,
+      );
+      
+      final result = await _rowProcessor.processHabitFromRow(
+        row: row,
+        habitId: row['id'] as String,
+        config: config,
+        context: DataAccessContext(
+          component: 'AtomicDataService',
+          operation: 'getAllHabitsInternal',
+          parameters: {'habitId': row['id']},
+        ),
+      );
+      
+      if (result.success && result.data != null) {
+        habits.add(result.data!);
+      }
+    }
+
+    return habits;
+  }
+
   @override
   Future<DataAccessResult<List<Habit>>> getAllHabitsIncludingArchived({
     required DataAccessContext context,
@@ -530,8 +569,39 @@ class AtomicDataService implements IAtomicDataService {
     try {
       debugPrint('🔍 [ATOMIC] getAllHabitsIncludingArchived called: ${context.component}.${context.operation}');
 
-      // Get all habits (active + archived) from repository
-      final habits = await _repository.getAllHabitsIncludingArchived();
+      // Query database directly for all habits
+      final db = await _repository.database;
+      final results = await db.query(
+        'habits',
+        orderBy: 'created_at DESC',
+      );
+
+      final habits = <Habit>[];
+      
+      // Process each row using atomic RowProcessor
+      for (final row in results) {
+        final config = HabitLoadConfig(
+          loadCompletions: true,
+          loadReminders: true,
+          loadFrequencyDays: true,
+          convertToLocal: true,
+        );
+        
+        final result = await _rowProcessor.processHabitFromRow(
+          row: row,
+          habitId: row['id'] as String,
+          config: config,
+          context: DataAccessContext(
+            component: 'AtomicDataService',
+            operation: 'processHabitFromRow',
+            parameters: {'habitId': row['id']},
+          ),
+        );
+        
+        if (result.success && result.data != null) {
+          habits.add(result.data!);
+        }
+      }
 
       stopwatch.stop();
       debugPrint('✅ [ATOMIC] getAllHabitsIncludingArchived completed: ${habits.length} habits in ${stopwatch.elapsedMilliseconds}ms');
@@ -1040,9 +1110,9 @@ class AtomicDataService implements IAtomicDataService {
     try {
       debugPrint('🔍 [ATOMIC] deleteHabit called: ${context.component}.${context.operation}');
 
-      // Check if habit exists
-      final habit = await _repository.getHabitById(habitId);
-      if (habit == null) {
+      // Check if habit exists (lightweight check)
+      final exists = await _repository.habitExists(habitId);
+      if (!exists) {
         throw NotFoundException(
           'Habit not found: $habitId',
           context,
@@ -1137,14 +1207,36 @@ class AtomicDataService implements IAtomicDataService {
     try {
       debugPrint('🔍 [ATOMIC] modifyHabit called: ${context.component}.${context.operation}');
 
-      // Get current habit
-      final currentHabit = await _repository.getHabitById(habitId);
-      if (currentHabit == null) {
+      // Check if habit exists and get current metadata
+      final exists = await _repository.habitExists(habitId);
+      if (!exists) {
         throw NotFoundException(
           'Habit not found: $habitId',
           context,
         );
       }
+
+      // Get current habit metadata only (no completion data needed for updates)
+      final metadataResult = await getHabitFeatures(
+        habitIds: [habitId],
+        context: DataAccessContext(
+          component: 'AtomicDataService',
+          operation: 'getHabitMetadataForUpdate',
+          parameters: {'habitId': habitId},
+        ),
+      );
+
+      if (!metadataResult.success || metadataResult.data == null || metadataResult.data!.isEmpty) {
+        throw NotFoundException(
+          'Habit metadata not found: $habitId',
+          context,
+        );
+      }
+
+      final currentMetadata = metadataResult.data!.first;
+      
+      // Create a minimal habit object for updates (no completion data)
+      final currentHabit = Habit.fromMetadata(currentMetadata);
 
       // Apply updates to create new habit
       final updatedHabit = currentHabit.copyWith(
