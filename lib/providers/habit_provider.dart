@@ -131,15 +131,6 @@ class HabitState extends ChangeNotifier {
     return habit.frequencyDays[dayAbbr] == 1;
   }
 
-  /// Load all active habits
-  Future<void> loadHabits({bool forceRefresh = false}) async {
-    // Debounce rapid refresh calls
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer(const Duration(milliseconds: 300), () async {
-      await _performLoad(forceRefresh);
-    });
-  }
-
   /// Load habits optimized for dashboard display (last 7 days only)
   Future<void> loadHabitsForDashboard({bool forceRefresh = false}) async {
     // Debounce rapid refresh calls
