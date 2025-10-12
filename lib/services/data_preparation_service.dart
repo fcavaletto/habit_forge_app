@@ -645,7 +645,8 @@ class ArchiveDataPreparationService implements IDataPreparationService {
       debugPrint('🗄️ [ARCHIVE] Preparing archived habits: ${context.component}.${context.operation}');
 
       // Get archived habit metadata only (no completion data needed)
-      final metadataResult = await _atomicService.getArchivedHabitFeatures(
+      final metadataResult = await _atomicService.getHabitFeatures(
+        includeArchived: true,
         context: DataAccessContext(
           component: 'ArchiveDataPreparation',
           operation: 'getArchivedMetadata',

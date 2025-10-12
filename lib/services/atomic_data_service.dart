@@ -83,24 +83,14 @@ class NotFoundException extends DataAccessException {
 abstract class IAtomicDataService {
   /// Get habit metadata without completion data
   ///
+  /// [includeArchived] - Whether to include archived habits (default: false)
   /// [habitIds] - Optional list of specific habit IDs to retrieve
   /// [context] - Logging context for the operation
   ///
   /// Returns metadata for habits including: id, name, description, color, icon,
   /// creation date, frequency settings, target goals, and display order.
   Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
-    List<String>? habitIds,
-    required DataAccessContext context,
-  });
-
-  /// Get archived habit metadata without completion data
-  ///
-  /// [habitIds] - Optional list of specific habit IDs to retrieve
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns metadata for archived habits including: id, name, description, color, icon,
-  /// creation date, frequency settings, target goals, and display order.
-  Future<DataAccessResult<List<HabitMetadata>>> getArchivedHabitFeatures({
+    bool includeArchived = false,
     List<String>? habitIds,
     required DataAccessContext context,
   });
@@ -476,16 +466,19 @@ class AtomicDataService implements IAtomicDataService {
 
   @override
   Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
+    bool includeArchived = false,
     List<String>? habitIds,
     required DataAccessContext context,
   }) async {
     final stopwatch = Stopwatch()..start();
 
     try {
-      debugPrint('🔍 [ATOMIC] getHabitFeatures called: ${context.component}.${context.operation}');
+      debugPrint('🔍 [ATOMIC] getHabitFeatures called: ${context.component}.${context.operation} (includeArchived: $includeArchived)');
 
-      // Get habit metadata from repository (still using existing method for now)
-      final habits = await _repository.getActiveHabitsForReordering();
+      // Get habit metadata from repository based on includeArchived flag
+      final habits = includeArchived 
+          ? await _repository.getAllHabitsIncludingArchived()
+          : await _repository.getActiveHabitsForReordering();
 
       // Filter by habit IDs if provided
       final filteredHabits = habitIds != null && habitIds.isNotEmpty
@@ -509,47 +502,6 @@ class AtomicDataService implements IAtomicDataService {
 
       return DataAccessResult.failure(
         errorMessage: 'Failed to get habit features: $e',
-        context: context,
-        executionTime: stopwatch.elapsed,
-      );
-    }
-  }
-
-  @override
-  Future<DataAccessResult<List<HabitMetadata>>> getArchivedHabitFeatures({
-    List<String>? habitIds,
-    required DataAccessContext context,
-  }) async {
-    final stopwatch = Stopwatch()..start();
-
-    try {
-      debugPrint('🗄️ [ATOMIC] getArchivedHabitFeatures called: ${context.component}.${context.operation}');
-
-      // Get archived habit metadata from repository
-      final archivedHabits = await _repository.getArchivedHabitsForMetadata();
-
-      // Filter by habit IDs if provided
-      final filteredHabits = habitIds != null && habitIds.isNotEmpty
-          ? archivedHabits.where((h) => habitIds.contains(h.id)).toList()
-          : archivedHabits;
-
-      // Convert to metadata objects
-      final metadata = filteredHabits.map(HabitMetadata.fromHabit).toList();
-
-      stopwatch.stop();
-      debugPrint('✅ [ATOMIC] getArchivedHabitFeatures completed: ${metadata.length} archived habits in ${stopwatch.elapsedMilliseconds}ms');
-
-      return DataAccessResult.success(
-        data: metadata,
-        context: context,
-        executionTime: stopwatch.elapsed,
-      );
-    } catch (e) {
-      stopwatch.stop();
-      debugPrint('❌ [ATOMIC] getArchivedHabitFeatures failed after ${stopwatch.elapsedMilliseconds}ms: $e');
-
-      return DataAccessResult.failure(
-        errorMessage: 'Failed to get archived habit features: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );
