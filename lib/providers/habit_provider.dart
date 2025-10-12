@@ -1380,7 +1380,7 @@ class HabitState extends ChangeNotifier {
       
       if (importedCount > 0) {
         // Reload habits to update local state
-        await loadHabits(forceRefresh: true);
+        await loadHabitsForDashboard(forceRefresh: true);
         
         // Get and log statistics
         final stats = SampleDataGeneratorService.getSampleDataStats(sampleHabits);
@@ -1533,7 +1533,7 @@ Cache Service: ${_persistentCache.runtimeType}
       debugPrint('🔄 Attempting cache recovery...');
       
       // Reload habits from database (loadHabits handles caching internally)
-      await loadHabits(forceRefresh: true);
+      await loadHabitsForDashboard(forceRefresh: true);
       
       debugPrint('✅ Cache recovery completed successfully');
       return true;
@@ -1755,12 +1755,12 @@ class HabitProvider extends HabitState {
         await _dataAccessService.normalizeOrderValues();
         _reorderCount = 0;
         // Reload habits to get normalized order values
-        await loadHabits(forceRefresh: true);
+        await loadHabitsForDashboard(forceRefresh: true);
       }
     } catch (e) {
       // Rollback on error - reload habits from database
       debugPrint('❌ Error reordering habits: $e');
-      await loadHabits(forceRefresh: true);
+      await loadHabitsForDashboard(forceRefresh: true);
       _error = 'Failed to reorder habits: $e';
       notifyListeners();
     }

@@ -443,7 +443,7 @@ class AppState extends ChangeNotifier {
     debugPrint('🔄 AppState: Refreshing all data, forceRefresh: $forceRefresh');
 
     await Future.wait([
-      _habitProvider.loadHabits(forceRefresh: forceRefresh),
+      _habitProvider.loadHabitsForDashboard(forceRefresh: forceRefresh),
       // Note: NotificationProvider doesn't have a refresh method yet
       // This can be added later if needed
     ]);
