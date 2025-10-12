@@ -77,6 +77,10 @@ class NotFoundException extends DataAccessException {
 }
 
 /// Interface defining atomic data access operations
+///
+/// These operations are the fundamental building blocks for all habit data access.
+/// Each method performs a single, well-defined operation with comprehensive logging.
+abstract class IAtomicDataService {
   /// Get habit metadata without completion data
   ///
   /// [habitIds] - Optional list of specific habit IDs to retrieve
@@ -351,155 +355,6 @@ abstract class IRowProcessor {
     required HabitLoadConfig config,
     required DataAccessContext context,
   });
-}
-
-/// Interface defining atomic data access operations
-///
-/// These operations are the fundamental building blocks for all habit data access.
-/// Each method performs a single, well-defined operation with comprehensive logging.
-abstract class IAtomicDataService {
-  /// Get habit metadata without completion data
-  ///
-  /// [habitIds] - Optional list of specific habit IDs to retrieve
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns metadata for habits including: id, name, description, color, icon,
-  /// creation date, frequency settings, target goals, and display order.
-  Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
-    List<String>? habitIds,
-    required DataAccessContext context,
-  });
-
-  /// Get archived habit metadata without completion data
-  ///
-  /// [habitIds] - Optional list of specific habit IDs to retrieve
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns metadata for archived habits including: id, name, description, color, icon,
-  /// creation date, frequency settings, target goals, and display order.
-  Future<DataAccessResult<List<HabitMetadata>>> getArchivedHabitFeatures({
-    List<String>? habitIds,
-    required DataAccessContext context,
-  });
-
-  /// Get all habits including archived ones (returns full Habit objects)
-  ///
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns all habits in the system, both active and archived.
-  /// This is primarily used for operations that need to check existence or
-  /// restore archived habits (e.g., Add Sample Habits functionality).
-  Future<DataAccessResult<List<Habit>>> getAllHabitsIncludingArchived({
-    required DataAccessContext context,
-  });
-
-  /// Get completion counts for habits within a date range
-  ///
-  /// [startDate] - Start of date range (inclusive)
-  /// [endDate] - End of date range (inclusive)
-  /// [habitIds] - Optional list of specific habit IDs to retrieve
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns a map of habitId -> Map of date -> completion count.
-  /// This is optimized for dashboard display where only counts are needed.
-  Future<DataAccessResult<Map<String, Map<DateTime, int>>>> getCompletionDays({
-    required DateTime startDate,
-    required DateTime endDate,
-    List<String>? habitIds,
-    required DataAccessContext context,
-  });
-
-  /// Get detailed completion records with timestamps
-  ///
-  /// [startDate] - Start of date range (inclusive)
-  /// [endDate] - End of date range (inclusive)
-  /// [habitIds] - Optional list of specific habit IDs to retrieve
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns a map of habitId -> Map of date -> CompletionRecord.
-  /// This provides full completion data including timestamps and counts.
-  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletionTimestamps({
-    required DateTime startDate,
-    required DateTime endDate,
-    List<String>? habitIds,
-    required DataAccessContext context,
-  });
-
-  /// Create a new habit
-  ///
-  /// [habitData] - The habit data to create
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns the created habit with its assigned ID.
-  Future<DataAccessResult<Habit>> createHabit({
-    required HabitData habitData,
-    required DataAccessContext context,
-  });
-
-  /// Update an existing habit
-  ///
-  /// [habitId] - ID of the habit to update
-  /// [updates] - Map of fields to update
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns the updated habit.
-  Future<DataAccessResult<Habit>> updateHabit({
-    required String habitId,
-    required Map<String, dynamic> updates,
-    required DataAccessContext context,
-  });
-
-  /// Delete a habit permanently
-  ///
-  /// [habitId] - ID of the habit to delete
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns true if the habit was successfully deleted.
-  Future<DataAccessResult<bool>> deleteHabit({
-    required String habitId,
-    required DataAccessContext context,
-  });
-
-  /// Archive a habit (soft delete)
-  ///
-  /// [habitId] - ID of the habit to archive
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns true if the habit was successfully archived.
-  Future<DataAccessResult<bool>> archiveHabit({
-    required String habitId,
-    required DataAccessContext context,
-  });
-
-  /// Unarchive a habit (restore from archive)
-  ///
-  /// [habitId] - ID of the habit to unarchive
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns the unarchived habit.
-  Future<DataAccessResult<Habit>> unarchiveHabit({
-    required String habitId,
-    required DataAccessContext context,
-  });
-
-  /// Add completion records for a habit
-  ///
-  /// [habitId] - ID of the habit
-  /// [completions] - Map of date -> completion count
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns true if completions were successfully added.
-  Future<DataAccessResult<bool>> addCompletions({
-    required String habitId,
-    required Map<DateTime, int> completions,
-    required DataAccessContext context,
-  });
-
-  /// Get performance statistics for monitoring
-  Future<Map<String, dynamic>> getPerformanceStats();
-
-  /// Clear all cached data (for testing/debugging)
-  Future<void> clearCache();
 }
 
 /// Atomic Data Service Implementation
