@@ -167,10 +167,10 @@ class HabitState extends ChangeNotifier {
         
         // Warm in-memory caches
         await _warmCompletionCache();
-        await _warmMetadataCache();
-        
+      await _warmMetadataCache();
+
         // Notify listeners of updated data (smooth transition, no loading state)
-        notifyListeners();
+      notifyListeners();
         
         debugPrint('✅ Silent refresh completed with ${_habits.length} habits');
       } else {
@@ -179,73 +179,6 @@ class HabitState extends ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Silent refresh error: $e');
       // Don't throw - app continues with cached data
-    }
-  }
-
-  /// Internal method to perform the actual load operation
-  Future<void> _performLoad(bool forceRefresh) async {
-    // Skip reload if data is fresh and not forcing refresh
-    // This prevents unnecessary database queries and improves performance
-    if (!forceRefresh && isDataFresh) {
-      debugPrint('📱 HabitProvider: Data is fresh, skipping reload');
-      return;
-    }
-
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      debugPrint('📱 HabitProvider: Loading habits from storage...');
-      // Fetch fresh data using DataAccessService with full data
-      final today = VirtualDateService().currentDate;
-      final startDate = DateTime(2020); // Load all historical data
-      final habits = await _dataAccessService.getHabitFeatures();
-      final completions = await _dataAccessService.getCompletionTimestamps(
-        startDate: startDate,
-        endDate: today,
-      );
-      
-      // Combine habit features with completion data
-      _habits = habits.map((habit) {
-        final habitCompletions = completions[habit.id] ?? <DateTime, CompletionRecord>{};
-        return Habit(
-          id: habit.id,
-          name: habit.name,
-          description: habit.description,
-          colorIndex: habit.colorIndex,
-          createdAt: habit.createdAt,
-          completions: habitCompletions,
-          iconName: habit.iconName,
-          reminderTime: habit.reminderTime,
-          enableReminders: habit.enableReminders,
-          isArchived: habit.isArchived,
-          orderValue: habit.orderValue,
-          frequencyDays: habit.frequencyDays,
-          targetGoal: habit.targetGoal,
-          allowExceedGoal: habit.allowExceedGoal,
-        );
-      }).toList();
-
-      // Warm cache with completion data for current date
-      await _warmCompletionCache();
-
-      // Warm cache with metadata for all habits
-      await _warmMetadataCache();
-
-      // Update timestamp for freshness tracking
-      _lastLoadTime = VirtualDateService().currentDate;
-
-      _isLoading = false;
-      notifyListeners();
-      debugPrint(
-        '📱 HabitProvider: Loaded ${_habits.length} habits at $_lastLoadTime',
-      );
-    } catch (e) {
-      _isLoading = false;
-      _error = 'Failed to load habits: $e';
-      notifyListeners();
-      debugPrint('❌ HabitProvider: Failed to load habits: $e');
     }
   }
 
@@ -302,8 +235,8 @@ class HabitState extends ChangeNotifier {
         _error = null;  // Clear error since we're retrying with fallback
         
         try {
-          // Fallback to old loading method if ServiceFactory isn't ready yet
-          await _performLoad(forceRefresh);
+          // Fallback to dashboard loading method if ServiceFactory isn't ready yet
+          await _performDashboardLoad(forceRefresh);
           return;
         } catch (fallbackError) {
           _error = 'Failed to load habits: $fallbackError';
@@ -1452,7 +1385,10 @@ class HabitState extends ChangeNotifier {
       } else {
         final result = await _dataAccessService.atomicDataService.importSampleHabits(
           sampleHabits: sampleHabits,
-          onProgress: onProgress,
+          onProgress: (progress) {
+            // Convert int progress to the expected format
+            onProgress?.call('Importing habits', progress / 100.0);
+          },
           context: DataAccessContext(
             component: 'HabitProvider',
             operation: 'importSampleHabits',
