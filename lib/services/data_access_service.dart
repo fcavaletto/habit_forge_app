@@ -1,6 +1,3 @@
-import 'package:flutter/foundation.dart';
-import '../models/habit.dart';
-import '../models/habit_result.dart';
 import '../repositories/sqlite_habit_repository.dart';
 import '../services/atomic_data_service.dart';
 import '../services/caching_service.dart';
@@ -21,14 +18,13 @@ import '../services/row_processor.dart';
 ///
 /// Legacy methods remain for backward compatibility but are now fully atomic.
 class DataAccessService {
-  final SqliteHabitRepository _repository;
   final ICachingService _cache;
   late final AtomicDataService _atomicDataService;
 
   DataAccessService({
     required SqliteHabitRepository repository,
     required ICachingService cache,
-  }) : _repository = repository, _cache = cache {
+  }) : _cache = cache {
     // Initialize the atomic data service with dependencies
     _atomicDataService = AtomicDataService(
       repository: repository,
@@ -50,69 +46,4 @@ class DataAccessService {
   
   /// Get the caching service for cache operations
   ICachingService get cache => _cache;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // Private helper methods
-
-  /// Validates that date range is valid and within reasonable limits
-  void _validateDateRange(DateTime startDate, DateTime endDate) {
-    if (startDate.isAfter(endDate)) {
-      throw ArgumentError('startDate cannot be after endDate');
-    }
-    if (endDate.difference(startDate).inDays > 365) {
-      throw ArgumentError('Date range cannot exceed 365 days');
-    }
-  }
-
-  /// Logs query execution with parameters
-  /// Stack traces are only logged on errors, not on every query
-  void _logQuery(String method, Map<String, dynamic> params) {
-    debugPrint('🔍 [DATA_ACCESS] $method called with params: $params');
-    // Stack trace removed - only log on errors for better performance
-  }
-
-  /// Measures and logs execution time
-  Future<T> _withTiming<T>(String operation, Future<T> Function() fn) async {
-    final stopwatch = Stopwatch()..start();
-    try {
-      final result = await fn();
-      debugPrint('⏱️ [PERFORMANCE] $operation completed in ${stopwatch.elapsedMilliseconds}ms');
-      return result;
-    } catch (e) {
-      debugPrint('❌ [ERROR] $operation failed after ${stopwatch.elapsedMilliseconds}ms: $e');
-      rethrow;
-    }
-  }
-
-  /// Logs data volume for monitoring
-  void _logDataVolume(String method, int recordCount, DateTime startDate, DateTime endDate) {
-    final days = endDate.difference(startDate).inDays;
-    debugPrint('📊 [DATA_VOLUME] $method loaded $recordCount records for $days days');
-    if (recordCount > 100) {
-      debugPrint('⚠️ [WARNING] High data volume: $recordCount records');
-    }
-  }
 }
