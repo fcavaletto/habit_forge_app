@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../repositories/sqlite_habit_repository.dart';
 import '../services/habit_metadata_cache_service.dart';
+import '../utils/timezone_utils.dart';
 import 'caching_service.dart';
 import 'row_processor.dart';
 
@@ -89,6 +91,27 @@ abstract class IAtomicDataService {
   ///
   /// Returns metadata for habits including: id, name, description, color, icon,
   /// creation date, frequency settings, target goals, and display order.
+  /// 
+  /// This is the consolidated method that replaces:
+  /// - getHabitFeatures()
+  /// - getAllHabitsIncludingArchived() (when combined with getCompletionDays)
+  /// - getActiveHabitsForReordering() (repository method)
+  Future<DataAccessResult<List<HabitMetadata>>> getHabitMetadata({
+    bool includeArchived = false,
+    List<String>? habitIds,
+    required DataAccessContext context,
+  });
+
+  /// Get habit metadata without completion data
+  ///
+  /// [includeArchived] - Whether to include archived habits (default: false)
+  /// [habitIds] - Optional list of specific habit IDs to retrieve
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns metadata for habits including: id, name, description, color, icon,
+  /// creation date, frequency settings, target goals, and display order.
+  /// 
+  /// @deprecated Use getHabitMetadata instead
   Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
     bool includeArchived = false,
     List<String>? habitIds,
@@ -102,6 +125,8 @@ abstract class IAtomicDataService {
   /// Returns all habits in the system, both active and archived.
   /// This is primarily used for operations that need to check existence or
   /// restore archived habits (e.g., Add Sample Habits functionality).
+  /// 
+  /// @deprecated Use getHabitMetadata + getCompletionDays instead
   Future<DataAccessResult<List<Habit>>> getAllHabitsIncludingArchived({
     required DataAccessContext context,
   });
@@ -491,7 +516,7 @@ class AtomicDataService implements IAtomicDataService {
         _rowProcessor = rowProcessor;
 
   @override
-  Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
+  Future<DataAccessResult<List<HabitMetadata>>> getHabitMetadata({
     bool includeArchived = false,
     List<String>? habitIds,
     required DataAccessContext context,
@@ -499,23 +524,90 @@ class AtomicDataService implements IAtomicDataService {
     final stopwatch = Stopwatch()..start();
 
     try {
-      debugPrint('🔍 [ATOMIC] getHabitFeatures called: ${context.component}.${context.operation} (includeArchived: $includeArchived)');
+      debugPrint('🔍 [ATOMIC] getHabitMetadata called: ${context.component}.${context.operation} (includeArchived: $includeArchived, habitIds: ${habitIds?.length ?? 'all'})');
 
-      // Get habit metadata from repository based on includeArchived flag
-      final habits = includeArchived 
-          ? await _getAllHabitsIncludingArchivedInternal()
-          : await _repository.getActiveHabitsForReordering();
+      // Build optimized SQL query
+      final db = await _repository.database;
+      
+      String whereClause = '';
+      List<dynamic> whereArgs = [];
+      
+      if (!includeArchived) {
+        whereClause = 'WHERE h.is_archived = 0';
+      }
+      
+      if (habitIds != null && habitIds.isNotEmpty) {
+        final placeholders = habitIds.map((_) => '?').join(',');
+        whereClause += whereClause.isEmpty ? 'WHERE' : ' AND';
+        whereClause += ' h.id IN ($placeholders)';
+        whereArgs.addAll(habitIds);
+      }
+      
+      final results = await db.rawQuery('''
+        SELECT h.*, o.order_value
+        FROM habits h
+        LEFT JOIN habit_display_order o ON h.id = o.habit_id
+        $whereClause
+        ORDER BY o.order_value DESC, h.created_at DESC
+      ''', whereArgs);
 
-      // Filter by habit IDs if provided
-      final filteredHabits = habitIds != null && habitIds.isNotEmpty
-          ? habits.where((h) => habitIds.contains(h.id)).toList()
-          : habits;
+      if (results.isEmpty) {
+        debugPrint('📖 Retrieved 0 habits for metadata');
+        return DataAccessResult.success(
+          data: <HabitMetadata>[],
+          context: context,
+          executionTime: stopwatch.elapsed,
+        );
+      }
+
+      // Batch convert creation timestamps
+      final createdAtTimestamps = results.map((row) => row['created_at'] as int? ?? 0).toList();
+      final createdAtDates = TimezoneUtils.batchFromUtcTimestamp(
+        createdAtTimestamps,
+        context: 'Batch habit creation dates for metadata',
+      );
 
       // Convert to metadata objects
-      final metadata = filteredHabits.map(HabitMetadata.fromHabit).toList();
+      final metadata = <HabitMetadata>[];
+      for (int i = 0; i < results.length; i++) {
+        final row = results[i];
+        
+        // Parse reminder time
+        TimeOfDay? reminderTime;
+        final reminderTimeStr = row['reminder_time'] as String?;
+        if (reminderTimeStr != null && reminderTimeStr.isNotEmpty) {
+          final parts = reminderTimeStr.split(':');
+          if (parts.length == 2) {
+            reminderTime = TimeOfDay(
+              hour: int.parse(parts[0]),
+              minute: int.parse(parts[1]),
+            );
+          }
+        }
+        
+        // Parse frequency days
+        final frequencyDaysJson = row['frequency_days'] as String;
+        final frequencyDays = Map<String, int>.from(jsonDecode(frequencyDaysJson));
+        
+        metadata.add(HabitMetadata(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          description: row['description'] as String? ?? '',
+          colorIndex: row['color_index'] as int? ?? 0,
+          createdAt: createdAtDates[i],
+          iconName: row['icon_name'] as String? ?? 'check_circle',
+          reminderTime: reminderTime,
+          enableReminders: (row['enable_reminders'] as int? ?? 0) == 1,
+          isArchived: (row['is_archived'] as int? ?? 0) == 1,
+          orderValue: row['order_value'] as double?,
+          frequencyDays: frequencyDays,
+          targetGoal: row['target_goal'] as int? ?? 1,
+          allowExceedGoal: (row['allow_exceed_goal'] as int? ?? 1) == 1,
+        ));
+      }
 
       stopwatch.stop();
-      debugPrint('✅ [ATOMIC] getHabitFeatures completed: ${metadata.length} habits in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('✅ [ATOMIC] getHabitMetadata completed: ${metadata.length} habits in ${stopwatch.elapsedMilliseconds}ms');
 
       return DataAccessResult.success(
         data: metadata,
@@ -524,54 +616,30 @@ class AtomicDataService implements IAtomicDataService {
       );
     } catch (e) {
       stopwatch.stop();
-      debugPrint('❌ [ATOMIC] getHabitFeatures failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('❌ [ATOMIC] getHabitMetadata failed after ${stopwatch.elapsedMilliseconds}ms: $e');
 
       return DataAccessResult.failure(
-        errorMessage: 'Failed to get habit features: $e',
+        errorMessage: 'Failed to get habit metadata: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );
     }
   }
 
-  /// Internal method to get all habits including archived (for metadata only)
-  Future<List<Habit>> _getAllHabitsIncludingArchivedInternal() async {
-    // Query database directly for all habits
-    final db = await _repository.database;
-    final results = await db.query(
-      'habits',
-      orderBy: 'created_at DESC',
+  @override
+  Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
+    bool includeArchived = false,
+    List<String>? habitIds,
+    required DataAccessContext context,
+  }) async {
+    // Delegate to the new consolidated method
+    return getHabitMetadata(
+      includeArchived: includeArchived,
+      habitIds: habitIds,
+      context: context,
     );
-
-    final habits = <Habit>[];
-    
-    // Process each row using atomic RowProcessor
-    for (final row in results) {
-      final config = HabitLoadConfig(
-        loadCompletions: true,
-        loadReminders: true,
-        loadFrequencyDays: true,
-        convertToLocal: true,
-      );
-      
-      final result = await _rowProcessor.processHabitFromRow(
-        row: row,
-        habitId: row['id'] as String,
-        config: config,
-        context: DataAccessContext(
-          component: 'AtomicDataService',
-          operation: 'getAllHabitsInternal',
-          parameters: {'habitId': row['id']},
-        ),
-      );
-      
-      if (result.success && result.data != null) {
-        habits.add(result.data!);
-      }
-    }
-
-    return habits;
   }
+
 
   @override
   Future<DataAccessResult<List<Habit>>> getAllHabitsIncludingArchived({
@@ -582,38 +650,45 @@ class AtomicDataService implements IAtomicDataService {
     try {
       debugPrint('🔍 [ATOMIC] getAllHabitsIncludingArchived called: ${context.component}.${context.operation}');
 
-      // Query database directly for all habits
-      final db = await _repository.database;
-      final results = await db.query(
-        'habits',
-        orderBy: 'created_at DESC',
+      // Get habit metadata (including archived)
+      final metadataResult = await getHabitMetadata(
+        includeArchived: true,
+        context: DataAccessContext(
+          component: 'AtomicDataService',
+          operation: 'getAllHabitsMetadata',
+        ),
       );
 
+      if (!metadataResult.success || metadataResult.data == null) {
+        stopwatch.stop();
+        return DataAccessResult.failure(
+          errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
+          context: context,
+          executionTime: stopwatch.elapsed,
+        );
+      }
+
+      final metadata = metadataResult.data!;
       final habits = <Habit>[];
-      
-      // Process each row using atomic RowProcessor
-      for (final row in results) {
-        final config = HabitLoadConfig(
-          loadCompletions: true,
-          loadReminders: true,
-          loadFrequencyDays: true,
-          convertToLocal: true,
-        );
-        
-        final result = await _rowProcessor.processHabitFromRow(
-          row: row,
-          habitId: row['id'] as String,
-          config: config,
-          context: DataAccessContext(
-            component: 'AtomicDataService',
-            operation: 'processHabitFromRow',
-            parameters: {'habitId': row['id']},
-          ),
-        );
-        
-        if (result.success && result.data != null) {
-          habits.add(result.data!);
-        }
+
+      // Convert metadata to full Habit objects (with empty completions)
+      for (final habitMetadata in metadata) {
+        habits.add(Habit(
+          id: habitMetadata.id,
+          name: habitMetadata.name,
+          description: habitMetadata.description,
+          colorIndex: habitMetadata.colorIndex,
+          createdAt: habitMetadata.createdAt,
+          completions: const {}, // Empty completions - can be loaded separately if needed
+          iconName: habitMetadata.iconName,
+          reminderTime: habitMetadata.reminderTime,
+          enableReminders: habitMetadata.enableReminders,
+          isArchived: habitMetadata.isArchived,
+          orderValue: habitMetadata.orderValue,
+          frequencyDays: habitMetadata.frequencyDays,
+          targetGoal: habitMetadata.targetGoal,
+          allowExceedGoal: habitMetadata.allowExceedGoal,
+        ));
       }
 
       stopwatch.stop();
@@ -664,10 +739,24 @@ class AtomicDataService implements IAtomicDataService {
       debugPrint('🔍 [ATOMIC] getCompletionDays called: ${context.component}.${context.operation}');
 
       // Get habit metadata first to know which habits to query
-      final habits = await _repository.getActiveHabitsForReordering();
-      final filteredHabits = habitIds != null && habitIds.isNotEmpty
-          ? habits.where((h) => habitIds.contains(h.id)).toList()
-          : habits;
+      final metadataResult = await getHabitMetadata(
+        habitIds: habitIds,
+        context: DataAccessContext(
+          component: 'AtomicDataService',
+          operation: 'getCompletionDays',
+        ),
+      );
+
+      if (!metadataResult.success || metadataResult.data == null) {
+        stopwatch.stop();
+        return DataAccessResult.failure(
+          errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
+          context: context,
+          executionTime: stopwatch.elapsed,
+        );
+      }
+
+      final filteredHabits = metadataResult.data!;
 
       final result = <String, Map<DateTime, int>>{};
 
@@ -750,10 +839,24 @@ class AtomicDataService implements IAtomicDataService {
       debugPrint('🔍 [ATOMIC] getCompletionTimestamps called: ${context.component}.${context.operation}');
 
       // Get habit metadata first to know which habits to query
-      final habits = await _repository.getActiveHabitsForReordering();
-      final filteredHabits = habitIds != null && habitIds.isNotEmpty
-          ? habits.where((h) => habitIds.contains(h.id)).toList()
-          : habits;
+      final metadataResult = await getHabitMetadata(
+        habitIds: habitIds,
+        context: DataAccessContext(
+          component: 'AtomicDataService',
+          operation: 'getCompletionTimestamps',
+        ),
+      );
+
+      if (!metadataResult.success || metadataResult.data == null) {
+        stopwatch.stop();
+        return DataAccessResult.failure(
+          errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
+          context: context,
+          executionTime: stopwatch.elapsed,
+        );
+      }
+
+      final filteredHabits = metadataResult.data!;
 
       final result = <String, Map<DateTime, CompletionRecord>>{};
 
@@ -849,10 +952,24 @@ class AtomicDataService implements IAtomicDataService {
       debugPrint('🔍 [ATOMIC] getMaxStreak called: ${context.component}.${context.operation}');
 
       // Get habit metadata first to know which habits to query
-      final habits = await _repository.getActiveHabitsForReordering();
-      final filteredHabits = habitIds != null && habitIds.isNotEmpty
-          ? habits.where((h) => habitIds.contains(h.id)).toList()
-          : habits;
+      final metadataResult = await getHabitMetadata(
+        habitIds: habitIds,
+        context: DataAccessContext(
+          component: 'AtomicDataService',
+          operation: 'getMaxStreak',
+        ),
+      );
+
+      if (!metadataResult.success || metadataResult.data == null) {
+        stopwatch.stop();
+        return DataAccessResult.failure(
+          errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
+          context: context,
+          executionTime: stopwatch.elapsed,
+        );
+      }
+
+      final filteredHabits = metadataResult.data!;
 
       final result = <String, int>{};
 
@@ -895,10 +1012,24 @@ class AtomicDataService implements IAtomicDataService {
       debugPrint('🔍 [ATOMIC] getCurrentStreak called: ${context.component}.${context.operation}');
 
       // Get habit metadata first to know which habits to query
-      final habits = await _repository.getActiveHabitsForReordering();
-      final filteredHabits = habitIds != null && habitIds.isNotEmpty
-          ? habits.where((h) => habitIds.contains(h.id)).toList()
-          : habits;
+      final metadataResult = await getHabitMetadata(
+        habitIds: habitIds,
+        context: DataAccessContext(
+          component: 'AtomicDataService',
+          operation: 'getCurrentStreak',
+        ),
+      );
+
+      if (!metadataResult.success || metadataResult.data == null) {
+        stopwatch.stop();
+        return DataAccessResult.failure(
+          errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
+          context: context,
+          executionTime: stopwatch.elapsed,
+        );
+      }
+
+      final filteredHabits = metadataResult.data!;
 
       final result = <String, int>{};
 

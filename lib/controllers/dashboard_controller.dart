@@ -274,7 +274,8 @@ class DashboardController {
     try {
       // Get all habits (including archived) to check for existing samples using atomic service
       final result = await _appState.habitProvider.dataAccessService.atomicDataService
-          .getAllHabitsIncludingArchived(
+          .getHabitMetadata(
+        includeArchived: true,
         context: DataAccessContext(
           component: 'DashboardController',
           operation: 'addSampleHabits',
@@ -285,8 +286,8 @@ class DashboardController {
         throw Exception(result.errorMessage ?? 'Failed to get habits');
       }
       
-      final allHabits = result.data!;
-      final archivedHabits = allHabits.where((h) => h.isArchived).toList();
+      final allHabitsMetadata = result.data!;
+      final archivedHabitsMetadata = allHabitsMetadata.where((h) => h.isArchived).toList();
 
       int retrievedCount = 0; // Counter for habits restored from archive
       int addedCount = 0;    // Counter for newly created habits
@@ -295,12 +296,12 @@ class DashboardController {
       final sampleHabits = _getAllSampleHabits();
 
       // Step 1: Unarchive any archived sample habits (preserves completion history)
-      for (final archivedHabit in archivedHabits) {
+      for (final archivedHabitMetadata in archivedHabitsMetadata) {
         // Check if this archived habit matches one of our sample templates
-        final isSample = sampleHabits.any((sample) => archivedHabit.id == sample.id);
+        final isSample = sampleHabits.any((sample) => archivedHabitMetadata.id == sample.id);
 
         if (isSample) {
-          final success = await _appState.habitProvider.unarchiveHabit(archivedHabit.id);
+          final success = await _appState.habitProvider.unarchiveHabit(archivedHabitMetadata.id);
           if (success) {
             retrievedCount++;
           }
@@ -310,7 +311,7 @@ class DashboardController {
       // Step 2: Create missing sample habits to ensure we have all 4 available
       for (final sampleHabit in sampleHabits) {
         // Check if this sample habit already exists (active or archived)
-        final alreadyExists = allHabits.any((existing) => existing.id == sampleHabit.id);
+        final alreadyExists = allHabitsMetadata.any((existing) => existing.id == sampleHabit.id);
 
         if (!alreadyExists) {
           final result = await _appState.habitProvider.addHabit(sampleHabit);

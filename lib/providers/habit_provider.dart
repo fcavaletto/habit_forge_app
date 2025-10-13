@@ -1023,7 +1023,7 @@ class HabitState extends ChangeNotifier {
       debugPrint('✅ [UNARCHIVE] Habit unarchived in database: $habitId');
 
       // Step 2: Fetch the unarchived habit's metadata
-      final metadataResult = await _dataAccessService.atomicDataService.getHabitFeatures(
+      final metadataResult = await _dataAccessService.atomicDataService.getHabitMetadata(
         habitIds: [habitId],
         context: DataAccessContext(
           component: 'HabitProvider',

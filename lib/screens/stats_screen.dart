@@ -71,7 +71,7 @@ class _StatsScreenState extends State<StatsScreen> {
       final last30Days = DateTime.now().subtract(const Duration(days: 30));
       
       // Get habit metadata first
-      final metadataResult = await appState.habitProvider.dataAccessService.atomicDataService.getHabitFeatures(
+      final metadataResult = await appState.habitProvider.dataAccessService.atomicDataService.getHabitMetadata(
         habitIds: [widget.habit.id],
         context: DataAccessContext(
           component: 'StatsScreen',
@@ -151,7 +151,7 @@ class _StatsScreenState extends State<StatsScreen> {
       final appState = Provider.of<AppState>(context, listen: false);
       
       // Get habit metadata first
-      final metadataResult = await appState.habitProvider.dataAccessService.atomicDataService.getHabitFeatures(
+      final metadataResult = await appState.habitProvider.dataAccessService.atomicDataService.getHabitMetadata(
         habitIds: [widget.habit.id],
         context: DataAccessContext(
           component: 'StatsScreen',

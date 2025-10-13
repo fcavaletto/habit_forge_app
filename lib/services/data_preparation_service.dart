@@ -51,7 +51,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       debugPrint('📊 [DASHBOARD] Preparing dashboard habits: ${context.component}.${context.operation}');
 
       // Get habit metadata first (fast operation)
-      final metadataResult = await _atomicService.getHabitFeatures(
+      final metadataResult = await _atomicService.getHabitMetadata(
         context: DataAccessContext(
           component: 'DashboardDataPreparation',
           operation: 'getMetadata',
@@ -158,7 +158,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       debugPrint('📊 [STATS] Preparing stats habits: ${context.component}.${context.operation}');
 
       // Get habit metadata first
-      final metadataResult = await _atomicService.getHabitFeatures(
+      final metadataResult = await _atomicService.getHabitMetadata(
         context: DataAccessContext(
           component: 'StatsDataPreparation',
           operation: 'getMetadata',
@@ -279,7 +279,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       }
 
       // Get habit metadata first
-      final metadataResult = await _atomicService.getHabitFeatures(
+      final metadataResult = await _atomicService.getHabitMetadata(
         context: DataAccessContext(
           component: 'CalendarDataPreparation',
           operation: 'getMetadata',
@@ -380,7 +380,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       debugPrint('📊 [REORDER] Preparing reorderable habits: ${context.component}.${context.operation}');
 
       // Get only metadata (no completion data needed for reordering)
-      final metadataResult = await _atomicService.getHabitFeatures(
+      final metadataResult = await _atomicService.getHabitMetadata(
         context: DataAccessContext(
           component: 'ReorderDataPreparation',
           operation: 'getMetadata',
@@ -645,7 +645,7 @@ class ArchiveDataPreparationService implements IDataPreparationService {
       debugPrint('🗄️ [ARCHIVE] Preparing archived habits: ${context.component}.${context.operation}');
 
       // Get all habit metadata (both active and archived)
-      final metadataResult = await _atomicService.getHabitFeatures(
+      final metadataResult = await _atomicService.getHabitMetadata(
         includeArchived: true,
         context: DataAccessContext(
           component: 'ArchiveDataPreparation',
