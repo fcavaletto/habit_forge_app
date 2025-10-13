@@ -337,8 +337,8 @@ class SqliteHabitRepository {
     }
     
     try {
-      final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      // Preserve the time component for accurate completion timestamps
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(date);
       
       // Get just the goal field - don't load all completion data!
       final db = await _databaseService.database;
@@ -419,8 +419,8 @@ class SqliteHabitRepository {
   /// Remove a completion for a habit on a specific date
   Future<void> removeHabitCompletion(String habitId, DateTime date) async {
     try {
-      final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      // Preserve the time component for accurate completion timestamps
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(date);
       
       await _databaseService.transaction((txn) async {
         // Get current completion count
@@ -453,9 +453,9 @@ class SqliteHabitRepository {
         
         // Remove most recent timestamp record for this habit on this specific date
         // We need to be more specific about which timestamp to remove
-        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(normalizedDate);
+        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(DateTime(date.year, date.month, date.day));
         final endOfDay = TimezoneUtils.toUtcTimestampSeconds(
-          DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59)
+          DateTime(date.year, date.month, date.day, 23, 59, 59)
         );
         
         final timestampRows = await txn.query(
@@ -484,8 +484,8 @@ class SqliteHabitRepository {
   /// Update completion count for a habit on a specific date
   Future<void> updateHabitCompletion(String habitId, DateTime date, int count) async {
     try {
-      final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      // Preserve the time component for accurate completion timestamps
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(date);
       
       // Get just the goal field - don't load all completion data!
       final db = await _databaseService.database;
@@ -536,8 +536,8 @@ class SqliteHabitRepository {
   /// This completely resets the habit for that day, removing all completion records
   Future<void> removeAllCompletionsForDate(String habitId, DateTime date) async {
     try {
-      final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      // Preserve the time component for accurate completion timestamps
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(date);
       
       await _databaseService.transaction((txn) async {
         // Remove completion record for this date
@@ -550,9 +550,9 @@ class SqliteHabitRepository {
         // Remove all timestamp records for this habit on this date
         // Calculate the full day range for timestamp cleanup
         // IMPORTANT: Use toUtcTimestampSeconds for timestamps table (stored in seconds)
-        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(normalizedDate);
+        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(DateTime(date.year, date.month, date.day));
         final endOfDay = TimezoneUtils.toUtcTimestampSeconds(
-          DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59)
+          DateTime(date.year, date.month, date.day, 23, 59, 59)
         );
         
         debugPrint('🗑️ [Reset] Deleting timestamps for $habitId from $startOfDay to $endOfDay (seconds)');
@@ -581,8 +581,8 @@ class SqliteHabitRepository {
     }
     
     try {
-      final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      // Preserve the time component for accurate completion timestamps
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(date);
       
       // Get just the goal field - don't load all completion data!
       final db = await _databaseService.database;
@@ -663,8 +663,8 @@ class SqliteHabitRepository {
     }
     
     try {
-      final normalizedDate = DateTime(date.year, date.month, date.day);
-      final dateTimestamp = TimezoneUtils.toUtcTimestamp(normalizedDate);
+      // Preserve the time component for accurate completion timestamps
+      final dateTimestamp = TimezoneUtils.toUtcTimestamp(date);
       
       await _databaseService.transaction((txn) async {
         // Get current completion count
@@ -688,9 +688,9 @@ class SqliteHabitRepository {
         }
         
         // Calculate the full day range for timestamp operations
-        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(normalizedDate);
+        final startOfDay = TimezoneUtils.toUtcTimestampSeconds(DateTime(date.year, date.month, date.day));
         final endOfDay = TimezoneUtils.toUtcTimestampSeconds(
-          DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 23, 59, 59)
+          DateTime(date.year, date.month, date.day, 23, 59, 59)
         );
         
         // Get newest timestamps to remove (LIFO - Last In, First Out)
