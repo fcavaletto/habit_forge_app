@@ -36,7 +36,7 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  String _selectedTimeRange = 'Total';
+  String _selectedTimeRange = 'Last 30 Days';
   String _selectedCompletionTimeRange = AppConstants.defaultCompletionTimeRange;
   HourlyHistogramData? _hourlyData;
   bool _isLoadingHourlyData = false;
@@ -44,11 +44,12 @@ class _StatsScreenState extends State<StatsScreen> {
   
   // Load full habit data from database for stats
   Habit? _fullHabitData;
+  bool _isLoadingFullData = false;
 
   @override
   void initState() {
     super.initState();
-    _loadFullHabitData();
+    _loadLast30DaysData(); // Fast initial load
     _loadHourlyData();
   }
 
@@ -56,39 +57,73 @@ class _StatsScreenState extends State<StatsScreen> {
   void didUpdateWidget(StatsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.habit.id != widget.habit.id) {
-      _loadFullHabitData();
+      _loadLast30DaysData(); // Fast initial load
       _loadHourlyData();
     }
   }
 
-  Future<void> _loadFullHabitData() async {
+  /// Load last 30 days of data for fast initial rendering
+  Future<void> _loadLast30DaysData() async {
     if (!mounted) return;
     
-    // Loading full habit data...
-
     try {
       final appState = Provider.of<AppState>(context, listen: false);
+      final last30Days = DateTime.now().subtract(const Duration(days: 30));
       
-      // Load full habit data with all historical completions
-      final result = await appState.habitProvider.dataAccessService.atomicDataService.getAllHabitsIncludingArchived(
+      // Get habit metadata first
+      final metadataResult = await appState.habitProvider.dataAccessService.atomicDataService.getHabitFeatures(
+        habitIds: [widget.habit.id],
         context: DataAccessContext(
           component: 'StatsScreen',
-          operation: 'loadFullHabitData',
+          operation: 'loadLast30DaysMetadata',
           parameters: {'habitId': widget.habit.id},
         ),
       );
       
-      if (result.success && result.data != null) {
-        // Find the specific habit we need
-        final fullHabit = result.data!.firstWhere(
-          (habit) => habit.id == widget.habit.id,
-          orElse: () => widget.habit, // Fallback to original habit
+      if (metadataResult.success && metadataResult.data != null && metadataResult.data!.isNotEmpty) {
+        final metadata = metadataResult.data!.first;
+        
+        // Get completion data for last 30 days
+        final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletionTimestamps(
+          startDate: last30Days,
+          endDate: DateTime.now(),
+          habitIds: [widget.habit.id],
+          context: DataAccessContext(
+            component: 'StatsScreen',
+            operation: 'loadLast30DaysCompletions',
+            parameters: {'habitId': widget.habit.id},
+          ),
         );
         
-        if (mounted) {
-          setState(() {
-            _fullHabitData = fullHabit;
-          });
+        if (completionResult.success && completionResult.data != null) {
+          final completions = completionResult.data![widget.habit.id] ?? {};
+          
+          // Create habit with metadata and completion data
+          final habit = Habit(
+            id: metadata.id,
+            name: metadata.name,
+            description: metadata.description,
+            colorIndex: metadata.colorIndex,
+            createdAt: metadata.createdAt,
+            completions: completions,
+            iconName: metadata.iconName,
+            reminderTime: metadata.reminderTime,
+            enableReminders: metadata.enableReminders,
+            isArchived: metadata.isArchived,
+            orderValue: metadata.orderValue,
+            frequencyDays: metadata.frequencyDays,
+            targetGoal: metadata.targetGoal,
+            allowExceedGoal: metadata.allowExceedGoal,
+          );
+          
+          if (mounted) {
+            setState(() {
+              _fullHabitData = habit;
+            });
+          }
+          
+          // Start background loading of full data
+          _loadFullDataInBackground();
         }
       } else {
         if (mounted) {
@@ -103,6 +138,74 @@ class _StatsScreenState extends State<StatsScreen> {
           _fullHabitData = widget.habit; // Fallback to original habit
         });
       }
+    }
+  }
+
+  /// Load full historical data in background for "Total" range
+  Future<void> _loadFullDataInBackground() async {
+    if (_isLoadingFullData) return; // Prevent multiple simultaneous loads
+    
+    _isLoadingFullData = true;
+    
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      
+      // Get habit metadata first
+      final metadataResult = await appState.habitProvider.dataAccessService.atomicDataService.getHabitFeatures(
+        habitIds: [widget.habit.id],
+        context: DataAccessContext(
+          component: 'StatsScreen',
+          operation: 'loadFullDataMetadata',
+          parameters: {'habitId': widget.habit.id},
+        ),
+      );
+      
+      if (metadataResult.success && metadataResult.data != null && metadataResult.data!.isNotEmpty) {
+        final metadata = metadataResult.data!.first;
+        
+        // Get full completion data
+        final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletionTimestamps(
+          startDate: DateTime(2020), // Full history
+          endDate: DateTime.now(),
+          habitIds: [widget.habit.id],
+          context: DataAccessContext(
+            component: 'StatsScreen',
+            operation: 'loadFullDataCompletions',
+            parameters: {'habitId': widget.habit.id},
+          ),
+        );
+        
+        if (completionResult.success && completionResult.data != null && mounted) {
+          final completions = completionResult.data![widget.habit.id] ?? {};
+          
+          // Create habit with metadata and completion data
+          final habit = Habit(
+            id: metadata.id,
+            name: metadata.name,
+            description: metadata.description,
+            colorIndex: metadata.colorIndex,
+            createdAt: metadata.createdAt,
+            completions: completions,
+            iconName: metadata.iconName,
+            reminderTime: metadata.reminderTime,
+            enableReminders: metadata.enableReminders,
+            isArchived: metadata.isArchived,
+            orderValue: metadata.orderValue,
+            frequencyDays: metadata.frequencyDays,
+            targetGoal: metadata.targetGoal,
+            allowExceedGoal: metadata.allowExceedGoal,
+          );
+          
+          setState(() {
+            _fullHabitData = habit;
+          });
+          debugPrint('✅ Stats screen: Full historical data loaded in background');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Stats screen: Background full data loading failed: $e');
+    } finally {
+      _isLoadingFullData = false;
     }
   }
 
@@ -145,6 +248,12 @@ class _StatsScreenState extends State<StatsScreen> {
       setState(() {
         _selectedTimeRange = newRange;
       });
+      
+      // If switching to "Total" and we don't have full data yet, load it
+      if (newRange == 'Total' && _isLoadingFullData == false) {
+        _loadFullDataInBackground();
+      }
+      
       _loadHourlyData();
     }
   }
