@@ -1455,27 +1455,6 @@ class HabitState extends ChangeNotifier {
     }
   }
 
-  /// Get completed habits count for today (habits that achieved their goal)
-  int getCompletedTodayCount() {
-    final today = VirtualDateService().currentDate;
-    return _habits.where((habit) => habit.isGoalAchieved(today)).length;
-  }
-
-  /// Get total completion percentage for today across all habits
-  double getTodayCompletionRate() {
-    if (_habits.isEmpty) return 0.0;
-
-    double totalCompletionPercentage = 0.0;
-    final today = VirtualDateService().currentDate;
-
-    for (final habit in _habits) {
-      final count = habit.getCompletionCount(today);
-      final percentage = (count / habit.targetGoal).clamp(0.0, 1.0);
-      totalCompletionPercentage += percentage;
-    }
-
-    return totalCompletionPercentage / _habits.length;
-  }
 
   // NOTE: Old cache methods removed - now using additive cache updates
   // (_updateCacheAfterDatabaseOperation and _updateHabitInCache)
