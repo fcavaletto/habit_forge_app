@@ -644,7 +644,7 @@ class ArchiveDataPreparationService implements IDataPreparationService {
     try {
       debugPrint('🗄️ [ARCHIVE] Preparing archived habits: ${context.component}.${context.operation}');
 
-      // Get archived habit metadata only (no completion data needed)
+      // Get all habit metadata (both active and archived)
       final metadataResult = await _atomicService.getHabitFeatures(
         includeArchived: true,
         context: DataAccessContext(
@@ -663,8 +663,11 @@ class ArchiveDataPreparationService implements IDataPreparationService {
         );
       }
 
+      // Filter to only archived habits
+      final archivedMetadata = metadataResult.data!.where((metadata) => metadata.isArchived).toList();
+
       // Convert metadata to Habit objects (no completion data)
-      final archivedHabits = metadataResult.data!.map((metadata) {
+      final archivedHabits = archivedMetadata.map((metadata) {
         return Habit(
           id: metadata.id,
           name: metadata.name,
@@ -687,7 +690,7 @@ class ArchiveDataPreparationService implements IDataPreparationService {
       archivedHabits.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       stopwatch.stop();
-      debugPrint('✅ [ARCHIVE] Prepared ${archivedHabits.length} archived habits in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('✅ [ARCHIVE] Prepared ${archivedHabits.length} archived habits (filtered from ${metadataResult.data!.length} total) in ${stopwatch.elapsedMilliseconds}ms');
 
       return DataAccessResult.success(
         data: archivedHabits,
