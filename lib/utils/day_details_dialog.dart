@@ -28,9 +28,13 @@ class DayDetailsDialog {
     List<DateTime> completionTimes = [];
     if (record != null && record.count > 0) {
       try {
+        // Normalize date to start of day for accurate querying
+        final startOfDay = DateTime(date.year, date.month, date.day);
+        final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+        
         final result = await atomicDataService.getCompletionTimestamps(
-          startDate: date,
-          endDate: date,
+          startDate: startOfDay,
+          endDate: endOfDay,
           habitIds: [habitId],
           context: DataAccessContext(
             component: 'DayDetailsDialog',
