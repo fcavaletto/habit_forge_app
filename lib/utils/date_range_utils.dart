@@ -57,9 +57,8 @@ class DateRangeUtils {
       throw ArgumentError('Start date cannot be after end date: ${startDate.toIso8601String()} > ${endDate.toIso8601String()}');
     }
     
-    if (endDate.difference(startDate).inDays > 365) {
-      throw ArgumentError('Date range cannot exceed 365 days: ${endDate.difference(startDate).inDays} days');
-    }
+    // Removed 365-day limit to support sample data (2 years) and longer analysis periods
+    // The original limit was too restrictive for comprehensive data analysis
     
     if (startDate.isAfter(VirtualDateService().currentDate)) {
       throw ArgumentError('Start date cannot be in the future: ${startDate.toIso8601String()}');

@@ -1541,20 +1541,26 @@ class SqliteHabitRepository {
                 await txn.insert('habit_completions', row);
               }
 
-              // Insert one timestamp per completion
+              // Insert one timestamp per completion using the actual completion times
               for (final entry in habit.completions.entries) {
-                final date = entry.key;
+                final completionDateTime = entry.key; // Use the actual DateTime from sample data
                 final count = entry.value.count;
 
-                // Generate timestamps throughout the day (one per completion)
+                // Insert multiple timestamps for the same day if count > 1
+                // Spread them throughout the day with small increments
                 for (int j = 0; j < count; j++) {
-                  final hour = 8 + (j * 2) % 12; // Spread throughout day
-                  final minute = (j * 5) % 60;
-                  final completionTime = DateTime(date.year, date.month, date.day, hour, minute);
+                  final timestampDateTime = DateTime(
+                    completionDateTime.year,
+                    completionDateTime.month,
+                    completionDateTime.day,
+                    completionDateTime.hour,
+                    completionDateTime.minute,
+                    completionDateTime.second + j, // Small increment for multiple completions
+                  );
 
                   await txn.insert('habit_completion_timestamps', {
                     'habit_id': habit.id,
-                    'completion_timestamp': TimezoneUtils.toUtcTimestampSeconds(completionTime),
+                    'completion_timestamp': TimezoneUtils.toUtcTimestampSeconds(timestampDateTime),
                   });
                 }
               }

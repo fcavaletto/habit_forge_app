@@ -202,7 +202,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               }
 
               final date = DateTime(monthDate.year, monthDate.month, dayNumber);
-              final record = widget.completions[DateTime(date.year, date.month, date.day)];
+              final record = _findCompletionRecord(date);
               final completionCount = record?.count ?? 0;
               final hasCompletion = completionCount > 0;
               final isFullyCompleted = record?.isGoalAchieved ?? false;
@@ -265,5 +265,23 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return monthNames[month - 1];
+  }
+
+  /// Find completion record for a specific date
+  /// Handles both date-only and full DateTime keys in the completions map
+  CompletionRecord? _findCompletionRecord(DateTime date) {
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    
+    // Find completion record for this date (handle both date-only and full DateTime keys)
+    for (final entry in widget.completions.entries) {
+      final entryDate = entry.key;
+      if (entryDate.year == dateOnly.year && 
+          entryDate.month == dateOnly.month && 
+          entryDate.day == dateOnly.day) {
+        return entry.value;
+      }
+    }
+    
+    return null;
   }
 }

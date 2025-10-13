@@ -112,7 +112,21 @@ class SampleDataGeneratorService {
         int completionCount = _generateCompletionCount(completionPattern, targetGoal);
         
         if (completionCount > 0) {
-          completions[currentDate] = CompletionRecord(
+          // Generate random time throughout the day for realistic completion patterns
+          final randomHour = _random.nextInt(24); // 0-23
+          final randomMinute = _random.nextInt(60); // 0-59
+          final randomSecond = _random.nextInt(60); // 0-59
+          
+          final completionDateTime = DateTime(
+            currentDate.year,
+            currentDate.month,
+            currentDate.day,
+            randomHour,
+            randomMinute,
+            randomSecond,
+          );
+          
+          completions[completionDateTime] = CompletionRecord(
             count: completionCount,
             goalAtCompletion: targetGoal,
           );

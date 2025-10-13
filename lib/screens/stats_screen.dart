@@ -12,6 +12,7 @@ import '../widgets/stats/active_days_widget.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
 import '../services/virtual_date_service.dart';
+import '../services/atomic_data_service.dart';
 import '../theme.dart';
 
 /// Stats Screen - Displays analytics and charts for habit tracking
@@ -35,15 +36,19 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  String _selectedTimeRange = 'Last 30 Days';
+  String _selectedTimeRange = 'Total';
   String _selectedCompletionTimeRange = AppConstants.defaultCompletionTimeRange;
   HourlyHistogramData? _hourlyData;
   bool _isLoadingHourlyData = false;
   String? _hourlyDataError;
+  
+  // Load full habit data from database for stats
+  Habit? _fullHabitData;
 
   @override
   void initState() {
     super.initState();
+    _loadFullHabitData();
     _loadHourlyData();
   }
 
@@ -51,7 +56,53 @@ class _StatsScreenState extends State<StatsScreen> {
   void didUpdateWidget(StatsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.habit.id != widget.habit.id) {
+      _loadFullHabitData();
       _loadHourlyData();
+    }
+  }
+
+  Future<void> _loadFullHabitData() async {
+    if (!mounted) return;
+    
+    // Loading full habit data...
+
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      
+      // Load full habit data with all historical completions
+      final result = await appState.habitProvider.dataAccessService.atomicDataService.getAllHabitsIncludingArchived(
+        context: DataAccessContext(
+          component: 'StatsScreen',
+          operation: 'loadFullHabitData',
+          parameters: {'habitId': widget.habit.id},
+        ),
+      );
+      
+      if (result.success && result.data != null) {
+        // Find the specific habit we need
+        final fullHabit = result.data!.firstWhere(
+          (habit) => habit.id == widget.habit.id,
+          orElse: () => widget.habit, // Fallback to original habit
+        );
+        
+        if (mounted) {
+          setState(() {
+            _fullHabitData = fullHabit;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _fullHabitData = widget.habit; // Fallback to original habit
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _fullHabitData = widget.habit; // Fallback to original habit
+        });
+      }
     }
   }
 
@@ -100,10 +151,13 @@ class _StatsScreenState extends State<StatsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use full habit data if available, otherwise fallback to widget habit
+    final habitToUse = _fullHabitData ?? widget.habit;
+    final completions = habitToUse.completions;
+    
     return Consumer<AppState>(
         builder: (context, appState, child) {
           final currentDate = VirtualDateService().currentDate;
-          final completions = widget.habit.completions;
         
     return Scaffold(
       appBar: AppBar(
@@ -121,15 +175,15 @@ class _StatsScreenState extends State<StatsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                   // Habit Header (now includes Active Days)
-                  _buildHabitHeader(context),
+                  _buildHabitHeader(context, habitToUse),
                     const SizedBox(height: 24),
 
                     // Current Streak
                   Builder(
                     builder: (context) {
-                      final longestStreakData = _calculateLongestStreakWithRange(completions, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled);
+                      final longestStreakData = _calculateLongestStreakWithRange(completions, habitToUse.frequencyDays, appState.isActiveDaysStreakEnabled);
                       return StreakDisplay(
-                        currentStreak: _calculateCurrentStreak(completions, currentDate, widget.habit.frequencyDays, appState.isActiveDaysStreakEnabled),
+                        currentStreak: _calculateCurrentStreak(completions, currentDate, habitToUse.frequencyDays, appState.isActiveDaysStreakEnabled),
                         longestStreak: longestStreakData['streak'] as int,
                         streakCalculationMode: appState.streakCalculationMode,
                         longestStreakStartDate: longestStreakData['startDate'] as DateTime?,
@@ -311,7 +365,7 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   /// Builds the habit header card with icon and basic information
-  Widget _buildHabitHeader(BuildContext context) {
+  Widget _buildHabitHeader(BuildContext context, Habit habit) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.defaultPadding),
@@ -325,8 +379,8 @@ class _StatsScreenState extends State<StatsScreen> {
                 borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
               ),
               child: Icon(
-                widget.habit.iconName.toIconData,
-                color: Theme.of(context).colorScheme.habitColor(widget.habit.colorIndex),
+                habit.iconName.toIconData,
+                color: Theme.of(context).colorScheme.habitColor(habit.colorIndex),
                 size: 36.0,
               ),
             ),
@@ -336,15 +390,15 @@ class _StatsScreenState extends State<StatsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.habit.name,
+                    habit.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (widget.habit.description.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.habit.description,
+                  if (habit.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      habit.description,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -364,7 +418,7 @@ class _StatsScreenState extends State<StatsScreen> {
                           ),
                         ),
                         TextSpan(
-                          text: '${widget.habit.targetGoal}',
+                          text: '${habit.targetGoal}',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.primary,
                           ),
@@ -382,7 +436,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
                   const SizedBox(height: 8),
                   ActiveDaysWidget(
-                    frequencyDays: widget.habit.frequencyDays,
+                    frequencyDays: habit.frequencyDays,
                   ),
                 ],
               ),
@@ -402,7 +456,20 @@ class _StatsScreenState extends State<StatsScreen> {
 
     for (int i = 6; i >= 0; i--) {
       final date = currentDate.subtract(Duration(days: i));
-      final record = completions[DateTime(date.year, date.month, date.day)];
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      
+      // Find completion record for this date (handle both date-only and full DateTime keys)
+      CompletionRecord? record;
+      for (final entry in completions.entries) {
+        final entryDate = entry.key;
+        if (entryDate.year == dateOnly.year && 
+            entryDate.month == dateOnly.month && 
+            entryDate.day == dateOnly.day) {
+          record = entry.value;
+          break;
+        }
+      }
+      
       final rate = record != null 
           ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0)
           : 0.0;
@@ -421,7 +488,20 @@ class _StatsScreenState extends State<StatsScreen> {
 
     for (int i = 29; i >= 0; i--) {
       final date = currentDate.subtract(Duration(days: i));
-      final record = completions[DateTime(date.year, date.month, date.day)];
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      
+      // Find completion record for this date (handle both date-only and full DateTime keys)
+      CompletionRecord? record;
+      for (final entry in completions.entries) {
+        final entryDate = entry.key;
+        if (entryDate.year == dateOnly.year && 
+            entryDate.month == dateOnly.month && 
+            entryDate.day == dateOnly.day) {
+          record = entry.value;
+          break;
+        }
+      }
+      
       final rate = record != null 
           ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0)
           : 0.0;
@@ -441,7 +521,20 @@ class _StatsScreenState extends State<StatsScreen> {
 
     for (int i = 364; i >= 0; i--) {
       final date = currentDate.subtract(Duration(days: i));
-      final record = completions[DateTime(date.year, date.month, date.day)];
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      
+      // Find completion record for this date (handle both date-only and full DateTime keys)
+      CompletionRecord? record;
+      for (final entry in completions.entries) {
+        final entryDate = entry.key;
+        if (entryDate.year == dateOnly.year && 
+            entryDate.month == dateOnly.month && 
+            entryDate.day == dateOnly.day) {
+          record = entry.value;
+          break;
+        }
+      }
+      
       final rate = record != null 
           ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0)
           : 0.0;
@@ -480,7 +573,20 @@ class _StatsScreenState extends State<StatsScreen> {
 
     for (int i = 6; i >= 0; i--) {
       final date = currentDate.subtract(Duration(days: i));
-      final record = completions[DateTime(date.year, date.month, date.day)];
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      
+      // Find completion record for this date (handle both date-only and full DateTime keys)
+      CompletionRecord? record;
+      for (final entry in completions.entries) {
+        final entryDate = entry.key;
+        if (entryDate.year == dateOnly.year && 
+            entryDate.month == dateOnly.month && 
+            entryDate.day == dateOnly.day) {
+          record = entry.value;
+          break;
+        }
+      }
+      
       data.add(record);
     }
 
@@ -518,7 +624,7 @@ class _StatsScreenState extends State<StatsScreen> {
         continue;
       }
       
-      final record = completions[dayKey];
+      final record = _findCompletionRecord(completions, dayKey);
       
       if (record != null && record.isGoalAchieved) {
         streak++;
@@ -584,7 +690,7 @@ class _StatsScreenState extends State<StatsScreen> {
         continue;
       }
       
-      final record = completions[currentDate];
+      final record = _findCompletionRecord(completions, currentDate);
       if (record != null && record.isGoalAchieved) {
         if (currentStreak == 0) {
           currentStreakStart = currentDate; // Start of new streak
@@ -742,6 +848,30 @@ class _StatsScreenState extends State<StatsScreen> {
         ),
       ),
     );
+  }
+
+  /// Find completion record for a specific date
+  /// Handles both date-only and full DateTime keys in the completions map
+  CompletionRecord? _findCompletionRecord(Map<DateTime, CompletionRecord> completions, DateTime date) {
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    
+    // First try direct lookup (for date-only keys)
+    final directRecord = completions[dateOnly];
+    if (directRecord != null) {
+      return directRecord;
+    }
+    
+    // If not found, search for any completion on this date (handles full DateTime keys)
+    for (final entry in completions.entries) {
+      final entryDate = entry.key;
+      if (entryDate.year == dateOnly.year && 
+          entryDate.month == dateOnly.month && 
+          entryDate.day == dateOnly.day) {
+        return entry.value;
+      }
+    }
+    
+    return null;
   }
 
 }

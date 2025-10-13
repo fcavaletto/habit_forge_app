@@ -441,7 +441,24 @@ class Habit {
   /// @return true if habit has at least one completion on this date, false otherwise
   bool isCompleted(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    return (completions[normalizedDate]?.count ?? 0) > 0;
+    
+    // First try direct lookup (for date-only keys)
+    final directRecord = completions[normalizedDate];
+    if (directRecord != null) {
+      return directRecord.count > 0;
+    }
+    
+    // If not found, search for any completion on this date (handles full DateTime keys)
+    for (final entry in completions.entries) {
+      final entryDate = entry.key;
+      if (entryDate.year == normalizedDate.year && 
+          entryDate.month == normalizedDate.month && 
+          entryDate.day == normalizedDate.day) {
+        return entry.value.count > 0;
+      }
+    }
+    
+    return false;
   }
 
   /// Get the completion count for a specific date
@@ -450,7 +467,24 @@ class Habit {
   /// @return The number of completions for this date (0 if none)
   int getCompletionCount(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    return completions[normalizedDate]?.count ?? 0;
+    
+    // First try direct lookup (for date-only keys)
+    final directRecord = completions[normalizedDate];
+    if (directRecord != null) {
+      return directRecord.count;
+    }
+    
+    // If not found, search for any completion on this date (handles full DateTime keys)
+    for (final entry in completions.entries) {
+      final entryDate = entry.key;
+      if (entryDate.year == normalizedDate.year && 
+          entryDate.month == normalizedDate.month && 
+          entryDate.day == normalizedDate.day) {
+        return entry.value.count;
+      }
+    }
+    
+    return 0;
   }
   
   /// Get the completion record for a specific date
@@ -459,7 +493,24 @@ class Habit {
   /// @return The CompletionRecord for this date (null if none)
   CompletionRecord? getCompletionRecord(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    return completions[normalizedDate];
+    
+    // First try direct lookup (for date-only keys)
+    final directRecord = completions[normalizedDate];
+    if (directRecord != null) {
+      return directRecord;
+    }
+    
+    // If not found, search for any completion on this date (handles full DateTime keys)
+    for (final entry in completions.entries) {
+      final entryDate = entry.key;
+      if (entryDate.year == normalizedDate.year && 
+          entryDate.month == normalizedDate.month && 
+          entryDate.day == normalizedDate.day) {
+        return entry.value;
+      }
+    }
+    
+    return null;
   }
   
   /// Get the goal that was active when completion was recorded for a specific date
@@ -467,8 +518,8 @@ class Habit {
   /// @param date The date to get goal for
   /// @return The goal at completion (current targetGoal if no completion record)
   int getGoalAtCompletion(DateTime date) {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
-    return completions[normalizedDate]?.goalAtCompletion ?? targetGoal;
+    final record = getCompletionRecord(date);
+    return record?.goalAtCompletion ?? targetGoal;
   }
 
   /// Check if the goal is achieved for a specific date
@@ -476,8 +527,7 @@ class Habit {
   /// @param date The date to check goal achievement for
   /// @return true if completion count >= goal at completion, false otherwise
   bool isGoalAchieved(DateTime date) {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
-    final record = completions[normalizedDate];
+    final record = getCompletionRecord(date);
     if (record == null) return false;
     return record.count >= record.goalAtCompletion;
   }
@@ -569,7 +619,7 @@ class Habit {
     
     for (int i = 0; i < 30; i++) {
       final date = VirtualDateService().currentDate.subtract(Duration(days: i));
-      final record = completions[DateTime(date.year, date.month, date.day)];
+      final record = getCompletionRecord(date);
       final percentage = record != null 
           ? (record.count / record.goalAtCompletion).clamp(0.0, 1.0)
           : 0.0;

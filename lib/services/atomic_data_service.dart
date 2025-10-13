@@ -138,6 +138,19 @@ abstract class IAtomicDataService {
     required DataAccessContext context,
   });
 
+  /// Get individual completion timestamps for a specific day
+  ///
+  /// [habitId] - ID of the habit to get timestamps for
+  /// [date] - Date to get timestamps for (will query entire day)
+  /// [context] - Logging context for the operation
+  ///
+  /// Returns list of individual completion timestamps for the day
+  Future<DataAccessResult<List<DateTime>>> getIndividualCompletionTimestamps({
+    required String habitId,
+    required DateTime date,
+    required DataAccessContext context,
+  });
+
   /// Calculate maximum streak for habits
   ///
   /// [habitIds] - Optional list of specific habit IDs
@@ -784,6 +797,40 @@ class AtomicDataService implements IAtomicDataService {
 
       return DataAccessResult.failure(
         errorMessage: 'Failed to get completion timestamps: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
+  @override
+  Future<DataAccessResult<List<DateTime>>> getIndividualCompletionTimestamps({
+    required String habitId,
+    required DateTime date,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] getIndividualCompletionTimestamps called: ${context.component}.${context.operation}');
+
+      // Use repository method to get individual timestamps for the day
+      final timestamps = await _repository.getCompletionTimestampsForDay(habitId, date);
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] getIndividualCompletionTimestamps completed: ${timestamps.length} timestamps in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: timestamps,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] getIndividualCompletionTimestamps failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to get individual completion timestamps: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );

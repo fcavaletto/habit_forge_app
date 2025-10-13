@@ -24,32 +24,31 @@ class DayDetailsDialog {
     final fullDayName = _getFullDayName(date);
     final dateStr = '${date.day} ${_getMonthAbbreviation(date.month)}';
     
-    // Fetch completion timestamps for this day using atomic service
+    // Fetch individual completion timestamps for this day
     List<DateTime> completionTimes = [];
     if (record != null && record.count > 0) {
       try {
         // Normalize date to start of day for accurate querying
         final startOfDay = DateTime(date.year, date.month, date.day);
-        final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
         
-        final result = await atomicDataService.getCompletionTimestamps(
-          startDate: startOfDay,
-          endDate: endOfDay,
-          habitIds: [habitId],
+        // Use the atomic service method that gets individual timestamps
+        final result = await atomicDataService.getIndividualCompletionTimestamps(
+          habitId: habitId,
+          date: startOfDay,
           context: DataAccessContext(
             component: 'DayDetailsDialog',
-            operation: 'getCompletionTimestampsForDay',
+            operation: 'getIndividualCompletionTimestamps',
             parameters: {'habitId': habitId, 'date': date.toIso8601String()},
           ),
         );
         
         if (result.success && result.data != null) {
-          // Extract timestamps for this specific day
-          final dayCompletions = result.data![habitId] ?? {};
-          completionTimes = dayCompletions.keys.toList()..sort();
+          completionTimes = result.data!;
         }
+        
+        debugPrint('📊 [DayDetailsDialog] Found ${completionTimes.length} individual completion timestamps');
       } catch (e) {
-        debugPrint('❌ Error fetching completion times: $e');
+        debugPrint('❌ Error fetching individual completion times: $e');
       }
     }
     
@@ -90,6 +89,8 @@ class DayDetailsDialog {
             ],
           ],
         ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -122,61 +123,68 @@ class DayDetailsDialog {
     return '$hour:$minute';
   }
 
-  /// Build completion times list with scrolling and capping
+  /// Build completion times list with scrolling
   static Widget _buildCompletionTimesList(BuildContext context, List<DateTime> completionTimes) {
-    const int maxDisplayCount = 20; // Cap at 20 items to prevent overflow
     const double maxListHeight = 200.0; // Maximum height for the scrollable list
     
-    final totalCount = completionTimes.length;
-    final displayTimes = completionTimes.take(maxDisplayCount).toList();
-    final hasMore = totalCount > maxDisplayCount;
-    
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Show count summary if there are many completions
-        if (hasMore) ...[
-          Text(
-            'Showing first $maxDisplayCount of $totalCount completions:',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          const SizedBox(height: 4),
-        ],
-        // Scrollable list of completion times using SingleChildScrollView
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: maxListHeight),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: displayTimes.map((time) => Padding(
-                padding: const EdgeInsets.only(left: 8, bottom: 2),
-                child: Text(
-                  _formatTime(time),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: maxListHeight),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: completionTimes.asMap().entries.map((entry) {
+            final index = entry.key;
+            final time = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  // Completion number
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              )).toList(),
-            ),
-          ),
+                  const SizedBox(width: 8),
+                  // Time
+                  Text(
+                    _formatTime(time),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  // AM/PM indicator
+                  Text(
+                    time.hour < 12 ? 'AM' : 'PM',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
         ),
-        // Show "and X more" message if there are additional completions
-        if (hasMore) ...[
-          const SizedBox(height: 4),
-          Text(
-            '... and ${totalCount - maxDisplayCount} more',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

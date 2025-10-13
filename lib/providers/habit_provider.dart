@@ -902,6 +902,7 @@ class HabitState extends ChangeNotifier {
               break;
             case 'Total':
               dateRange = DateRangeUtils.getTotal(virtualDate);
+              // Skip validation for "Total" range as it queries all time data
               hourlyCompletions = await _habitRepository
                   .getTotalHourlyCompletions(habitId);
               break;
