@@ -94,7 +94,7 @@ abstract class IAtomicDataService {
   /// 
   /// This is the consolidated method that replaces:
   /// - getHabitFeatures()
-  /// - getAllHabitsIncludingArchived() (when combined with getCompletionDays)
+  /// - getAllHabitsIncludingArchived() (when combined with getCompletionCountsByDate)
   /// - getActiveHabitsForReordering() (repository method)
   Future<DataAccessResult<List<HabitMetadata>>> getHabitMetadata({
     bool includeArchived = false,
@@ -102,34 +102,7 @@ abstract class IAtomicDataService {
     required DataAccessContext context,
   });
 
-  /// Get habit metadata without completion data
-  ///
-  /// [includeArchived] - Whether to include archived habits (default: false)
-  /// [habitIds] - Optional list of specific habit IDs to retrieve
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns metadata for habits including: id, name, description, color, icon,
-  /// creation date, frequency settings, target goals, and display order.
-  /// 
-  /// @deprecated Use getHabitMetadata instead
-  Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
-    bool includeArchived = false,
-    List<String>? habitIds,
-    required DataAccessContext context,
-  });
 
-  /// Get all habits including archived ones (returns full Habit objects)
-  ///
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns all habits in the system, both active and archived.
-  /// This is primarily used for operations that need to check existence or
-  /// restore archived habits (e.g., Add Sample Habits functionality).
-  /// 
-  /// @deprecated Use getHabitMetadata + getCompletionDays instead
-  Future<DataAccessResult<List<Habit>>> getAllHabitsIncludingArchived({
-    required DataAccessContext context,
-  });
 
   /// Get completion counts for habits within a date range
   ///
@@ -140,7 +113,7 @@ abstract class IAtomicDataService {
   ///
   /// Returns map of habit ID -> date -> completion count
   /// Throws DataValidationException if date range is invalid
-  Future<DataAccessResult<Map<String, Map<DateTime, int>>>> getCompletionDays({
+  Future<DataAccessResult<Map<String, Map<DateTime, int>>>> getCompletionCountsByDate({
     required DateTime startDate,
     required DateTime endDate,
     List<String>? habitIds,
@@ -626,93 +599,11 @@ class AtomicDataService implements IAtomicDataService {
     }
   }
 
-  @override
-  Future<DataAccessResult<List<HabitMetadata>>> getHabitFeatures({
-    bool includeArchived = false,
-    List<String>? habitIds,
-    required DataAccessContext context,
-  }) async {
-    // Delegate to the new consolidated method
-    return getHabitMetadata(
-      includeArchived: includeArchived,
-      habitIds: habitIds,
-      context: context,
-    );
-  }
+
 
 
   @override
-  Future<DataAccessResult<List<Habit>>> getAllHabitsIncludingArchived({
-    required DataAccessContext context,
-  }) async {
-    final stopwatch = Stopwatch()..start();
-
-    try {
-      debugPrint('🔍 [ATOMIC] getAllHabitsIncludingArchived called: ${context.component}.${context.operation}');
-
-      // Get habit metadata (including archived)
-      final metadataResult = await getHabitMetadata(
-        includeArchived: true,
-        context: DataAccessContext(
-          component: 'AtomicDataService',
-          operation: 'getAllHabitsMetadata',
-        ),
-      );
-
-      if (!metadataResult.success || metadataResult.data == null) {
-        stopwatch.stop();
-        return DataAccessResult.failure(
-          errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
-          context: context,
-          executionTime: stopwatch.elapsed,
-        );
-      }
-
-      final metadata = metadataResult.data!;
-      final habits = <Habit>[];
-
-      // Convert metadata to full Habit objects (with empty completions)
-      for (final habitMetadata in metadata) {
-        habits.add(Habit(
-          id: habitMetadata.id,
-          name: habitMetadata.name,
-          description: habitMetadata.description,
-          colorIndex: habitMetadata.colorIndex,
-          createdAt: habitMetadata.createdAt,
-          completions: const {}, // Empty completions - can be loaded separately if needed
-          iconName: habitMetadata.iconName,
-          reminderTime: habitMetadata.reminderTime,
-          enableReminders: habitMetadata.enableReminders,
-          isArchived: habitMetadata.isArchived,
-          orderValue: habitMetadata.orderValue,
-          frequencyDays: habitMetadata.frequencyDays,
-          targetGoal: habitMetadata.targetGoal,
-          allowExceedGoal: habitMetadata.allowExceedGoal,
-        ));
-      }
-
-      stopwatch.stop();
-      debugPrint('✅ [ATOMIC] getAllHabitsIncludingArchived completed: ${habits.length} habits in ${stopwatch.elapsedMilliseconds}ms');
-
-      return DataAccessResult.success(
-        data: habits,
-        context: context,
-        executionTime: stopwatch.elapsed,
-      );
-    } catch (e) {
-      stopwatch.stop();
-      debugPrint('❌ [ATOMIC] getAllHabitsIncludingArchived failed after ${stopwatch.elapsedMilliseconds}ms: $e');
-
-      return DataAccessResult.failure(
-        errorMessage: 'Failed to get all habits including archived: $e',
-        context: context,
-        executionTime: stopwatch.elapsed,
-      );
-    }
-  }
-
-  @override
-  Future<DataAccessResult<Map<String, Map<DateTime, int>>>> getCompletionDays({
+  Future<DataAccessResult<Map<String, Map<DateTime, int>>>> getCompletionCountsByDate({
     required DateTime startDate,
     required DateTime endDate,
     List<String>? habitIds,
@@ -736,14 +627,14 @@ class AtomicDataService implements IAtomicDataService {
         );
       }
 
-      debugPrint('🔍 [ATOMIC] getCompletionDays called: ${context.component}.${context.operation}');
+      debugPrint('🔍 [ATOMIC] getCompletionCountsByDate called: ${context.component}.${context.operation}');
 
       // Get habit metadata first to know which habits to query
       final metadataResult = await getHabitMetadata(
         habitIds: habitIds,
         context: DataAccessContext(
           component: 'AtomicDataService',
-          operation: 'getCompletionDays',
+          operation: 'getCompletionCountsByDate',
         ),
       );
 
@@ -792,7 +683,7 @@ class AtomicDataService implements IAtomicDataService {
       }
 
       stopwatch.stop();
-      debugPrint('✅ [ATOMIC] getCompletionDays completed: ${result.length} habits in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('✅ [ATOMIC] getCompletionCountsByDate completed: ${result.length} habits in ${stopwatch.elapsedMilliseconds}ms');
 
       return DataAccessResult.success(
         data: result,
@@ -801,10 +692,10 @@ class AtomicDataService implements IAtomicDataService {
       );
     } catch (e) {
       stopwatch.stop();
-      debugPrint('❌ [ATOMIC] getCompletionDays failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('❌ [ATOMIC] getCompletionCountsByDate failed after ${stopwatch.elapsedMilliseconds}ms: $e');
 
       return DataAccessResult.failure(
-        errorMessage: 'Failed to get completion days: $e',
+        errorMessage: 'Failed to get completion counts by date: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );
