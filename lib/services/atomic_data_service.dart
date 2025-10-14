@@ -339,18 +339,6 @@ abstract class IAtomicDataService {
     required DataAccessContext context,
   });
 
-  /// Overwrite an archived habit with new data
-  ///
-  /// [archivedHabitId] - ID of the archived habit to overwrite
-  /// [newHabit] - New habit data
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns the saved habit
-  Future<DataAccessResult<Habit>> overwriteArchivedHabit({
-    required String archivedHabitId,
-    required Habit newHabit,
-    required DataAccessContext context,
-  });
 
   /// Get hourly completion data for histogram analysis
   ///
@@ -1763,39 +1751,6 @@ class AtomicDataService implements IAtomicDataService {
     }
   }
 
-  @override
-  Future<DataAccessResult<Habit>> overwriteArchivedHabit({
-    required String archivedHabitId,
-    required Habit newHabit,
-    required DataAccessContext context,
-  }) async {
-    final stopwatch = Stopwatch()..start();
-
-    try {
-      debugPrint('🔍 [ATOMIC] overwriteArchivedHabit called: ${context.component}.${context.operation}');
-
-      // Use repository method for overwriting archived habit
-      final result = await _repository.overwriteArchivedHabit(archivedHabitId, newHabit);
-
-      stopwatch.stop();
-      debugPrint('✅ [ATOMIC] overwriteArchivedHabit completed in ${stopwatch.elapsedMilliseconds}ms');
-
-      return DataAccessResult.success(
-        data: result.savedHabit!,
-        context: context,
-        executionTime: stopwatch.elapsed,
-      );
-    } catch (e) {
-      stopwatch.stop();
-      debugPrint('❌ [ATOMIC] overwriteArchivedHabit failed after ${stopwatch.elapsedMilliseconds}ms: $e');
-
-      return DataAccessResult.failure(
-        errorMessage: 'Failed to overwrite archived habit: $e',
-        context: context,
-        executionTime: stopwatch.elapsed,
-      );
-    }
-  }
 
   @override
   Future<Map<String, dynamic>> getPerformanceStats() async {

@@ -457,62 +457,6 @@ class SqliteHabitRepository {
     }
   }
   
-  Future<HabitSaveResult> overwriteArchivedHabit(String archivedHabitId, Habit newHabit) async {
-    try {
-      await _databaseService.transaction((txn) async {
-        // Update habit properties
-        await txn.update(
-          'habit_metadata',
-          {
-            'name': newHabit.name,
-            'description': newHabit.description,
-            'color_index': newHabit.colorIndex,
-            'icon_name': newHabit.iconName,
-            'frequency_days': jsonEncode(newHabit.frequencyDays),
-            'target_goal': newHabit.targetGoal,
-            'allow_exceed_goal': newHabit.allowExceedGoal ? 1 : 0,
-            'is_archived': 0, // Unarchive
-          },
-          where: 'id = ?',
-          whereArgs: [archivedHabitId],
-        );
-        
-        // Update reminder settings
-        await txn.delete('habit_reminders', where: 'habit_id = ?', whereArgs: [archivedHabitId]);
-        
-        if (newHabit.enableReminders && newHabit.reminderTime != null) {
-          await txn.insert('habit_reminders', {
-            'habit_id': archivedHabitId,
-            'reminder_time_hour': newHabit.reminderTime!.hour,
-            'reminder_time_minute': newHabit.reminderTime!.minute,
-            'enable_reminders': 1,
-          });
-        }
-      });
-      
-      // Create updated habit with preserved data
-      final updatedHabit = Habit(
-        id: archivedHabitId,
-        name: newHabit.name,
-        description: newHabit.description,
-        colorIndex: newHabit.colorIndex,
-        createdAt: DateTime.now(), // Will be updated from DB
-        completions: <DateTime, CompletionRecord>{}, // Will be loaded from DB
-        iconName: newHabit.iconName,
-        reminderTime: newHabit.reminderTime,
-        enableReminders: newHabit.enableReminders,
-        isArchived: false,
-        frequencyDays: newHabit.frequencyDays,
-        targetGoal: newHabit.targetGoal,
-      );
-      
-      debugPrint('💾 Overwrote archived habit $archivedHabitId');
-      return HabitSaveResult.success(updatedHabit);
-    } catch (e) {
-      debugPrint('❌ Error overwriting archived habit: $e');
-      return HabitSaveResult.error('Failed to overwrite archived habit: $e');
-    }
-  }
   
   
   Future<List<Habit>> getHabitsNeedingAttention() async {

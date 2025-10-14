@@ -1196,56 +1196,6 @@ class HabitState extends ChangeNotifier {
     }
   }
 
-  /// Overwrite archived habit with incremental cache update
-  Future<HabitSaveResult> overwriteArchivedHabit(
-    String archivedHabitId,
-    Habit newHabit,
-  ) async {
-    try {
-      final result = await _dataAccessService.atomicDataService.overwriteArchivedHabit(
-        archivedHabitId: archivedHabitId,
-        newHabit: newHabit,
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'overwriteArchivedHabit',
-          parameters: {'archivedHabitId': archivedHabitId, 'newHabitName': newHabit.name},
-        ),
-      );
-      
-      if (result.success && result.data != null) {
-        // Add the unarchived habit to local state
-        _habits.insert(0, result.data!);
-
-        // Cache using additive method (no full rebuild)
-        final metadata = HabitMetadata.fromHabit(result.data!);
-        await _dataAccessService.cache.addHabitToMetadata(result.data!.id, {
-          'id': metadata.id,
-          'name': metadata.name,
-          'description': metadata.description,
-          'colorIndex': metadata.colorIndex,
-          'iconName': metadata.iconName,
-          'createdAt': metadata.createdAt.toIso8601String(),
-          'reminderTime': metadata.reminderTime != null 
-              ? '${metadata.reminderTime!.hour}:${metadata.reminderTime!.minute}'
-              : null,
-          'enableReminders': metadata.enableReminders,
-          'isArchived': metadata.isArchived,
-          'orderValue': metadata.orderValue,
-          'frequencyDays': metadata.frequencyDays,
-          'targetGoal': metadata.targetGoal,
-          'allowExceedGoal': metadata.allowExceedGoal,
-        });
-        _metadataCache.cacheHabitMetadata(result.data!.id, metadata);
-
-        notifyListeners();
-        return HabitSaveResult.success(result.data!);
-      } else {
-        return HabitSaveResult.error('Failed to overwrite archived habit: ${result.errorMessage}');
-      }
-    } catch (e) {
-      return HabitSaveResult.error('Failed to overwrite archived habit: $e');
-    }
-  }
 
   /// Get habits that need attention
   Future<List<Habit>> getHabitsNeedingAttention() async {
