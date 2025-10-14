@@ -171,4 +171,193 @@ class TimezoneUtils {
     
     return localCompletionMap;
   }
+
+  // ============================================================================
+  // DATE STRING UTILITIES (for completion_date TEXT storage)
+  // ============================================================================
+
+  /// Convert DateTime to 'YYYY-MM-DD' string format
+  ///
+  /// @param date The DateTime to convert
+  /// @return Date string in 'YYYY-MM-DD' format
+  static String toDateString(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Convert 'YYYY-MM-DD' string to DateTime (start of day)
+  ///
+  /// @param dateString Date string in 'YYYY-MM-DD' format
+  /// @return DateTime representing the start of the day
+  static DateTime fromDateString(String dateString) {
+    final parts = dateString.split('-');
+    if (parts.length != 3) {
+      throw FormatException('Invalid date string format: $dateString. Expected YYYY-MM-DD');
+    }
+    return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+  }
+
+  /// Get date string for today in 'YYYY-MM-DD' format
+  ///
+  /// @return Today's date as 'YYYY-MM-DD' string
+  static String getTodayDateString() {
+    return toDateString(DateTime.now());
+  }
+
+  /// Get date string for a specific date in 'YYYY-MM-DD' format
+  ///
+  /// @param date The DateTime to convert
+  /// @return Date string in 'YYYY-MM-DD' format
+  static String getDateString(DateTime date) {
+    return toDateString(date);
+  }
+
+  /// Validate that a string is in 'YYYY-MM-DD' format
+  ///
+  /// @param dateString The string to validate
+  /// @return true if the string is in valid 'YYYY-MM-DD' format
+  static bool isValidDateString(String dateString) {
+    try {
+      final parts = dateString.split('-');
+      if (parts.length != 3) return false;
+      
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+      
+      // Basic validation
+      if (year < 1900 || year > 2100) return false;
+      if (month < 1 || month > 12) return false;
+      if (day < 1 || day > 31) return false;
+      
+      // Try to create a DateTime to validate the date
+      DateTime(year, month, day);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ============================================================================
+  // NEW TEXT TIMESTAMP METHODS (Phase 2 Migration)
+  // ============================================================================
+
+  /// Convert DateTime to TEXT timestamp string for database storage
+  ///
+  /// @param dateTime The DateTime to convert
+  /// @return Timestamp string in 'YYYY-MM-DD HH:MM' format
+  static String toTimestampString(DateTime dateTime) {
+    final timestampString = '${dateTime.year.toString().padLeft(4, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    debugPrint('🕒 [TEXT-STORAGE] Converting ${dateTime.toIso8601String()} to timestamp string: $timestampString');
+    return timestampString;
+  }
+
+  /// Convert TEXT timestamp string to DateTime
+  ///
+  /// @param timestampString Timestamp string in 'YYYY-MM-DD HH:MM' format
+  /// @param context Optional context for debugging
+  /// @param caller Optional caller information for debugging
+  /// @return DateTime object
+  static DateTime fromTimestampString(String timestampString, {String? context, String? caller}) {
+    try {
+      // Parse 'YYYY-MM-DD HH:MM' format
+      final parts = timestampString.split(' ');
+      if (parts.length != 2) {
+        throw FormatException('Invalid timestamp format: $timestampString');
+      }
+
+      final datePart = parts[0];
+      final timePart = parts[1];
+
+      final dateParts = datePart.split('-');
+      final timeParts = timePart.split(':');
+
+      if (dateParts.length != 3 || timeParts.length != 2) {
+        throw FormatException('Invalid timestamp format: $timestampString');
+      }
+
+      final year = int.parse(dateParts[0]);
+      final month = int.parse(dateParts[1]);
+      final day = int.parse(dateParts[2]);
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+
+      final dateTime = DateTime(year, month, day, hour, minute);
+
+      // Build detailed log message with context
+      String logMessage = '🕒 [TEXT-DISPLAY] Converting timestamp string $timestampString to ${dateTime.toIso8601String()}';
+      if (context != null) {
+        logMessage += ' | Context: $context';
+      }
+      if (caller != null) {
+        logMessage += ' | Called by: $caller';
+      }
+
+      debugPrint(logMessage);
+      return dateTime;
+    } catch (e) {
+      debugPrint('❌ Error parsing timestamp string $timestampString: $e');
+      rethrow;
+    }
+  }
+
+  /// Get current timestamp as TEXT string
+  ///
+  /// @return Current timestamp in 'YYYY-MM-DD HH:MM' format
+  static String getCurrentTimestampString() {
+    return toTimestampString(DateTime.now());
+  }
+
+  /// Validate that a string is in 'YYYY-MM-DD HH:MM' format
+  ///
+  /// @param timestampString The string to validate
+  /// @return true if the string is in valid 'YYYY-MM-DD HH:MM' format
+  static bool isValidTimestampString(String timestampString) {
+    try {
+      final parts = timestampString.split(' ');
+      if (parts.length != 2) return false;
+
+      final datePart = parts[0];
+      final timePart = parts[1];
+
+      // Validate date part
+      if (!isValidDateString(datePart)) return false;
+
+      // Validate time part
+      final timeParts = timePart.split(':');
+      if (timeParts.length != 2) return false;
+
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+
+      if (hour < 0 || hour > 23) return false;
+      if (minute < 0 || minute > 59) return false;
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Batch convert TEXT timestamp strings to DateTimes (reduces logging overhead)
+  ///
+  /// Use this when converting multiple timestamps at once to avoid excessive logging
+  /// @param timestampStrings List of timestamp strings in 'YYYY-MM-DD HH:MM' format
+  /// @param context Optional context for debugging (e.g., "completion timestamps", "creation dates")
+  /// @return List of DateTime objects
+  static List<DateTime> batchFromTimestampStrings(List<String> timestampStrings, {String? context}) {
+    final dateTimes = <DateTime>[];
+    
+    for (int i = 0; i < timestampStrings.length; i++) {
+      try {
+        final dateTime = fromTimestampString(timestampStrings[i], context: context, caller: 'batch_$i');
+        dateTimes.add(dateTime);
+      } catch (e) {
+        debugPrint('❌ Error in batch conversion at index $i: ${timestampStrings[i]} - $e');
+        // Continue with other timestamps
+      }
+    }
+    
+    debugPrint('🕒 [BATCH-TEXT] Converted ${dateTimes.length}/${timestampStrings.length} timestamp strings');
+    return dateTimes;
+  }
 }

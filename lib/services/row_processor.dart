@@ -161,7 +161,7 @@ class MetadataProcessor implements IMetadataProcessor {
         description: (row['description'] as String?) ?? '',
         colorIndex: row['color_index'] as int,
         iconName: row['icon_name'] as String,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int, isUtc: true),
+        createdAt: TimezoneUtils.fromTimestampString(row['created_at'] as String),
         isArchived: (row['is_archived'] as int) == 1,
         orderValue: row['order_value'] as double?,
         frequencyDays: Habit.defaultFrequencyDays, // Default frequency
@@ -228,14 +228,14 @@ class CompletionProcessor implements ICompletionProcessor {
       if (config.startDate != null && config.endDate != null) {
         whereClause += ' AND completion_date >= ? AND completion_date <= ?';
         whereArgs.addAll([
-          TimezoneUtils.toUtcTimestamp(config.startDate!),
-          TimezoneUtils.toUtcTimestamp(config.endDate!),
+          TimezoneUtils.toDateString(config.startDate!),
+          TimezoneUtils.toDateString(config.endDate!),
         ]);
       }
 
       final completionRows = await RetryUtils.executeWithCircuitBreakerAndRetry(
         operation: () => db.query(
-          'habit_completions',
+          'daily_completions',
           where: whereClause,
           whereArgs: whereArgs,
         ),
@@ -245,41 +245,16 @@ class CompletionProcessor implements ICompletionProcessor {
 
       debugPrint('📅 [COMPLETION_PROCESSOR] Found ${completionRows.length} completion records for habit $habitId');
 
-      // Use batch conversion for better performance (single log vs N logs)
-      if (config.convertToLocal && completionRows.isNotEmpty) {
-        final utcTimestamps = completionRows
-            .map((row) => row['completion_date'] as int)
-            .toList();
-        
-        final localDates = TimezoneUtils.batchFromUtcTimestamp(
-          utcTimestamps,
-          context: 'Habit $habitId completion dates',
+      // Process completion records (now using date strings)
+      for (final row in completionRows) {
+        final dateString = row['completion_date'] as String;
+        final date = TimezoneUtils.fromDateString(dateString);
+        final count = row['completion_count'] as int;
+        final goalAtCompletion = row['goal_at_completion'] as int;
+        completions[date] = CompletionRecord(
+          count: count,
+          goalAtCompletion: goalAtCompletion,
         );
-        
-        for (var i = 0; i < completionRows.length; i++) {
-          final row = completionRows[i];
-          final date = localDates[i];
-          final count = row['completion_count'] as int;
-          final goalAtCompletion = row['goal_at_completion'] as int;
-          completions[date] = CompletionRecord(
-            count: count,
-            goalAtCompletion: goalAtCompletion,
-          );
-        }
-      } else {
-        // Non-local conversion (raw UTC timestamps)
-        for (final row in completionRows) {
-          final date = DateTime.fromMillisecondsSinceEpoch(
-            row['completion_date'] as int,
-            isUtc: true,
-          );
-          final count = row['completion_count'] as int;
-          final goalAtCompletion = row['goal_at_completion'] as int;
-          completions[date] = CompletionRecord(
-            count: count,
-            goalAtCompletion: goalAtCompletion,
-          );
-        }
       }
 
       stopwatch.stop();

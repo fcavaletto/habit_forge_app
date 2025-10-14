@@ -94,7 +94,7 @@ abstract class IAtomicDataService {
   /// 
   /// This is the consolidated method that replaces:
   /// - getHabitFeatures()
-  /// - getAllHabitsIncludingArchived() (when combined with getCompletionCountsByDate)
+  /// - getAllHabitsIncludingArchived() (when combined with getCompletionRecords)
   /// - getActiveHabitsForReordering() (repository method)
   Future<DataAccessResult<List<HabitMetadata>>> getHabitMetadata({
     bool includeArchived = false,
@@ -104,16 +104,16 @@ abstract class IAtomicDataService {
 
 
 
-  /// Get completion counts for habits within a date range
+  /// Get completion records for habits within a date range
   ///
   /// [startDate] - Start of date range (inclusive)
   /// [endDate] - End of date range (inclusive)
   /// [habitIds] - Optional list of specific habit IDs
   /// [context] - Logging context for the operation
   ///
-  /// Returns map of habit ID -> date -> completion count
+  /// Returns map of habit ID -> date -> CompletionRecord (includes count and goalAtCompletion)
   /// Throws DataValidationException if date range is invalid
-  Future<DataAccessResult<Map<String, Map<DateTime, int>>>> getCompletionCountsByDate({
+  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletionRecords({
     required DateTime startDate,
     required DateTime endDate,
     List<String>? habitIds,
@@ -518,7 +518,7 @@ class AtomicDataService implements IAtomicDataService {
       
       final results = await db.rawQuery('''
         SELECT h.*, o.order_value
-        FROM habits h
+        FROM habit_metadata h
         LEFT JOIN habit_display_order o ON h.id = o.habit_id
         $whereClause
         ORDER BY o.order_value DESC, h.created_at DESC
@@ -526,19 +526,18 @@ class AtomicDataService implements IAtomicDataService {
 
       if (results.isEmpty) {
         debugPrint('📖 Retrieved 0 habits for metadata');
-        return DataAccessResult.success(
+      return DataAccessResult.success(
           data: <HabitMetadata>[],
-          context: context,
-          executionTime: stopwatch.elapsed,
-        );
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
       }
 
-      // Batch convert creation timestamps
-      final createdAtTimestamps = results.map((row) => row['created_at'] as int? ?? 0).toList();
-      final createdAtDates = TimezoneUtils.batchFromUtcTimestamp(
-        createdAtTimestamps,
-        context: 'Batch habit creation dates for metadata',
-      );
+      // Convert TEXT timestamp strings to DateTime objects
+      final createdAtDates = results.map((row) {
+        final timestampString = row['created_at'] as String;
+        return TimezoneUtils.fromTimestampString(timestampString);
+      }).toList();
 
       // Convert to metadata objects
       final metadata = <HabitMetadata>[];
@@ -603,7 +602,7 @@ class AtomicDataService implements IAtomicDataService {
 
 
   @override
-  Future<DataAccessResult<Map<String, Map<DateTime, int>>>> getCompletionCountsByDate({
+  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletionRecords({
     required DateTime startDate,
     required DateTime endDate,
     List<String>? habitIds,
@@ -620,21 +619,14 @@ class AtomicDataService implements IAtomicDataService {
         );
       }
 
-      if (endDate.difference(startDate).inDays > 365) {
-        throw DataValidationException(
-          'Date range cannot exceed 365 days',
-          DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
-        );
-      }
-
-      debugPrint('🔍 [ATOMIC] getCompletionCountsByDate called: ${context.component}.${context.operation}');
+      debugPrint('🔍 [ATOMIC] getCompletionRecords called: ${context.component}.${context.operation}');
 
       // Get habit metadata first to know which habits to query
       final metadataResult = await getHabitMetadata(
         habitIds: habitIds,
         context: DataAccessContext(
           component: 'AtomicDataService',
-          operation: 'getCompletionCountsByDate',
+          operation: 'getCompletionRecords',
         ),
       );
 
@@ -649,7 +641,7 @@ class AtomicDataService implements IAtomicDataService {
 
       final filteredHabits = metadataResult.data!;
 
-      final result = <String, Map<DateTime, int>>{};
+      final result = <String, Map<DateTime, CompletionRecord>>{};
 
       // Get completion data for each habit using new RowProcessor
       for (final habit in filteredHabits) {
@@ -673,17 +665,13 @@ class AtomicDataService implements IAtomicDataService {
         );
 
         if (completionResult.success && completionResult.data != null) {
-          // Extract just the counts
-          final completions = <DateTime, int>{};
-          for (final entry in completionResult.data!.completions.entries) {
-            completions[entry.key] = entry.value.count;
-          }
-          result[habit.id] = completions;
+          // Return the full CompletionRecord objects (includes count and goalAtCompletion)
+          result[habit.id] = completionResult.data!.completions;
         }
       }
 
       stopwatch.stop();
-      debugPrint('✅ [ATOMIC] getCompletionCountsByDate completed: ${result.length} habits in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('✅ [ATOMIC] getCompletionRecords completed: ${result.length} habits in ${stopwatch.elapsedMilliseconds}ms');
 
       return DataAccessResult.success(
         data: result,
@@ -692,10 +680,10 @@ class AtomicDataService implements IAtomicDataService {
       );
     } catch (e) {
       stopwatch.stop();
-      debugPrint('❌ [ATOMIC] getCompletionCountsByDate failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('❌ [ATOMIC] getCompletionRecords failed after ${stopwatch.elapsedMilliseconds}ms: $e');
 
       return DataAccessResult.failure(
-        errorMessage: 'Failed to get completion counts by date: $e',
+        errorMessage: 'Failed to get completion records: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );
@@ -716,13 +704,6 @@ class AtomicDataService implements IAtomicDataService {
       if (startDate.isAfter(endDate)) {
         throw DataValidationException(
           'Start date cannot be after end date',
-          DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
-        );
-      }
-
-      if (endDate.difference(startDate).inDays > 365) {
-        throw DataValidationException(
-          'Date range cannot exceed 365 days',
           DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
         );
       }
@@ -1229,13 +1210,6 @@ class AtomicDataService implements IAtomicDataService {
       if (startDate.isAfter(endDate)) {
         throw DataValidationException(
           'Start date cannot be after end date',
-          DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
-        );
-      }
-
-      if (endDate.difference(startDate).inDays > 365) {
-        throw DataValidationException(
-          'Date range cannot exceed 365 days',
           DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
         );
       }

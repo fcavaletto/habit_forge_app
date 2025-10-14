@@ -15,7 +15,7 @@ import 'package:path/path.dart';
 /// - Transaction support for data consistency
 class DatabaseService {
   static const String _databaseName = 'habit_forge.db';
-  static const int _databaseVersion = 5;
+  static const int _databaseVersion = 1;
 
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
@@ -141,15 +141,15 @@ class DatabaseService {
     debugPrint('🗄️ Creating database schema (version $version)');
 
     await db.transaction((txn) async {
-      // Create habits table
+      // Create habit_metadata table
       await txn.execute('''
-        CREATE TABLE habits (
+        CREATE TABLE habit_metadata (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           description TEXT,
           color_index INTEGER NOT NULL,
           icon_name TEXT NOT NULL,
-          created_at INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
           is_archived INTEGER NOT NULL DEFAULT 0,
           frequency_days TEXT NOT NULL,
           target_goal INTEGER NOT NULL DEFAULT 1,
@@ -157,25 +157,25 @@ class DatabaseService {
         )
       ''');
 
-      // Create habit_completions table with goal tracking
+      // Create daily_completions table with goal tracking
       await txn.execute('''
-        CREATE TABLE habit_completions (
+        CREATE TABLE daily_completions (
           habit_id TEXT NOT NULL,
-          completion_date INTEGER NOT NULL,
+          completion_date TEXT NOT NULL,
           completion_count INTEGER NOT NULL DEFAULT 0,
           goal_at_completion INTEGER NOT NULL,
           PRIMARY KEY (habit_id, completion_date),
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+          FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
 
-      // Create habit_completion_timestamps table for individual completion tracking
+      // Create completion_times table for individual completion tracking
       await txn.execute('''
-        CREATE TABLE habit_completion_timestamps (
+        CREATE TABLE completion_times (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
-          completion_timestamp INTEGER NOT NULL,
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+          completion_time TEXT NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
 
@@ -186,7 +186,7 @@ class DatabaseService {
           reminder_time_hour INTEGER,
           reminder_time_minute INTEGER,
           enable_reminders INTEGER NOT NULL DEFAULT 0,
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+          FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
 
@@ -195,7 +195,7 @@ class DatabaseService {
         CREATE TABLE app_settings (
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL,
-          updated_at INTEGER NOT NULL
+          updated_at TEXT NOT NULL
         )
       ''');
 
@@ -204,35 +204,35 @@ class DatabaseService {
         CREATE TABLE habit_display_order (
           habit_id TEXT PRIMARY KEY,
           order_value REAL NOT NULL,
-          created_at INTEGER NOT NULL,
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
 
       // Create indexes for better performance
       await txn.execute('''
-        CREATE INDEX idx_habit_completions_date 
-        ON habit_completions(completion_date)
+        CREATE INDEX idx_daily_completions_date 
+        ON daily_completions(completion_date)
       ''');
 
       await txn.execute('''
-        CREATE INDEX idx_habit_completions_habit_id 
-        ON habit_completions(habit_id)
+        CREATE INDEX idx_daily_completions_habit_id 
+        ON daily_completions(habit_id)
       ''');
 
       await txn.execute('''
-        CREATE INDEX idx_habit_completion_timestamps_habit_id 
-        ON habit_completion_timestamps(habit_id)
+        CREATE INDEX idx_completion_times_habit_id 
+        ON completion_times(habit_id)
       ''');
 
       await txn.execute('''
-        CREATE INDEX idx_habit_completion_timestamps_timestamp 
-        ON habit_completion_timestamps(completion_timestamp)
+        CREATE INDEX idx_completion_times_time 
+        ON completion_times(completion_time)
       ''');
 
       await txn.execute('''
-        CREATE INDEX idx_habits_archived 
-        ON habits(is_archived)
+        CREATE INDEX idx_habit_metadata_archived 
+        ON habit_metadata(is_archived)
       ''');
 
       await txn.execute('''
@@ -250,105 +250,56 @@ class DatabaseService {
       '🗄️ Upgrading database from version $oldVersion to $newVersion',
     );
 
-    if (oldVersion < 2) {
-      await _migrateToVersion2(db);
-    }
-
-    if (oldVersion < 3) {
-      await _migrateToVersion3(db);
-    }
-
-    if (oldVersion < 4) {
-      await _migrateToVersion4(db);
-    }
-
-    if (oldVersion < 5) {
-      await _migrateToVersion5(db);
-    }
+    // For now, just recreate with clean schema
+    // TODO: Add proper migration logic when needed
+    debugPrint('🔄 Recreating database with clean schema');
+    await _recreateDatabase(db);
   }
 
-  /// Migrate database to version 2 - Add habit ordering support
-  Future<void> _migrateToVersion2(Database db) async {
-    debugPrint('🔄 Migrating to version 2: Adding habit ordering support');
-
-    await db.transaction((txn) async {
-      // Create habit_display_order table
-      await txn.execute('''
-        CREATE TABLE habit_display_order (
-          habit_id TEXT PRIMARY KEY,
-          order_value REAL NOT NULL,
-          created_at INTEGER NOT NULL,
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
-        )
-      ''');
-
-      // Create index for ordering queries
-      await txn.execute('''
-        CREATE INDEX idx_habit_order_value 
-        ON habit_display_order(order_value)
-      ''');
-
-      // Migrate existing habits with proper ordering (newest first)
-      // Use rowid * 1000 to create large gaps for future insertions
-      await txn.execute('''
-        INSERT INTO habit_display_order (habit_id, order_value, created_at)
-        SELECT id, CAST(rowid AS REAL) * 1000.0, created_at 
-        FROM habits 
-        WHERE is_archived = 0 
-        ORDER BY created_at DESC
-      ''');
-
-      debugPrint('✅ Migration to version 2 completed successfully');
-    });
-  }
-
-  /// Migrate database to version 3 - Fresh start with UUID-based IDs
-  Future<void> _migrateToVersion3(Database db) async {
-    debugPrint('🔄 Migrating to version 3: Fresh start with UUID-based IDs');
-
-    // Since we're in early development, just recreate the database with new schema
+  /// Recreate database with clean schema (development mode)
+  Future<void> _recreateDatabase(Database db) async {
     await db.transaction((txn) async {
       // Drop all existing tables
       await txn.execute('DROP TABLE IF EXISTS habit_display_order');
       await txn.execute('DROP TABLE IF EXISTS habit_reminders');
       await txn.execute('DROP TABLE IF EXISTS habit_completions');
+      await txn.execute('DROP TABLE IF EXISTS habit_completion_timestamps');
       await txn.execute('DROP TABLE IF EXISTS habits');
       await txn.execute('DROP TABLE IF EXISTS app_settings');
 
-      // Create new tables with UUID primary keys
+      // Create clean schema with TEXT timestamps
       await txn.execute('''
-        CREATE TABLE habits (
+        CREATE TABLE habit_metadata (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           description TEXT,
           color_index INTEGER NOT NULL,
           icon_name TEXT NOT NULL,
-          created_at INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
           is_archived INTEGER NOT NULL DEFAULT 0,
           frequency_days TEXT NOT NULL,
-          target_goal INTEGER NOT NULL DEFAULT 1
+          target_goal INTEGER NOT NULL DEFAULT 1,
+          allow_exceed_goal INTEGER NOT NULL DEFAULT 0
         )
       ''');
 
-      // Create habit_completions table with goal tracking
       await txn.execute('''
-        CREATE TABLE habit_completions (
+        CREATE TABLE daily_completions (
           habit_id TEXT NOT NULL,
-          completion_date INTEGER NOT NULL,
+          completion_date TEXT NOT NULL,
           completion_count INTEGER NOT NULL DEFAULT 0,
           goal_at_completion INTEGER NOT NULL,
           PRIMARY KEY (habit_id, completion_date),
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+          FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
 
-      // Create habit_completion_timestamps table for individual completion tracking
       await txn.execute('''
-        CREATE TABLE habit_completion_timestamps (
+        CREATE TABLE completion_times (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
-          completion_timestamp INTEGER NOT NULL,
-          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+          completion_time TEXT NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
 
@@ -357,7 +308,8 @@ class DatabaseService {
           habit_id TEXT PRIMARY KEY,
           reminder_time_hour INTEGER,
           reminder_time_minute INTEGER,
-          enable_reminders INTEGER NOT NULL DEFAULT 0
+          enable_reminders INTEGER NOT NULL DEFAULT 0,
+          FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
 
@@ -365,7 +317,8 @@ class DatabaseService {
         CREATE TABLE habit_display_order (
           habit_id TEXT PRIMARY KEY,
           order_value REAL NOT NULL,
-          created_at INTEGER NOT NULL
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
 
@@ -373,24 +326,24 @@ class DatabaseService {
         CREATE TABLE app_settings (
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL,
-          updated_at INTEGER NOT NULL
+          updated_at TEXT NOT NULL
         )
       ''');
 
-      // Create indexes
+      // Create indexes for better performance
       await txn.execute('''
-        CREATE INDEX idx_habit_completions_date 
-        ON habit_completions(completion_date)
+        CREATE INDEX idx_daily_completions_date 
+        ON daily_completions(completion_date)
       ''');
 
       await txn.execute('''
-        CREATE INDEX idx_habit_completions_habit_id 
-        ON habit_completions(habit_id)
+        CREATE INDEX idx_daily_completions_habit_id 
+        ON daily_completions(habit_id)
       ''');
 
       await txn.execute('''
-        CREATE INDEX idx_habits_archived 
-        ON habits(is_archived)
+        CREATE INDEX idx_habit_metadata_archived 
+        ON habit_metadata(is_archived)
       ''');
 
       await txn.execute('''
@@ -398,37 +351,10 @@ class DatabaseService {
         ON habit_display_order(order_value)
       ''');
 
-      debugPrint(
-        '✅ Migration to version 3 completed successfully - Fresh database created',
-      );
+      debugPrint('✅ Database recreated with clean schema');
     });
   }
 
-  /// Migrate database to version 4 - Add timezone handling
-  Future<void> _migrateToVersion4(Database db) async {
-    debugPrint('🔄 Migrating to version 4: Adding timezone handling');
-
-    // No migration needed - all new data will be stored in UTC
-    debugPrint(
-      '✅ Migration to version 4 completed successfully - UTC timezone handling enabled',
-    );
-  }
-
-  /// Migrate database to version 5 - Add allow_exceed_goal column
-  Future<void> _migrateToVersion5(Database db) async {
-    debugPrint('🔄 Migrating to version 5: Adding allow_exceed_goal column');
-
-    await db.transaction((txn) async {
-      // Add the new column with default value of 0 (false)
-      await txn.execute('''
-        ALTER TABLE habits ADD COLUMN allow_exceed_goal INTEGER NOT NULL DEFAULT 0
-      ''');
-
-      debugPrint(
-        '✅ Migration to version 5 completed successfully - allow_exceed_goal column added',
-      );
-    });
-  }
 
   /// Called when database is opened
   Future<void> _onOpen(Database db) async {
