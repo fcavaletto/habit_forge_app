@@ -667,19 +667,20 @@ class _DashboardViewState extends State<DashboardView>
   /// Build the date selector widget
   Widget _buildDateSelector(AppState appState) {
     final selectedDate = appState.habitProvider.selectedDate;
-    final today = VirtualDateService().currentDate;
-    final isToday = selectedDate.year == today.year && 
-                   selectedDate.month == today.month && 
-                   selectedDate.day == today.day;
+    final isDateOverridden = appState.isDateOverridden;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: isDateOverridden 
+            ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.1)
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
-          width: 1.5,
+          color: isDateOverridden 
+              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
+              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+          width: isDateOverridden ? 2 : 1.5,
         ),
         boxShadow: [
           BoxShadow(
@@ -694,7 +695,9 @@ class _DashboardViewState extends State<DashboardView>
           Icon(
             Icons.calendar_today,
             size: 20,
-            color: Theme.of(context).colorScheme.primary,
+            color: isDateOverridden 
+                ? Theme.of(context).colorScheme.error
+                : Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -702,9 +705,11 @@ class _DashboardViewState extends State<DashboardView>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isToday ? 'Today' : 'Selected Date',
+                  isDateOverridden ? 'Date set to:' : 'Today',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: isDateOverridden 
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -712,17 +717,35 @@ class _DashboardViewState extends State<DashboardView>
                   _formatDate(selectedDate),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
+                    color: isDateOverridden 
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
             ),
           ),
+          if (isDateOverridden) ...[
+            // Reset button (outlined style to stand out)
+            OutlinedButton(
+              onPressed: () => appState.resetDateOverride(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+                side: BorderSide(color: Theme.of(context).colorScheme.error),
+                minimumSize: const Size(80, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: const Text('RESET'),
+            ),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             onPressed: () => _showDatePicker(appState),
             icon: Icon(
               Icons.edit,
-              color: Theme.of(context).colorScheme.primary,
+              color: isDateOverridden 
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.primary,
             ),
             tooltip: 'Select Date',
           ),

@@ -27,6 +27,9 @@ class DateProvider extends ChangeNotifier {
   /// Whether the app is currently in virtual date mode
   bool get isVirtualMode => _dateService.isVirtualMode;
 
+  /// Whether the user has overridden the date (set to non-today)
+  bool get isDateOverridden => _dateService.isDateOverridden;
+
   /// The currently set virtual date (null if not in virtual mode)
   DateTime? get virtualDate => _dateService.virtualDate;
 

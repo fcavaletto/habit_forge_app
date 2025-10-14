@@ -221,6 +221,7 @@ class AppState extends ChangeNotifier {
   DateProvider get dateProvider => _dateProvider;
   DateTime get currentDate => _dateProvider.currentDate;
   bool get isVirtualMode => _dateProvider.isVirtualMode;
+  bool get isDateOverridden => _dateProvider.isDateOverridden;
   DateTime? get virtualDate => _dateProvider.virtualDate;
 
   // Time provider access
@@ -417,6 +418,12 @@ class AppState extends ChangeNotifier {
   /// Reset time override to system time
   void resetTimeOverride() {
     _virtualTimeService.resetToSystemTime();
+    notifyListeners();
+  }
+
+  /// Reset date override to today's date
+  Future<void> resetDateOverride() async {
+    await _habitProvider.updateSelectedDate(DateTime.now());
     notifyListeners();
   }
 

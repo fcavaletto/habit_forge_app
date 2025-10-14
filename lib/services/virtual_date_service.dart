@@ -35,6 +35,18 @@ class VirtualDateService {
   /// Whether the app is currently in virtual date mode
   bool get isVirtualMode => _isVirtualMode;
 
+  /// Whether the user has overridden the date (set to non-today)
+  bool get isDateOverridden {
+    if (!_isVirtualMode || _virtualDate == null) return false;
+    
+    final today = DateTime.now();
+    final virtual = _virtualDate!;
+    
+    return !(virtual.year == today.year && 
+             virtual.month == today.month && 
+             virtual.day == today.day);
+  }
+
   /// The currently set virtual date (null if not in virtual mode)
   DateTime? get virtualDate => _isVirtualMode ? _virtualDate : null;
 

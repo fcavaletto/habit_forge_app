@@ -25,8 +25,14 @@ class VirtualTimeService {
       ? _virtualTime! 
       : TimeOfDay.now();
 
-  /// Whether the app is currently in virtual time mode
-  bool get isTimeOverridden => _isTimeOverridden;
+  /// Whether the user has overridden the time (set to non-current time)
+  bool get isTimeOverridden {
+    if (!_isTimeOverridden || _virtualTime == null) return false;
+    
+    final now = TimeOfDay.now();
+    return !(_virtualTime!.hour == now.hour && 
+             _virtualTime!.minute == now.minute);
+  }
 
   /// The currently set virtual time (null if not in virtual time mode)
   TimeOfDay? get virtualTime => _isTimeOverridden ? _virtualTime : null;
