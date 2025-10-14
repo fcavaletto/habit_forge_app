@@ -1286,7 +1286,7 @@ class AtomicDataService implements IAtomicDataService {
       }
 
       // Get current habit metadata only (no completion data needed for updates)
-      final metadataResult = await getHabitFeatures(
+      final metadataResult = await getHabitMetadata(
         habitIds: [habitId],
         context: DataAccessContext(
           component: 'AtomicDataService',
