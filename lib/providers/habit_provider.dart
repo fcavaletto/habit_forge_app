@@ -1879,12 +1879,12 @@ class HabitProvider extends HabitState {
 
 
   /// Update the selected date for filtering
-  void updateSelectedDate(DateTime newDate) {
+  Future<void> updateSelectedDate(DateTime newDate) async {
     if (_selectedDate != newDate) {
       _selectedDate = newDate;
 
       // Update the virtual date service to make this the "current date" for the entire app
-      VirtualDateService().setVirtualDate(newDate);
+      await VirtualDateService().setVirtualDate(newDate);
 
       notifyListeners();
       debugPrint('📅 Selected date updated to: ${_formatDate(newDate)}');

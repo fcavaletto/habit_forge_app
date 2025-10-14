@@ -327,6 +327,7 @@ class AppState extends ChangeNotifier {
           _proSubscriptionProvider.loadProSubscriptionSetting(),
           _streakSettingsProvider.loadStreakSetting(),
           loadTimeOverrideSetting(),
+          _dateProvider.initialize(_settingsRepository), // Initialize DateProvider
         ]).timeout(
           const Duration(seconds: 8), // Reduced from 15 seconds
           onTimeout: () {

@@ -246,14 +246,18 @@ class DatabaseService {
 
   /// Handle database upgrades for future schema changes
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    debugPrint(
-      '🗄️ Upgrading database from version $oldVersion to $newVersion',
-    );
-
-    // For now, just recreate with clean schema
-    // TODO: Add proper migration logic when needed
-    debugPrint('🔄 Recreating database with clean schema');
-    await _recreateDatabase(db);
+    debugPrint('🗄️ Database upgrade check: $oldVersion → $newVersion');
+    
+    // Only recreate database if version actually changed
+    if (oldVersion != newVersion) {
+      debugPrint('🔄 Version changed from $oldVersion to $newVersion');
+      debugPrint('⚠️ Recreating database - all data will be lost!');
+      await _recreateDatabase(db);
+      debugPrint('✅ Database recreated with version $newVersion schema');
+    } else {
+      debugPrint('✅ Database version unchanged ($newVersion), preserving data');
+      // No action needed - database schema is already correct
+    }
   }
 
   /// Recreate database with clean schema (development mode)
@@ -362,6 +366,25 @@ class DatabaseService {
 
     // Enable foreign key constraints
     await db.execute('PRAGMA foreign_keys = ON');
+    
+    // Verify database integrity and log table information
+    try {
+      final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
+      debugPrint('📊 Database contains ${tables.length} tables');
+      
+      // Log table names for debugging
+      for (final table in tables) {
+        debugPrint('  - ${table['name']}');
+      }
+      
+      // Check if we have any data
+      final habitCount = await db.rawQuery("SELECT COUNT(*) as count FROM habit_metadata");
+      final completionCount = await db.rawQuery("SELECT COUNT(*) as count FROM daily_completions");
+      
+      debugPrint('📈 Database stats: ${habitCount.first['count']} habits, ${completionCount.first['count']} completion records');
+    } catch (e) {
+      debugPrint('⚠️ Error checking database integrity: $e');
+    }
   }
 
   /// Close the database connection

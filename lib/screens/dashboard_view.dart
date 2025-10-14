@@ -982,9 +982,15 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
       builder: (context, habitProvider, child) {
         final currentDate = habitProvider.selectedDate;
         
+        // Get the updated habit object from provider instead of using stale widget.habit
+        final updatedHabit = habitProvider.habits.firstWhere(
+          (h) => h.id == widget.habit.id,
+          orElse: () => widget.habit, // Fallback to widget.habit if not found
+        );
+        
         // Get completion count directly from cache without FutureBuilder
         final currentCompletionCount = habitProvider.getCachedCompletionCountSync(widget.habit.id, currentDate) ?? 
-            widget.habit.getCompletionCount(currentDate);
+            updatedHabit.getCompletionCount(currentDate);
         
         // Check if this specific habit actually changed
         final hasChanged = !_isInitialized ||
@@ -1002,7 +1008,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
         
         return HabitCard(
           key: ValueKey(widget.habit.id),
-          habit: widget.habit,
+          habit: updatedHabit, // Use updated habit object
           onTap: widget.onTap,
           onComplete: widget.onComplete,
           onIncrement: widget.onIncrement,
