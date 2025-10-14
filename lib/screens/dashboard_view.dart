@@ -336,7 +336,12 @@ class _DashboardViewState extends State<DashboardView>
     return SafeCustomScrollView(
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.all(AppConstants.defaultPadding),
+          padding: const EdgeInsets.fromLTRB(
+            AppConstants.defaultPadding,
+            12, // Smaller top padding
+            AppConstants.defaultPadding,
+            AppConstants.defaultPadding,
+          ),
           sliver: SliverToBoxAdapter(
             child: _buildHeader(habits),
           ),
@@ -452,7 +457,13 @@ class _DashboardViewState extends State<DashboardView>
             return _buildTimeSelector(appState);
           },
         ),
-        const SizedBox(height: 16),
+        // Conditional spacing - only show when time override is visible
+        Selector<AppState, bool>(
+          selector: (context, appState) => appState.showTimeOverride,
+          builder: (context, showTimeOverride, child) {
+            return showTimeOverride ? const SizedBox(height: 12) : const SizedBox.shrink();
+          },
+        ),
         // Habit filter dropdown - Use Selector to only rebuild when filter changes
         Selector<AppState, bool>(
           selector: (context, appState) => appState.habitProvider.isShowingAllHabits,
