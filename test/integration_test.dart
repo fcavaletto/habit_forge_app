@@ -14,7 +14,7 @@ void main() {
 
       // Create a basic test that validates the architecture structure
       expect(cache, isNotNull);
-      expect(HabitLoadConfig.metadataOnly().loadCompletions, false);
+      expect(const HabitLoadConfig.metadataOnly().loadCompletions, false);
       expect(HabitLoadConfig.dashboard().loadCompletions, true);
     });
 
@@ -94,8 +94,8 @@ void main() {
 
     test('should handle ProcessedCompletions correctly', () {
       final completions = {
-        DateTime(2024, 1, 1): CompletionRecord(count: 1, goalAtCompletion: 1),
-        DateTime(2024, 1, 2): CompletionRecord(count: 2, goalAtCompletion: 2),
+        DateTime(2024, 1, 1): const CompletionRecord(count: 1, goalAtCompletion: 1),
+        DateTime(2024, 1, 2): const CompletionRecord(count: 2, goalAtCompletion: 2),
       };
 
       final processed = ProcessedCompletions(completions);
@@ -105,7 +105,7 @@ void main() {
     });
 
     test('should handle ProcessedReminders correctly', () {
-      final reminders = ProcessedReminders(
+      const reminders = ProcessedReminders(
         reminderTime: TimeOfDay(hour: 8, minute: 30),
         enableReminders: true,
       );
@@ -116,7 +116,7 @@ void main() {
     });
 
     test('should handle ProcessedFrequency correctly', () {
-      final frequency = ProcessedFrequency({
+      const frequency = ProcessedFrequency({
         'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 0, 'sun': 0,
       });
 
@@ -125,7 +125,7 @@ void main() {
     });
 
     test('should create HabitData for testing', () {
-      final habitData = HabitData(
+      const habitData = HabitData(
         name: 'Test Habit',
         description: 'Test Description',
         colorIndex: 1,
@@ -139,14 +139,14 @@ void main() {
 
     test('should validate HabitData correctly', () {
       // Valid data
-      final validData = HabitData(name: 'Valid Habit');
+      const validData = HabitData(name: 'Valid Habit');
       expect(() => validData.validate(), returnsNormally);
 
       // Invalid data
-      final invalidData = HabitData(name: '');
+      const invalidData = HabitData(name: '');
       expect(() => invalidData.validate(), throwsA(isA<DataValidationException>()));
 
-      final invalidColorData = HabitData(name: 'Test', colorIndex: -1);
+      const invalidColorData = HabitData(name: 'Test', colorIndex: -1);
       expect(() => invalidColorData.validate(), throwsA(isA<DataValidationException>()));
     });
 

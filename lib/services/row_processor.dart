@@ -210,7 +210,7 @@ class CompletionProcessor implements ICompletionProcessor {
       if (!config.loadCompletions) {
         debugPrint('📅 [COMPLETION_PROCESSOR] Skipping completions (config.loadCompletions = false)');
         return DataAccessResult.success(
-          data: ProcessedCompletions({}),
+          data: const ProcessedCompletions({}),
           context: context,
           executionTime: Duration.zero,
         );
@@ -763,7 +763,7 @@ class RowProcessor implements IRowProcessor {
     final metadataFuture = processHabitMetadata(row: row, context: context);
     final frequencyFuture = config.loadFrequencyDays
         ? processFrequencyDays(row: row, context: context)
-        : Future.value(DataAccessResult.success(data: ProcessedFrequency(Habit.defaultFrequencyDays), context: context, executionTime: Duration.zero));
+        : Future.value(DataAccessResult.success(data: const ProcessedFrequency(Habit.defaultFrequencyDays), context: context, executionTime: Duration.zero));
 
     // Process metadata and frequency in parallel
     final results = await Future.wait([
@@ -791,7 +791,7 @@ class RowProcessor implements IRowProcessor {
 
     final reminderFuture = config.loadReminders
         ? processReminders(habitId: habitId, context: context)
-        : Future.value(DataAccessResult.success(data: ProcessedReminders(), context: context, executionTime: Duration.zero));
+        : Future.value(DataAccessResult.success(data: const ProcessedReminders(), context: context, executionTime: Duration.zero));
 
     final asyncResults = await Future.wait([
       completionFuture,
