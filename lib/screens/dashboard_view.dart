@@ -673,20 +673,20 @@ class _DashboardViewState extends State<DashboardView>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isDateOverridden 
-            ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.1)
+            ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
             : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDateOverridden 
-              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
-              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
-          width: isDateOverridden ? 2 : 1.5,
+              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.6)
+              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.7),
+          width: isDateOverridden ? 1.5 : 1.1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: isDateOverridden ? 0 : 0),
+            blurRadius: 0.0,
+            offset: const Offset(0, 0),
           ),
         ],
       ),
@@ -725,20 +725,20 @@ class _DashboardViewState extends State<DashboardView>
               ],
             ),
           ),
-          if (isDateOverridden) ...[
-            // Reset button (outlined style to stand out)
-            OutlinedButton(
-              onPressed: () => appState.resetDateOverride(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-                side: BorderSide(color: Theme.of(context).colorScheme.error),
-                minimumSize: const Size(80, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+            if (isDateOverridden) ...[
+              // Reset button (outlined style to stand out)
+              OutlinedButton(
+                onPressed: () => appState.resetDateOverride(),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(color: Theme.of(context).colorScheme.error),
+                  minimumSize: const Size(80, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                child: const Text(' RESET DATE '),
               ),
-              child: const Text('RESET'),
-            ),
-            const SizedBox(width: 8),
-          ],
+              const SizedBox(width: 6),
+            ],
           IconButton(
             onPressed: () => _showDatePicker(appState),
             icon: Icon(
@@ -761,21 +761,21 @@ class _DashboardViewState extends State<DashboardView>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isTimeOverridden 
-            ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.1)
+        color: isTimeOverridden
+            ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
             : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isTimeOverridden 
-              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
-              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
-          width: isTimeOverridden ? 2 : 1.5,
+          color: isTimeOverridden
+              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.6)
+              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.7),
+          width: isTimeOverridden ? 1.5 : 1.1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: isTimeOverridden ? 0 : 0.5),
+            blurRadius: 0.0,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -830,9 +830,9 @@ class _DashboardViewState extends State<DashboardView>
                 minimumSize: const Size(80, 36),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
               ),
-              child: const Text('RESET'),
+              child: const Text(' RESET TIME '),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
           ],
           // Edit button
           IconButton(
@@ -938,14 +938,14 @@ class _DashboardViewState extends State<DashboardView>
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
-          width: 1.5,
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.8),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.4),
+            blurRadius: 0,
+            offset: const Offset(0, 0.5),
           ),
         ],
       ),

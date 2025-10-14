@@ -347,24 +347,44 @@ class HabitCard extends StatelessWidget {
     final completionStatus = todayCount > 0 ? '$todayCount completion${todayCount != 1 ? 's' : ''}' : 'not completed';
     final accessibilityLabel = '${habit.name}. ${habit.description}. Today: $completionStatus.';
 
-    return Card(
-      // Remove card margins to prevent overflow - grid handles spacing
-      margin: EdgeInsets.zero,
-      child: Semantics(
-        label: accessibilityLabel,
-        hint: 'Tap for options, long press to drag and reorder',
-        button: true,
-        child: InkWell(
-          // Short tap shows context menu, long press handled by ReorderableListView
-          onTap: () => _showContextMenu(context),
-          // Rounded corners for modern Material 3 design
-          borderRadius: BorderRadius.circular(12),
-          focusColor: habitColor.withValues(alpha: 0.2),
-          child: Padding(
-            padding: const EdgeInsets.all(12), // Reduced padding
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    // Theme-based border width
+    final borderWidth = Theme.of(context).brightness == Brightness.light
+        ? 1.0  // Light theme: more prominent borders
+        : 0.5; // Dark theme: subtle borders
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.outline.withValues(alpha: 0.5),
+            colorScheme.outline.withValues(alpha: 1), // Darker bottom
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        margin: EdgeInsets.all(borderWidth), // Theme-based border width
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(11.0),
+        ),
+        child: Semantics(
+          label: accessibilityLabel,
+          hint: 'Tap for options, long press to drag and reorder',
+          button: true,
+          child: InkWell(
+            // Short tap shows context menu, long press handled by ReorderableListView
+            onTap: () => _showContextMenu(context),
+            // Rounded corners for modern Material 3 design
+            borderRadius: BorderRadius.circular(11.0),
+            focusColor: habitColor.withValues(alpha: 0.2),
+            child: Padding(
+              padding: const EdgeInsets.all(12), // Reduced padding
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 // Top row: Icon and action buttons
                 Row(
                   children: [
@@ -529,6 +549,7 @@ class HabitCard extends StatelessWidget {
         ),
         ),
       ),
+    ),
     );
   }
 
@@ -659,9 +680,31 @@ class DetailedHabitCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final habitColor = colorScheme.habitColor(habit.colorIndex);
 
-    return Card(
+    // Theme-based border width
+    final borderWidth = Theme.of(context).brightness == Brightness.light 
+        ? 0.8  // Light theme: subtle borders
+        : 1.2; // Dark theme: more prominent borders
+
+    return Container(
       margin: const EdgeInsets.all(16),
-      child: Padding(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.outline.withValues(alpha: 0.5),
+            colorScheme.outline.withValues(alpha: 1), // Darker bottom
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        margin: EdgeInsets.all(borderWidth), // Theme-based border width
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(11.0),
+        ),
+        child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -785,6 +828,7 @@ class DetailedHabitCard extends StatelessWidget {
 
             const SizedBox(height: 24),
           ],
+        ),
         ),
       ),
     );
