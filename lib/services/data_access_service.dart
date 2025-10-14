@@ -15,8 +15,6 @@ import '../services/row_processor.dart';
 /// RECOMMENDED USAGE:
 /// - `atomicDataService` for fine-grained data operations (preferred)
 /// - `IDataPreparationService` implementations for UI-specific data preparation
-///
-/// Legacy methods remain for backward compatibility but are now fully atomic.
 class DataAccessService {
   final ICachingService _cache;
   late final AtomicDataService _atomicDataService;

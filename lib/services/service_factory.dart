@@ -167,17 +167,3 @@ class ServiceFactory {
   }
 }
 
-/// Test-friendly service factory for creating mock services
-class TestServiceFactory {
-  /// Create a mock atomic data service for testing
-  static IAtomicDataService createMockAtomicService() {
-    // This would return a mock implementation
-    // For now, return the real service but could be extended
-    return ServiceFactory.atomicDataService;
-  }
-
-  /// Create a mock data preparation service for testing
-  static IDataPreparationService createMockDataPreparationService() {
-    return ServiceFactory.dashboardDataService;
-  }
-}
