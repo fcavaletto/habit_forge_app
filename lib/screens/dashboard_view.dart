@@ -337,10 +337,10 @@ class _DashboardViewState extends State<DashboardView>
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-            AppConstants.defaultPadding,
-            12, // Smaller top padding
-            AppConstants.defaultPadding,
-            AppConstants.defaultPadding,
+            10, // left padding,
+            12, // top padding
+            10, // right padding
+            0, // bottom padding
           ),
           sliver: SliverToBoxAdapter(
             child: _buildHeader(habits),
@@ -678,8 +678,16 @@ class _DashboardViewState extends State<DashboardView>
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -737,9 +745,16 @@ class _DashboardViewState extends State<DashboardView>
         border: Border.all(
           color: isTimeOverridden 
               ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
-              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-          width: isTimeOverridden ? 2 : 1,
+              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+          width: isTimeOverridden ? 2 : 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -900,8 +915,16 @@ class _DashboardViewState extends State<DashboardView>
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
