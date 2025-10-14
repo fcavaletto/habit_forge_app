@@ -347,7 +347,7 @@ class _DashboardViewState extends State<DashboardView>
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           sliver: SliverToBoxAdapter(
             child: ReorderableListView.builder(
               shrinkWrap: true,
@@ -721,7 +721,7 @@ class _DashboardViewState extends State<DashboardView>
           IconButton(
             onPressed: () => _showDatePicker(appState),
             icon: Icon(
-              Icons.edit_calendar,
+              Icons.edit,
               color: Theme.of(context).colorScheme.primary,
             ),
             tooltip: 'Select Date',
