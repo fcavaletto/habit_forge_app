@@ -194,26 +194,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           widget.onThemeChanged(newMode);
                         }
                       },
+                      dropdownColor: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.grey[800]  // Dark grey for dark mode
+                          : Colors.grey[100], // Light grey for light mode
+                      icon: Icon(
+                        Icons.arrow_drop_down,
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.white 
+                            : Colors.black,
+                      ),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.white 
+                            : Colors.black,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      underline: Container(
+                        height: 2,
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.blue[300] 
+                            : Colors.blue[600],
+                      ),
                       items: [
                         DropdownMenuItem(
                           value: ThemeMode.system,
                           child: Text(
                             'System',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).brightness == Brightness.dark 
+                                  ? Colors.white 
+                                  : Colors.black,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                         DropdownMenuItem(
                           value: ThemeMode.light,
                           child: Text(
-                  'Light',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            'Light',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).brightness == Brightness.dark 
+                                  ? Colors.white 
+                                  : Colors.black,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                         DropdownMenuItem(
                           value: ThemeMode.dark,
                           child: Text(
-                  'Dark',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            'Dark',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).brightness == Brightness.dark 
+                                  ? Colors.white 
+                                  : Colors.black,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],

@@ -100,12 +100,13 @@ class AppState extends ChangeNotifier {
     });
   }
   
-  /// Smart cache notification with change detection and debouncing
+  /// Smart cache notification with change detection and selective debouncing
   /// 
   /// Prevents unnecessary cache invalidations by:
   /// 1. Detecting actual state changes
-  /// 2. Debouncing rapid successive notifications (300ms window)
-  /// 3. Batching multiple notifications into one
+  /// 2. Immediate notification for theme changes (user expects instant feedback)
+  /// 3. Debouncing rapid successive notifications (300ms window) for other changes
+  /// 4. Batching multiple notifications into one
   void _smartCacheNotify(String source) {
     // Check if anything actually changed
     final habitCountChanged = _habitProvider.habits.length != _lastHabitCount;
@@ -124,6 +125,14 @@ class AppState extends ChangeNotifier {
     _lastHabitCount = _habitProvider.habits.length;
     _lastThemeMode = _themeProvider.themeMode;
     
+    // Handle theme changes immediately without debouncing
+    if (source == 'ThemeProvider' && themeChanged) {
+      debugPrint('🎨 AppState: Theme change detected, notifying immediately');
+      notifyListeners();
+      return;
+    }
+    
+    // For other changes, use debouncing
     // Mark that we have a pending notification
     _hasNotificationPending = true;
     
