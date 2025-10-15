@@ -64,6 +64,9 @@ dependencies:
   # Persistent storage for caching
   shared_preferences: ^2.2.2
 
+  # Color picker for custom color selection
+  flutter_colorpicker: ^1.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

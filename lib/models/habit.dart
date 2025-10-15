@@ -242,7 +242,7 @@ class Habit {
   final bool allowExceedGoal;
 
   /// Maximum number of habit colors available in the theme
-  static const int maxColorIndex = 47;
+  static const int maxColorIndex = 20;
 
   /// Default icon name for new habits
   static const String defaultIconName = 'check_circle';

@@ -1,5 +1,21 @@
 import 'package:flutter/material.dart';
 
+/// Represents a color pair with light and dark theme variants
+class HabitColorPair {
+  final Color light;
+  final Color dark;
+  
+  const HabitColorPair({
+    required this.light,
+    required this.dark,
+  });
+  
+  /// Get the appropriate color based on brightness
+  Color getColor(Brightness brightness) {
+    return brightness == Brightness.light ? light : dark;
+  }
+}
+
 /// Comprehensive theme configuration for Habit Forge
 ///
 /// This file defines the complete visual identity of the application including:
@@ -245,97 +261,145 @@ class AppTheme {
 
 /// Extension to ColorScheme that provides predefined habit colors
 ///
-/// This extension adds a curated palette of 12 vibrant, accessible colors
-/// specifically designed for habit visualization. Each color is chosen to:
-/// - Provide excellent contrast against both light and dark backgrounds
-/// - Be visually distinct from neighboring colors in the palette
-/// - Support accessibility standards for color-blind users
-/// - Work well in both light and dark theme variants
+/// This extension adds a curated palette of 20 vibrant, accessible colors
+/// specifically designed for habit visualization. Each color has both light
+/// and dark theme variants to ensure optimal visibility and contrast.
 ///
-/// Usage: `Theme.of(context).colorScheme.habitColors[index]`
+/// Usage: `Theme.of(context).colorScheme.getHabitColor(index, brightness)`
 ///
 extension HabitColors on ColorScheme {
-  /// Curated palette of 48 vibrant yet pleasant colors for habit visualization
+  /// Curated palette of 20 vibrant yet pleasant color pairs for habit visualization
   ///
-  /// Each color is carefully selected to ensure:
-  /// ✅ High contrast ratios for accessibility
-  /// ✅ Visual distinction between adjacent colors
+  /// Each color pair is carefully selected to ensure:
+  /// ✅ High contrast ratios for accessibility in both themes
+  /// ✅ Visual distinction between neighboring colors
   /// ✅ Support for color vision deficiencies
-  /// ✅ Consistent appearance in light and dark themes
+  /// ✅ Consistent appearance across light and dark themes
   /// ✅ Vibrant but pleasant aesthetic that's easy on the eyes
   ///
-  /// Layout: 4 rows × 12 columns (48 total colors)
-  /// - Row 1 (0-11): Essential colors - Red, Orange, Yellow, Green, Blue, Purple, Pink, Brown, Gray, Black, White, Teal
-  /// - Row 2 (12-23): Complementary colors - variations and additional hues
-  /// - Row 3 (24-35): Vibrant variations - more saturated versions
-  /// - Row 4 (36-47): Sophisticated tones - elegant and refined colors
-  List<Color> get habitColors => [
-    // Row 1: Mixed Essential Colors (12 colors) - Blues, Greens, Reds, Purples
-    const Color(0xFF2E5BFF), // Vibrant Blue
-    const Color(0xFF00C853), // Vibrant Emerald Green
-    const Color(0xFFF44336), // Bright Red
-    const Color(0xFF9C27B0), // Rich Purple
-    const Color(0xFF00D4FF), // Vibrant Cyan
-    const Color(0xFF8BC34A), // Bright Lime Green
-    const Color(0xFFFF7043), // Vibrant Coral
-    const Color(0xFF673AB7), // Bright Violet
-    const Color(0xFF4FC3F7), // Bright Sky Blue
-    const Color(0xFF2E7D32), // Vivid Forest Green
-    const Color(0xFFE91E63), // Vibrant Rose
-    const Color(0xFF7B1FA2), // Deep Purple
+  /// Layout: 3 rows × 7 columns (20 predefined colors + 1 custom color)
+  /// - Row 1 (0-6): Essential colors - Primary hues
+  /// - Row 2 (7-13): Secondary colors - Complementary variations
+  /// - Row 3 (14-19): Tertiary colors - Sophisticated tones
+  /// - Index 20: Custom color (user-defined)
+  static const List<HabitColorPair> _habitColorPairs = [
+    // Row 1: Essential Colors (0-6)
+    HabitColorPair(
+      light: Color(0xFF2196F3), // Blue
+      dark: Color(0xFF64B5F6),
+    ),
+    HabitColorPair(
+      light: Color(0xFF4CAF50), // Green
+      dark: Color(0xFF81C784),
+    ),
+    HabitColorPair(
+      light: Color(0xFFF44336), // Red
+      dark: Color(0xFFE57373),
+    ),
+    HabitColorPair(
+      light: Color(0xFF9C27B0), // Purple
+      dark: Color(0xFFBA68C8),
+    ),
+    HabitColorPair(
+      light: Color(0xFFFF9800), // Orange
+      dark: Color(0xFFFFB74D),
+    ),
+    HabitColorPair(
+      light: Color(0xFF00BCD4), // Cyan
+      dark: Color(0xFF4DD0E1),
+    ),
+    HabitColorPair(
+      light: Color(0xFFE91E63), // Pink
+      dark: Color(0xFFF06292),
+    ),
 
-    // Row 2: Warm & Cool Mix (12 colors) - Oranges, Yellows, Teals, Pinks
-    const Color(0xFFFF9800), // Vibrant Orange
-    const Color(0xFF009688), // Vibrant Teal
-    const Color(0xFFFFEB3B), // Bright Yellow
-    const Color(0xFFE91E63), // Bright Pink
-    const Color(0xFFFF5722), // Bright Tangerine
-    const Color(0xFF00BCD4), // Bright Aqua
-    const Color(0xFFFFC107), // Golden Yellow
-    const Color(0xFFF8BBD9), // Vibrant Rose Pink
-    const Color(0xFFFFAB91), // Vibrant Peach
-    const Color(0xFF4DD0E1), // Vivid Turquoise
-    const Color(0xFFFF8F00), // Vivid Amber
-    const Color(0xFFE91E63), // Vibrant Magenta
+    // Row 2: Secondary Colors (7-13)
+    HabitColorPair(
+      light: Color(0xFF3F51B5), // Indigo
+      dark: Color(0xFF7986CB),
+    ),
+    HabitColorPair(
+      light: Color(0xFF009688), // Teal
+      dark: Color(0xFF4DB6AC),
+    ),
+    HabitColorPair(
+      light: Color(0xFF8BC34A), // Light Green
+      dark: Color(0xFFAED581),
+    ),
+    HabitColorPair(
+      light: Color(0xFFFFC107), // Amber
+      dark: Color(0xFFFFD54F),
+    ),
+    HabitColorPair(
+      light: Color(0xFF795548), // Brown
+      dark: Color(0xFFA1887F),
+    ),
+    HabitColorPair(
+      light: Color(0xFF607D8B), // Blue Grey
+      dark: Color(0xFF90A4AE),
+    ),
+    HabitColorPair(
+      light: Color(0xFF673AB7), // Deep Purple
+      dark: Color(0xFF9575CD),
+    ),
 
-    // Row 3: Earth & Nature Tones (12 colors) - Browns, Greens, Blues, Purples
-    const Color(0xFF5D4037), // Rich Brown
-    const Color(0xFF1B5E20), // Deep Forest Green
-    const Color(0xFF1565C0), // Deep Navy Blue
-    const Color(0xFF7B1FA2), // Rich Plum Purple
-    const Color(0xFFD7CCC8), // Vibrant Tan
-    const Color(0xFF4CAF50), // Vibrant Mint Green
-    const Color(0xFF1976D2), // Vibrant Cobalt Blue
-    const Color(0xFF9575CD), // Vibrant Lavender
-    const Color(0xFF8D6E63), // Bright Sienna Brown
-    const Color(0xFF827717), // Bright Olive Green
-    const Color(0xFF3F51B5), // Bright Indigo Blue
-    const Color(0xFF9C27B0), // Bright Amethyst Purple
-
-    // Row 4: Sophisticated Vibrant Mix (12 colors) - Mixed sophisticated tones
-    const Color(0xFF4A148C), // Deep Burgundy
-    const Color(0xFFFFD700), // Vibrant Gold
-    const Color(0xFF00695C), // Rich Emerald
-    const Color(0xFFC62828), // Vibrant Ruby Red
-    const Color(0xFFFF7F50), // Bright Coral
-    const Color(0xFF1565C0), // Bright Sapphire Blue
-    const Color(0xFF4527A0), // Deep Violet
-    const Color(0xFF2E7D32), // Vibrant Jade Green
-    const Color(0xFFB71C1C), // Rich Garnet Red
-    const Color(0xFFFF6F00), // Bright Copper Orange
-    const Color(0xFF689F38), // Bright Peridot Green
-    const Color(0xFFFF8F00), // Vibrant Topaz Orange
+    // Row 3: Tertiary Colors (14-19)
+    HabitColorPair(
+      light: Color(0xFF2E7D32), // Dark Green
+      dark: Color(0xFF66BB6A),
+    ),
+    HabitColorPair(
+      light: Color(0xFFD32F2F), // Dark Red
+      dark: Color(0xFFEF5350),
+    ),
+    HabitColorPair(
+      light: Color(0xFF1976D2), // Dark Blue
+      dark: Color(0xFF42A5F5),
+    ),
+    HabitColorPair(
+      light: Color(0xFF7B1FA2), // Dark Purple
+      dark: Color(0xFFAB47BC),
+    ),
+    HabitColorPair(
+      light: Color(0xFFF57C00), // Deep Orange
+      dark: Color(0xFFFF9800),
+    ),
+    HabitColorPair(
+      light: Color(0xFF00695C), // Dark Teal
+      dark: Color(0xFF26A69A),
+    ),
   ];
 
-  /// Get habit color by index with automatic cycling
+  /// Get habit color by index with theme awareness
   ///
-  /// Safely retrieves a color from the palette using modulo arithmetic.
-  /// This ensures that even if there are more habits than colors,
-  /// each habit gets a consistent, visually appealing color.
+  /// Retrieves the appropriate color variant based on the current theme brightness.
+  /// For index 20, returns a placeholder color (custom colors are handled separately).
   ///
-  /// @param index The habit's position in the list (0-based)
+  /// @param index The habit's color index (0-20)
+  /// @param brightness The current theme brightness
   /// @return Color from the palette, cycling through available colors
-  Color habitColor(int index) {
-    return habitColors[index % habitColors.length];
+  Color getHabitColor(int index, Brightness brightness) {
+    if (index >= 0 && index < _habitColorPairs.length) {
+      return _habitColorPairs[index].getColor(brightness);
+    }
+    // Fallback for custom color (index 20) or invalid indices
+    return _habitColorPairs[0].getColor(brightness);
   }
+
+  /// Get habit color by index using current theme brightness
+  ///
+  /// Convenience method that uses the current ColorScheme's brightness.
+  /// This is the main method used throughout the app.
+  ///
+  /// @param index The habit's color index (0-20)
+  /// @return Color from the palette based on current theme
+  Color habitColor(int index) {
+    return getHabitColor(index, brightness);
+  }
+
+  /// Get all habit color pairs for the color selector
+  ///
+  /// Returns the list of predefined color pairs for UI components
+  /// that need to display the full palette.
+  List<HabitColorPair> get habitColorPairs => _habitColorPairs;
 }

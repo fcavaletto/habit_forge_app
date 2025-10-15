@@ -8,6 +8,7 @@ import '../widgets/forms/frequency_selector.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
+import '../services/custom_color_service.dart';
 
 /// Add Habit View - Pure UI component for adding new habits
 ///
@@ -31,6 +32,8 @@ class AddHabitView extends StatefulWidget {
 class _AddHabitViewState extends State<AddHabitView> {
   late AddHabitController _controller;
   late ScrollController _scrollController;
+  late CustomColorService _customColorService;
+  late ValueNotifier<int> _colorNotifier;
 
   @override
   void initState() {
@@ -42,12 +45,16 @@ class _AddHabitViewState extends State<AddHabitView> {
       appState: appState,
     );
     _scrollController = ScrollController();
+    _customColorService = CustomColorService();
+    _customColorService.initialize();
+    _colorNotifier = ValueNotifier<int>(_controller.selectedColorIndex);
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _colorNotifier.dispose();
     super.dispose();
   }
 
@@ -126,9 +133,18 @@ class _AddHabitViewState extends State<AddHabitView> {
 
           // Color Selection
           _buildSectionTitle('Color'),
-          ColorSelector(
-            selectedColorIndex: _controller.selectedColorIndex,
-            onColorSelected: (color) => setState(() => _controller.onColorChanged(color)),
+          ValueListenableBuilder<int>(
+            valueListenable: _colorNotifier,
+            builder: (context, selectedColorIndex, child) {
+              return ColorSelector(
+                selectedColorIndex: selectedColorIndex,
+                onColorSelected: (color) {
+                  _controller.onColorChanged(color);
+                  _colorNotifier.value = color;
+                },
+                customColorService: _customColorService,
+              );
+            },
           ),
 
           const SizedBox(height: 24),
