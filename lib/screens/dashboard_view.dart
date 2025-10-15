@@ -276,11 +276,10 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  /// Legacy body builder kept for backward compatibility
+  /// Builds empty state UI when no habits are found
   /// 
-  /// This method rebuilds the entire dashboard on any change.
-  /// Use _buildOptimizedBody for better performance.
-
+  /// Displays appropriate messaging and sample habit creation options
+  /// for both filtered and unfiltered empty states.
   Widget _buildEmptyState({bool isFiltered = false}) {
     return SafeScrollableWrapper(
       child: Center(
@@ -400,11 +399,10 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  /// Legacy method kept for backward compatibility
+  /// Builds the dashboard header with habit statistics
   /// 
-  /// This method rebuilds the entire dashboard on any habit change.
-  /// Use _buildSelectiveHabitCard for better performance.
-
+  /// Displays completion counts, progress indicators, and summary
+  /// information for the current habit list.
   Widget _buildHeader(List<Habit> habits) {
     // Get the provider state
     final appState = Provider.of<AppState>(context, listen: false);
@@ -660,7 +658,6 @@ class _DashboardViewState extends State<DashboardView>
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(
-        margin: EdgeInsets.all(isDateOverridden ? 1.5 : borderWidth),
         decoration: BoxDecoration(
           color: isDateOverridden 
               ? (Theme.of(context).brightness == Brightness.light 
@@ -730,6 +727,7 @@ class _DashboardViewState extends State<DashboardView>
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -761,7 +759,6 @@ class _DashboardViewState extends State<DashboardView>
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(
-        margin: EdgeInsets.all(isTimeOverridden ? 1.5 : borderWidth),
         decoration: BoxDecoration(
           color: isTimeOverridden 
               ? (Theme.of(context).brightness == Brightness.light 
@@ -838,6 +835,7 @@ class _DashboardViewState extends State<DashboardView>
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -942,7 +940,6 @@ class _DashboardViewState extends State<DashboardView>
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(
-        margin: EdgeInsets.all(borderWidth),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11.0),
@@ -989,6 +986,7 @@ class _DashboardViewState extends State<DashboardView>
           ),
         ],
       ),
+    ),
     );
   }
 }
