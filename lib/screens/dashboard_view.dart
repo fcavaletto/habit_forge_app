@@ -418,14 +418,6 @@ class _DashboardViewState extends State<DashboardView>
     final completionRate = isShowingAllHabits
         ? _controller.getCompletionRateForAllHabits()
         : _controller.getCompletionRateForDate(selectedDate);
-    
-    // Calculate the correct values for the completion count message:
-    // X = Number of habits shown (filtered habits or all habits)
-    // Y = Total number of active (non-archived) habits in the app
-    // Z = Number of shown habits where completions >= goal count
-    final x = habits.length; // Currently shown habits
-    final y = appState.habits.length; // Total active habits
-    final z = completedCount; // Habits that achieved their goal
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,31 +465,6 @@ class _DashboardViewState extends State<DashboardView>
           },
         ),
         const SizedBox(height: 8),
-        // Show completion count text if enabled in settings - Use Selector to only rebuild when setting changes
-        Selector<AppState, bool>(
-          selector: (context, appState) => appState.showCompletionCount,
-          builder: (context, showCompletionCount, child) {
-            if (showCompletionCount) {
-              // Completion count message (no date context needed)
-              
-              return Column(
-                children: [
-                  Text(
-                    '$x out of $y habits shown. $z habits fully completed.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
         // Progress bar is now always visible
         LinearProgressIndicator(
           value: completionRate,

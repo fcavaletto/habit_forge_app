@@ -27,6 +27,16 @@ class ExtendedColorPaletteProvider extends ChangeNotifier {
   /// Any error that occurred during loading/saving
   String? get error => _error;
 
+  /// Set the extended color palette state without saving to storage
+  /// This is used by AppState for optimistic updates
+  void setExtendedModeState(bool isExtended) {
+    if (_isExtendedMode != isExtended) {
+      _isExtendedMode = isExtended;
+      notifyListeners();
+      debugPrint('🎨 ExtendedColorPalette: State changed to: $isExtended');
+    }
+  }
+
   /// Load the extended color palette setting from storage
   Future<void> loadExtendedColorPaletteSetting() async {
     try {

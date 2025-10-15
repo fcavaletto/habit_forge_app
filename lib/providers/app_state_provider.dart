@@ -8,7 +8,6 @@ import '../repositories/settings_repository.dart';
 import 'habit_provider.dart';
 import 'notification_provider.dart';
 import 'theme_provider.dart';
-import 'completion_count_provider.dart';
 import 'extended_color_palette_provider.dart';
 import 'pro_subscription_provider.dart';
 import 'streak_settings_provider.dart';
@@ -31,7 +30,6 @@ import 'date_provider.dart';
 /// - **HabitProvider**: Manages habit data and operations
 /// - **NotificationProvider**: Handles notification state and scheduling
 /// - **ThemeProvider**: Manages theme preferences and switching
-/// - **CompletionCountProvider**: Tracks completion count display settings
 /// - **ExtendedColorPaletteProvider**: Manages extended color palette settings
 /// - **ProSubscriptionProvider**: Manages PRO subscription state
 /// - **StreakSettingsProvider**: Manages streak calculation preferences
@@ -60,7 +58,6 @@ class AppState extends ChangeNotifier {
   final HabitProvider _habitProvider;
   final NotificationProvider _notificationProvider;
   final ThemeProvider _themeProvider;
-  final CompletionCountProvider _completionCountProvider;
   final ExtendedColorPaletteProvider _extendedColorPaletteProvider;
   final ProSubscriptionProvider _proSubscriptionProvider;
   final StreakSettingsProvider _streakSettingsProvider;
@@ -68,18 +65,16 @@ class AppState extends ChangeNotifier {
   final VirtualTimeService _virtualTimeService = VirtualTimeService();
   final SettingsRepository _settingsRepository;
 
-  // Smart notification system
+  // Smart cache notification system
   Timer? _notificationDebounce;
   bool _hasNotificationPending = false;
   int _lastHabitCount = 0;
   ThemeMode? _lastThemeMode;
-  bool _lastCompletionCountSetting = false;
   
   AppState(
     this._habitProvider,
     this._notificationProvider,
     this._themeProvider,
-    this._completionCountProvider,
     this._extendedColorPaletteProvider,
     this._proSubscriptionProvider,
     this._streakSettingsProvider,
@@ -89,77 +84,45 @@ class AppState extends ChangeNotifier {
     // Initialize last known states
     _lastHabitCount = _habitProvider.habits.length;
     _lastThemeMode = _themeProvider.themeMode;
-    _lastCompletionCountSetting = _completionCountProvider.showCompletionCount;
     
-    // Listen to changes in child providers with smart notification
+    // Listen to changes in child providers with smart cache notification
     _habitProvider.addListener(() {
       debugPrint('🔗 AppState received notification from HabitProvider');
-      _smartNotify('HabitProvider');
-    });
-    _notificationProvider.addListener(() {
-      debugPrint('🔗 AppState received notification from NotificationProvider');
-      _smartNotify('NotificationProvider');
+      _smartCacheNotify('HabitProvider');
     });
     _themeProvider.addListener(() {
       debugPrint('🔗 AppState received notification from ThemeProvider');
-      _smartNotify('ThemeProvider');
-    });
-    _completionCountProvider.addListener(() {
-      debugPrint(
-        '🔗 AppState received notification from CompletionCountProvider',
-      );
-      _smartNotify('CompletionCountProvider');
-    });
-    _extendedColorPaletteProvider.addListener(() {
-      debugPrint(
-        '🔗 AppState received notification from ExtendedColorPaletteProvider',
-      );
-      _smartNotify('ExtendedColorPaletteProvider');
-    });
-    _proSubscriptionProvider.addListener(() {
-      debugPrint(
-        '🔗 AppState received notification from ProSubscriptionProvider',
-      );
-      _smartNotify('ProSubscriptionProvider');
-    });
-    _streakSettingsProvider.addListener(() {
-      debugPrint(
-        '🔗 AppState received notification from StreakSettingsProvider',
-      );
-      _smartNotify('StreakSettingsProvider');
+      _smartCacheNotify('ThemeProvider');
     });
     _dateProvider.addListener(() {
       debugPrint('🔗 AppState received notification from DateProvider');
-      _smartNotify('DateProvider');
+      _smartCacheNotify('DateProvider');
     });
   }
   
-  /// Smart notification with change detection and debouncing
+  /// Smart cache notification with change detection and debouncing
   /// 
-  /// Prevents unnecessary notifications by:
+  /// Prevents unnecessary cache invalidations by:
   /// 1. Detecting actual state changes
   /// 2. Debouncing rapid successive notifications (300ms window)
   /// 3. Batching multiple notifications into one
-  void _smartNotify(String source) {
+  void _smartCacheNotify(String source) {
     // Check if anything actually changed
     final habitCountChanged = _habitProvider.habits.length != _lastHabitCount;
     final themeChanged = _themeProvider.themeMode != _lastThemeMode;
-    final completionCountChanged = 
-        _completionCountProvider.showCompletionCount != _lastCompletionCountSetting;
     
-    final hasActualChanges = habitCountChanged || themeChanged || completionCountChanged;
+    final hasActualChanges = habitCountChanged || themeChanged;
     
     if (!hasActualChanges && source != 'HabitProvider') {
       // For non-HabitProvider sources, skip if no tracked changes detected
       // Note: HabitProvider always notifies because completions may have changed
-      debugPrint('⏭️ AppState: No changes detected from $source, skipping notification');
+      debugPrint('⏭️ AppState: No cache-relevant changes detected from $source, skipping notification');
       return;
     }
     
     // Update last known states
     _lastHabitCount = _habitProvider.habits.length;
     _lastThemeMode = _themeProvider.themeMode;
-    _lastCompletionCountSetting = _completionCountProvider.showCompletionCount;
     
     // Mark that we have a pending notification
     _hasNotificationPending = true;
@@ -192,11 +155,6 @@ class AppState extends ChangeNotifier {
   // Theme provider access
   ThemeProvider get themeProvider => _themeProvider;
   ThemeMode get themeMode => _themeProvider.themeMode;
-
-  // Completion count provider access
-  CompletionCountProvider get completionCountProvider =>
-      _completionCountProvider;
-  bool get showCompletionCount => _completionCountProvider.showCompletionCount;
 
   // Extended color palette provider access
   ExtendedColorPaletteProvider get extendedColorPaletteProvider =>
@@ -323,7 +281,6 @@ class AppState extends ChangeNotifier {
       try {
         await Future.wait([
           _notificationProvider.initialize(),
-          _completionCountProvider.loadCompletionCountSetting(),
           _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
           _proSubscriptionProvider.loadProSubscriptionSetting(),
           _streakSettingsProvider.loadStreakSetting(),
@@ -409,6 +366,135 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Toggle PRO subscription with error handling and rollback
+  /// 
+  /// This method provides optimistic UI updates with automatic rollback
+  /// if the database operation fails. It includes proper error handling
+  /// and user feedback mechanisms.
+  Future<bool> toggleProSubscription() async {
+    try {
+      // Store original state for potential rollback
+      final originalState = _proSubscriptionProvider.isProSubscriptionActive;
+      final newState = !originalState;
+      
+      debugPrint('💎 PRO subscription toggle: $originalState → $newState');
+      
+      // Optimistic UI update - update provider state immediately
+      _proSubscriptionProvider.setProSubscriptionActive(newState);
+      notifyListeners(); // Direct notification to bypass _smartCacheNotify
+      
+      // Attempt to save to storage
+      final success = await _settingsRepository.saveSetting(
+        'pro_subscription', 
+        newState.toString()
+      );
+      
+      if (success) {
+        debugPrint('💎 PRO subscription toggle successful: $newState');
+        return true;
+      } else {
+        // ROLLBACK: Restore original state
+        debugPrint('❌ PRO subscription save failed, rolling back to: $originalState');
+        _proSubscriptionProvider.setProSubscriptionActive(originalState);
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      // ROLLBACK: Restore original state on any error
+      final originalState = _proSubscriptionProvider.isProSubscriptionActive;
+      debugPrint('❌ PRO subscription toggle error: $e, rolling back to: $originalState');
+      _proSubscriptionProvider.setProSubscriptionActive(originalState);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Toggle extended color palette with error handling and rollback
+  /// 
+  /// This method provides optimistic UI updates with automatic rollback
+  /// if the database operation fails. It includes proper error handling
+  /// and user feedback mechanisms.
+  Future<bool> toggleExtendedColorPalette() async {
+    try {
+      // Store original state for potential rollback
+      final originalState = _extendedColorPaletteProvider.isExtendedMode;
+      final newState = !originalState;
+      
+      debugPrint('🎨 Extended color palette toggle: $originalState → $newState');
+      
+      // Optimistic UI update - update provider state immediately
+      _extendedColorPaletteProvider.setExtendedModeState(newState);
+      notifyListeners(); // Direct notification to bypass _smartCacheNotify
+      
+      // Attempt to save to storage
+      final success = await _settingsRepository.saveSetting(
+        'extended_color_palette', 
+        newState.toString()
+      );
+      
+      if (success) {
+        debugPrint('🎨 Extended color palette toggle successful: $newState');
+        return true;
+      } else {
+        // ROLLBACK: Restore original state
+        debugPrint('❌ Extended color palette save failed, rolling back to: $originalState');
+        _extendedColorPaletteProvider.setExtendedModeState(originalState);
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      // ROLLBACK: Restore original state on any error
+      final originalState = _extendedColorPaletteProvider.isExtendedMode;
+      debugPrint('❌ Extended color palette toggle error: $e, rolling back to: $originalState');
+      _extendedColorPaletteProvider.setExtendedModeState(originalState);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Toggle streak calculation mode with error handling and rollback
+  /// 
+  /// This method provides optimistic UI updates with automatic rollback
+  /// if the database operation fails. It includes proper error handling
+  /// and user feedback mechanisms.
+  Future<bool> toggleStreakCalculation() async {
+    try {
+      // Store original state for potential rollback
+      final originalState = _streakSettingsProvider.isActiveDaysStreakEnabled;
+      final newState = !originalState;
+      
+      debugPrint('🔥 Streak calculation toggle: $originalState → $newState');
+      
+      // Optimistic UI update - update provider state immediately
+      _streakSettingsProvider.setStreakCalculationState(newState);
+      notifyListeners(); // Direct notification to bypass _smartCacheNotify
+      
+      // Attempt to save to storage
+      final success = await _settingsRepository.saveSetting(
+        'active_days_streak_enabled', 
+        newState.toString()
+      );
+      
+      if (success) {
+        debugPrint('🔥 Streak calculation toggle successful: $newState');
+        return true;
+      } else {
+        // ROLLBACK: Restore original state
+        debugPrint('❌ Streak calculation save failed, rolling back to: $originalState');
+        _streakSettingsProvider.setStreakCalculationState(originalState);
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      // ROLLBACK: Restore original state on any error
+      final originalState = _streakSettingsProvider.isActiveDaysStreakEnabled;
+      debugPrint('❌ Streak calculation toggle error: $e, rolling back to: $originalState');
+      _streakSettingsProvider.setStreakCalculationState(originalState);
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Set time override
   void setTimeOverride(TimeOfDay time) {
     _virtualTimeService.setTimeOverride(time);
@@ -467,7 +553,6 @@ class AppState extends ChangeNotifier {
     _habitProvider.removeListener(notifyListeners);
     _notificationProvider.removeListener(notifyListeners);
     _themeProvider.removeListener(notifyListeners);
-    _completionCountProvider.removeListener(notifyListeners);
     _extendedColorPaletteProvider.removeListener(notifyListeners);
     _proSubscriptionProvider.removeListener(notifyListeners);
     _streakSettingsProvider.removeListener(notifyListeners);
@@ -481,7 +566,6 @@ class AppStateProvider extends AppState {
     super.habitProvider,
     super.notificationProvider,
     super.themeProvider,
-    super.completionCountProvider,
     super.extendedColorPaletteProvider,
     super.proSubscriptionProvider,
     super.streakSettingsProvider,
@@ -497,7 +581,6 @@ class AppStateProvider extends AppState {
     final notificationProvider = NotificationProvider(notificationService);
     final settingsRepository = SettingsRepository(databaseService);
     final themeProvider = ThemeProvider(settingsRepository);
-    final completionCountProvider = CompletionCountProvider(settingsRepository);
     final extendedColorPaletteProvider = ExtendedColorPaletteProvider(
       settingsRepository,
     );
@@ -509,7 +592,6 @@ class AppStateProvider extends AppState {
       habitProvider,
       notificationProvider,
       themeProvider,
-      completionCountProvider,
       extendedColorPaletteProvider,
       proSubscriptionProvider,
       streakSettingsProvider,

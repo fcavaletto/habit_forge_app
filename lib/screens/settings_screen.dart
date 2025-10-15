@@ -265,7 +265,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Switch(
                       value: appState.isProSubscriptionActive,
                       onChanged: (value) async {
-                        await appState.proSubscriptionProvider.toggleProSubscription();
+                        final success = await appState.toggleProSubscription();
+                        if (!success) {
+                          // Show error feedback using a different approach
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Failed to update PRO subscription. Please try again.'),
+                                  backgroundColor: Theme.of(context).colorScheme.error,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            }
+                          });
+                        }
                       },
                     ),
                   ],
@@ -328,7 +342,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Switch(
                           value: !appState.isActiveDaysStreakEnabled,
                           onChanged: (value) async {
-                            await appState.streakSettingsProvider.toggleActiveDaysStreak();
+                            await appState.toggleStreakCalculation();
                           },
                         ),
                       ],
@@ -361,7 +375,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Switch(
                           value: appState.isActiveDaysStreakEnabled,
                           onChanged: (value) async {
-                            await appState.streakSettingsProvider.toggleActiveDaysStreak();
+                            await appState.toggleStreakCalculation();
                           },
                         ),
                       ],
@@ -397,47 +411,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Show Completion Count',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Display "X out of Y habits shown. Z habits fully completed." text on dashboard\n(X=shown habits, Y=total active habits, Z=completed habits)',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: appState.showCompletionCount,
-                      onChanged: (value) async {
-                        await appState.completionCountProvider.toggleCompletionCount();
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Consumer<AppState>(
-              builder: (context, appState, child) {
-                return Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
                             'Extended Color Palette',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
@@ -454,7 +427,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Switch(
                       value: appState.isExtendedColorPalette,
                       onChanged: (value) async {
-                        await appState.extendedColorPaletteProvider.toggleExtendedColorPalette();
+                        await appState.toggleExtendedColorPalette();
                       },
                     ),
                   ],

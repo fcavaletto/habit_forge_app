@@ -29,6 +29,16 @@ class StreakSettingsProvider extends ChangeNotifier {
   String get streakCalculationMode => 
       _isActiveDaysStreakEnabled ? 'Active Days Only' : 'All Days';
 
+  /// Set the streak calculation state without saving to storage
+  /// This is used by AppState for optimistic updates
+  void setStreakCalculationState(bool isActiveDaysEnabled) {
+    if (_isActiveDaysStreakEnabled != isActiveDaysEnabled) {
+      _isActiveDaysStreakEnabled = isActiveDaysEnabled;
+      notifyListeners();
+      debugPrint('🔥 Streak calculation state changed to: $streakCalculationMode');
+    }
+  }
+
   /// Set the streak calculation mode and notify listeners
   /// 
   /// @param enabled true for active days only, false for all days

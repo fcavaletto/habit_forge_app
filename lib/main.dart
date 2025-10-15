@@ -97,7 +97,6 @@ Future<void> _refreshDataInBackground(AppState appState) async {
     debugPrint('🔧 Initializing secondary services in background...');
     await Future.wait([
       appState.notificationProvider.initialize(),
-      appState.completionCountProvider.loadCompletionCountSetting(),
       appState.extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
       appState.proSubscriptionProvider.loadProSubscriptionSetting(),
       appState.streakSettingsProvider.loadStreakSetting(),
