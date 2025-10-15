@@ -662,7 +662,7 @@ class _DashboardViewState extends State<DashboardView>
           color: isDateOverridden 
               ? (Theme.of(context).brightness == Brightness.light 
                   ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
-                  : null) // No background color change in dark mode
+                  : Theme.of(context).colorScheme.surfaceContainerHighest) // No background color change in dark mode
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11.0),
         ),
@@ -766,7 +766,7 @@ class _DashboardViewState extends State<DashboardView>
           color: isTimeOverridden 
               ? (Theme.of(context).brightness == Brightness.light 
                   ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
-                  : null) // No background color change in dark mode
+                  : Theme.of(context).colorScheme.surfaceContainerHighest) // No background color change in dark mode
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11.0),
         ),
