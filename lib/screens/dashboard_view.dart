@@ -640,7 +640,6 @@ class _DashboardViewState extends State<DashboardView>
         : 0.5; // Dark theme: subtle borders
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDateOverridden 
@@ -658,6 +657,7 @@ class _DashboardViewState extends State<DashboardView>
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(
+        margin: EdgeInsets.all(isDateOverridden ? 1.5 : borderWidth),
         decoration: BoxDecoration(
           color: isDateOverridden 
               ? (Theme.of(context).brightness == Brightness.light 
@@ -666,6 +666,8 @@ class _DashboardViewState extends State<DashboardView>
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11.0),
         ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Icon(
@@ -727,7 +729,8 @@ class _DashboardViewState extends State<DashboardView>
           ),
         ],
       ),
-    ),
+        ),
+      ),
     );
   }
 
@@ -741,7 +744,6 @@ class _DashboardViewState extends State<DashboardView>
         : 0.5; // Dark theme: subtle borders
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isTimeOverridden 
@@ -759,6 +761,7 @@ class _DashboardViewState extends State<DashboardView>
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(
+        margin: EdgeInsets.all(isTimeOverridden ? 1.5 : borderWidth),
         decoration: BoxDecoration(
           color: isTimeOverridden 
               ? (Theme.of(context).brightness == Brightness.light 
@@ -767,6 +770,8 @@ class _DashboardViewState extends State<DashboardView>
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11.0),
         ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Icon(
@@ -835,7 +840,8 @@ class _DashboardViewState extends State<DashboardView>
           ),
         ],
       ),
-    ),
+        ),
+      ),
     );
   }
 
@@ -927,7 +933,6 @@ class _DashboardViewState extends State<DashboardView>
         : 0.5; // Dark theme: subtle borders
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -940,10 +945,13 @@ class _DashboardViewState extends State<DashboardView>
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(
+        margin: EdgeInsets.all(borderWidth),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11.0),
         ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Icon(
@@ -986,7 +994,8 @@ class _DashboardViewState extends State<DashboardView>
           ),
         ],
       ),
-    ),
+        ),
+      ),
     );
   }
 }
