@@ -636,27 +636,39 @@ class _DashboardViewState extends State<DashboardView>
     final selectedDate = appState.habitProvider.selectedDate;
     final isDateOverridden = appState.isDateOverridden;
 
+    // Theme-based border width
+    final borderWidth = Theme.of(context).brightness == Brightness.light 
+        ? 1.0  // Light theme: more prominent borders
+        : 0.5; // Dark theme: subtle borders
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isDateOverridden 
-            ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
-            : Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDateOverridden 
-              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.6)
-              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.7),
-          width: isDateOverridden ? 1.5 : 1.1,
+        gradient: LinearGradient(
+          colors: isDateOverridden 
+              ? [
+                  Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                  Theme.of(context).colorScheme.error.withValues(alpha: 1.0),
+                ]
+              : [
+                  Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                  Theme.of(context).colorScheme.outline.withValues(alpha: 1.0),
+                ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: isDateOverridden ? 0 : 0),
-            blurRadius: 0.0,
-            offset: const Offset(0, 0),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
       ),
+      child: Container(
+        margin: EdgeInsets.all(isDateOverridden ? 1.5 : borderWidth),
+        decoration: BoxDecoration(
+          color: isDateOverridden 
+              ? (Theme.of(context).brightness == Brightness.light 
+                  ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
+                  : null) // No background color change in dark mode
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(11.0),
+        ),
       child: Row(
         children: [
           Icon(
@@ -725,27 +737,39 @@ class _DashboardViewState extends State<DashboardView>
   Widget _buildTimeSelector(AppState appState) {
     final isTimeOverridden = appState.isTimeOverridden;
 
+    // Theme-based border width
+    final borderWidth = Theme.of(context).brightness == Brightness.light 
+        ? 1.0  // Light theme: more prominent borders
+        : 0.5; // Dark theme: subtle borders
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isTimeOverridden
-            ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
-            : Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isTimeOverridden
-              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.6)
-              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.7),
-          width: isTimeOverridden ? 1.5 : 1.1,
+        gradient: LinearGradient(
+          colors: isTimeOverridden 
+              ? [
+                  Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                  Theme.of(context).colorScheme.error.withValues(alpha: 1.0),
+                ]
+              : [
+                  Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                  Theme.of(context).colorScheme.outline.withValues(alpha: 1.0),
+                ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: isTimeOverridden ? 0 : 0.5),
-            blurRadius: 0.0,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
       ),
+      child: Container(
+        margin: EdgeInsets.all(isTimeOverridden ? 1.5 : borderWidth),
+        decoration: BoxDecoration(
+          color: isTimeOverridden 
+              ? (Theme.of(context).brightness == Brightness.light 
+                  ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
+                  : null) // No background color change in dark mode
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(11.0),
+        ),
       child: Row(
         children: [
           Icon(
@@ -899,23 +923,30 @@ class _DashboardViewState extends State<DashboardView>
   Widget _buildHabitFilterDropdown(AppState appState) {
     final isShowingAllHabits = appState.habitProvider.isShowingAllHabits;
     
+    // Theme-based border width
+    final borderWidth = Theme.of(context).brightness == Brightness.light 
+        ? 1.0  // Light theme: more prominent borders
+        : 0.5; // Dark theme: subtle borders
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.8),
-          width: 1,
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+            Theme.of(context).colorScheme.outline.withValues(alpha: 1.0),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.4),
-            blurRadius: 0,
-            offset: const Offset(0, 0.5),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
       ),
+      child: Container(
+        margin: EdgeInsets.all(borderWidth),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(11.0),
+        ),
       child: Row(
         children: [
           Icon(
