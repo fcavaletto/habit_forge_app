@@ -16,7 +16,8 @@ class SampleDataGeneratorService {
       'name': 'Learn Spanish',
       'description': 'Practice Spanish vocabulary and grammar',
       'iconName': 'translate',
-      'colorIndex': 0,
+      'lightColorValue': 0xFF94a3b8, // Slate light
+      'darkColorValue': 0xFF334155, // Slate dark
       'targetGoal': 1,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
       'completionPattern': 'max_1_per_day',
@@ -26,7 +27,8 @@ class SampleDataGeneratorService {
       'name': 'Journal Writing',
       'description': 'Reflect on daily experiences',
       'iconName': 'edit_note',
-      'colorIndex': 1,
+      'lightColorValue': 0xFF9ca3af, // Gray light
+      'darkColorValue': 0xFF374151, // Gray dark
       'targetGoal': 4,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
       'completionPattern': 'weighted_0_to_4',
@@ -36,7 +38,8 @@ class SampleDataGeneratorService {
       'name': 'Read Pages',
       'description': 'Read books to expand knowledge',
       'iconName': 'menu_book',
-      'colorIndex': 2,
+      'lightColorValue': 0xFFa3a3a3, // Neutral light
+      'darkColorValue': 0xFF404040, // Neutral dark
       'targetGoal': 10,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
       'completionPattern': 'random_0_to_20',
@@ -87,7 +90,8 @@ class SampleDataGeneratorService {
       name: habitName,
       description: template['description'] as String,
       iconName: template['iconName'] as String,
-      colorIndex: template['colorIndex'] as int,
+      lightColorValue: template['lightColorValue'] as int,
+      darkColorValue: template['darkColorValue'] as int,
       targetGoal: template['targetGoal'] as int,
       frequencyDays: Map<String, int>.from(template['frequencyDays'] as Map),
       allowExceedGoal: template['allowExceedGoal'] as bool,
@@ -146,7 +150,8 @@ class SampleDataGeneratorService {
       id: habit.id,
       name: habit.name,
       description: habit.description,
-      colorIndex: habit.colorIndex,
+      lightColorValue: habit.lightColorValue,
+      darkColorValue: habit.darkColorValue,
       createdAt: startDate.add(Duration(days: _random.nextInt(30))), // Random creation date within first month
       completions: completions,
       iconName: habit.iconName,

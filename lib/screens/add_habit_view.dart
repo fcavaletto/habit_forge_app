@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../controllers/add_habit_controller.dart';
 import '../widgets/forms/icon_selector.dart';
@@ -7,8 +6,6 @@ import '../widgets/forms/color_selector.dart';
 import '../widgets/forms/frequency_selector.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
-import '../providers/app_state_provider.dart';
-import '../services/custom_color_service.dart';
 
 /// Add Habit View - Pure UI component for adding new habits
 ///
@@ -32,29 +29,29 @@ class AddHabitView extends StatefulWidget {
 class _AddHabitViewState extends State<AddHabitView> {
   late AddHabitController _controller;
   late ScrollController _scrollController;
-  late CustomColorService _customColorService;
-  late ValueNotifier<int> _colorNotifier;
+  late ValueNotifier<Color> _lightColorNotifier;
+  late ValueNotifier<Color> _darkColorNotifier;
 
   @override
   void initState() {
     super.initState();
-    final appState = context.read<AppState>();
     _controller = AddHabitController(
       onHabitAdded: widget.onHabitAdded,
       existingHabits: widget.existingHabits,
-      appState: appState,
     );
     _scrollController = ScrollController();
-    _customColorService = CustomColorService();
-    _customColorService.initialize();
-    _colorNotifier = ValueNotifier<int>(_controller.selectedColorIndex);
+    
+    // Initialize with default colors (Slate)
+    _lightColorNotifier = ValueNotifier<Color>(const Color(0xFF94a3b8));
+    _darkColorNotifier = ValueNotifier<Color>(const Color(0xFF334155));
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
-    _colorNotifier.dispose();
+    _lightColorNotifier.dispose();
+    _darkColorNotifier.dispose();
     super.dispose();
   }
 
@@ -81,152 +78,141 @@ class _AddHabitViewState extends State<AddHabitView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          // Error message
-          if (_controller.errorMessage != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red[200]!),
+            // Error message
+            if (_controller.errorMessage != null && _controller.errorMessage!.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.error,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: Theme.of(context).colorScheme.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _controller.errorMessage!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Text(
-                _controller.errorMessage!,
-                style: TextStyle(color: Colors.red[800]),
+            ],
+
+            // Habit Name
+            _buildSectionTitle('Habit Name'),
+            TextField(
+              controller: _controller.nameController,
+              decoration: const InputDecoration(
+                hintText: 'Enter habit name (e.g., "Drink Water")',
+                border: OutlineInputBorder(),
               ),
+              onChanged: _controller.onNameChanged,
             ),
+            const SizedBox(height: 24),
 
-          // Habit Name
-          _buildSectionTitle('Habit Name'),
-          TextFormField(
-            controller: _controller.nameController,
-            decoration: const InputDecoration(
-              hintText: 'Enter habit name',
-              border: OutlineInputBorder(),
+            // Description
+            _buildSectionTitle('Description (Optional)'),
+            TextField(
+              controller: _controller.descriptionController,
+              decoration: const InputDecoration(
+                hintText: 'Add a description for your habit',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+              onChanged: _controller.onDescriptionChanged,
             ),
-          ),
+            const SizedBox(height: 24),
 
-          const SizedBox(height: 24),
-
-          // Habit Description
-          _buildSectionTitle('Description (Optional)'),
-          TextFormField(
-            controller: _controller.descriptionController,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Describe your habit (optional)',
-              border: OutlineInputBorder(),
+            // Icon Selection
+            _buildSectionTitle('Icon'),
+            IconSelector(
+              selectedIconName: _controller.selectedIconName,
+              onIconSelected: _controller.onIconChanged,
             ),
-          ),
+            const SizedBox(height: 24),
 
-          const SizedBox(height: 24),
-
-          // Icon Selection
-          _buildSectionTitle('Icon'),
-          IconSelector(
-            selectedIconName: _controller.selectedIconName,
-            onIconSelected: (icon) => setState(() => _controller.onIconChanged(icon)),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Color Selection
-          _buildSectionTitle('Color'),
-          ValueListenableBuilder<int>(
-            valueListenable: _colorNotifier,
-            builder: (context, selectedColorIndex, child) {
-              return ColorSelector(
-                selectedColorIndex: selectedColorIndex,
-                onColorSelected: (color) {
-                  _controller.onColorChanged(color);
-                  _colorNotifier.value = color;
-                },
-                customColorService: _customColorService,
-              );
-            },
-          ),
-
-          const SizedBox(height: 24),
-
-          // Target Goal
-          _buildSectionTitle('Target Goal'),
-          TextFormField(
-            controller: _controller.targetGoalController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: 'Enter target completions per day',
-              border: OutlineInputBorder(),
-              helperText: 'How many times do you want to complete this habit daily?',
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Allow Exceed Goal
-          _buildSectionTitle('Advanced Options'),
-          CheckboxListTile(
-            title: const Text('Allow completions beyond target goal'),
-            subtitle: const Text('Continue tracking completions even after reaching your daily goal'),
-            value: _controller.allowExceedGoal,
-            onChanged: (value) => setState(() => _controller.allowExceedGoal = value ?? false),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Frequency Selection
-          _buildSectionTitle('Frequency'),
-          FrequencySelector(
-            frequencyData: _controller.frequencyData,
-            onFrequencyChanged: (freq) => setState(() => _controller.onFrequencyChanged(freq)),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Reminder Settings
-          _buildSectionTitle('Reminders'),
-          SwitchListTile(
-            title: const Text('Enable Daily Reminders'),
-            value: _controller.enableReminders,
-            onChanged: (value) => setState(() => _controller.enableReminders = value),
-          ),
-
-          if (_controller.enableReminders) ...[
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text('Reminder Time'),
-              subtitle: Text(_controller.reminderTime?.format(context) ?? 'Not set'),
-              trailing: const Icon(Icons.access_time),
-              onTap: () async {
-                final time = await showTimePicker(
-                  context: context,
-                  initialTime: _controller.reminderTime ?? TimeOfDay.now(),
+            // Color Selection
+            _buildSectionTitle('Color'),
+            ValueListenableBuilder<Color>(
+              valueListenable: _lightColorNotifier,
+              builder: (context, lightColor, child) {
+                return ValueListenableBuilder<Color>(
+                  valueListenable: _darkColorNotifier,
+                  builder: (context, darkColor, child) {
+                    return ColorSelector(
+                      selectedLightColor: lightColor,
+                      selectedDarkColor: darkColor,
+                      onColorSelected: (selectedLightColor, selectedDarkColor) {
+                        _lightColorNotifier.value = selectedLightColor;
+                        _darkColorNotifier.value = selectedDarkColor;
+                        _controller.onColorChanged(selectedLightColor, selectedDarkColor);
+                      },
+                    );
+                  },
                 );
-                if (time != null) {
-                  setState(() => _controller.reminderTime = time);
-                }
               },
             ),
-          ],
+            const SizedBox(height: 24),
 
-          const SizedBox(height: 32),
-
-          // Save Button
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _controller.isLoading ? null : () => _saveHabit(context),
-              child: _controller.isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Create Habit'),
+            // Frequency Selection
+            _buildSectionTitle('Frequency'),
+            FrequencySelector(
+              frequencyData: _controller.frequencyData,
+              onFrequencyChanged: _controller.onFrequencyChanged,
             ),
-          ),
+            const SizedBox(height: 24),
 
-          const SizedBox(height: 32),
+            // Target Goal
+            _buildSectionTitle('Daily Target'),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller.targetGoalController,
+                    decoration: const InputDecoration(
+                      hintText: '1',
+                      border: OutlineInputBorder(),
+                      labelText: 'Target per day',
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: _controller.onTargetGoalChanged,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Switch(
+                  value: _controller.allowExceedGoal,
+                  onChanged: _controller.onAllowExceedGoalChanged,
+                ),
+                const SizedBox(width: 8),
+                const Text('Allow exceeding goal'),
+              ],
+            ),
+            const SizedBox(height: 32),
+
+            // Create Habit Button
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _controller.canCreateHabit ? _createHabit : null,
+                child: const Text('Create Habit'),
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -234,39 +220,19 @@ class _AddHabitViewState extends State<AddHabitView> {
   }
 
   Widget _buildSectionTitle(String title) {
-    // Extract theme outside to make widget more efficient
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: theme.textTheme.titleMedium?.copyWith(
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
   }
 
-  Future<void> _saveHabit(BuildContext context) async {
-    await _controller.saveHabit();
-
-    if (_controller.errorMessage == null) {
-      // Success - close the screen
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
-    } else {
-      // Error - refresh UI to show error message and scroll to top
-      setState(() {});
-      
-      // Scroll to top to make error message visible
-      if (_scrollController.hasClients) {
-        await _scrollController.animateTo(
-          0.0,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
-    }
+  void _createHabit() {
+    _controller.createHabit();
   }
 }

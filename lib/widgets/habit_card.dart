@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
-import '../theme.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
 import '../services/virtual_date_service.dart';
@@ -60,12 +59,20 @@ class SmartCompletionButton extends StatelessWidget {
     this.onCustomCompletion,
   });
 
+  /// Get the habit color based on current theme brightness
+  Color _getHabitColor(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.light 
+        ? Color(habit.lightColorValue) 
+        : Color(habit.darkColorValue);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get current completion state
     final todayCount = habit.getCompletionCount(VirtualDateService().currentDate);
     final isCompleted = habit.isGoalAchieved(VirtualDateService().currentDate);
-    final habitColor = Theme.of(context).colorScheme.habitColor(habit.colorIndex);
+    final habitColor = _getHabitColor(context);
 
     // Determine button state based on completion
     final buttonState = _getButtonState(todayCount, isCompleted);
@@ -336,11 +343,19 @@ class HabitCard extends StatelessWidget {
     this.onStats,
   });
 
+  /// Get the habit color based on current theme brightness
+  Color _getHabitColor(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.light 
+        ? Color(habit.lightColorValue) 
+        : Color(habit.darkColorValue);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get theme colors and habit-specific color
     final colorScheme = Theme.of(context).colorScheme;
-    final habitColor = colorScheme.habitColor(habit.colorIndex);
+    final habitColor = _getHabitColor(context);
 
     // Create accessibility labels - memoized for performance
     final todayCount = habit.getCompletionCount(VirtualDateService().currentDate);
@@ -571,12 +586,12 @@ class HabitCard extends StatelessWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.habitColor(habit.colorIndex).withValues(alpha: 0.1),
+                        color: _getHabitColor(context).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         habit.iconName.toIconData,
-                        color: Theme.of(context).colorScheme.habitColor(habit.colorIndex),
+                        color: _getHabitColor(context),
                         size: 20,
                       ),
                     ),
@@ -675,10 +690,18 @@ class DetailedHabitCard extends StatelessWidget {
     this.onClose,
   });
 
+  /// Get the habit color based on current theme brightness
+  Color _getHabitColor(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.light 
+        ? Color(habit.lightColorValue) 
+        : Color(habit.darkColorValue);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final habitColor = colorScheme.habitColor(habit.colorIndex);
+    final habitColor = _getHabitColor(context);
 
     // Theme-based border width
     final borderWidth = Theme.of(context).brightness == Brightness.light 

@@ -79,7 +79,8 @@ class SqliteHabitRepository {
           id: row['id'] as String,
           name: row['name'] as String,
           description: row['description'] as String? ?? '',
-          colorIndex: row['color_index'] as int? ?? 0,
+          lightColorValue: row['light_color_value'] as int? ?? 4287137464, // Default to slate light
+          darkColorValue: row['dark_color_value'] as int? ?? 4281546069, // Default to slate dark
           createdAt: createdAtDates[i], // From batch conversion
           completions: const {}, // Empty - not loading completion data
           iconName: row['icon_name'] as String? ?? 'check_circle',
@@ -499,7 +500,8 @@ class SqliteHabitRepository {
       'id': habit.id,
       'name': habit.name,
       'description': habit.description,
-      'color_index': habit.colorIndex,
+      'light_color_value': habit.lightColorValue,
+      'dark_color_value': habit.darkColorValue,
       'icon_name': habit.iconName,
       'created_at': TimezoneUtils.toTimestampString(habit.createdAt),
       'is_archived': habit.isArchived ? 1 : 0,

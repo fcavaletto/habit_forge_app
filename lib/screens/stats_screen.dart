@@ -13,7 +13,6 @@ import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
 import '../services/virtual_date_service.dart';
 import '../services/atomic_data_service.dart';
-import '../theme.dart';
 
 /// Stats Screen - Displays analytics and charts for habit tracking
 ///
@@ -103,7 +102,8 @@ class _StatsScreenState extends State<StatsScreen> {
             id: metadata.id,
             name: metadata.name,
             description: metadata.description,
-            colorIndex: metadata.colorIndex,
+            lightColorValue: metadata.lightColorValue,
+            darkColorValue: metadata.darkColorValue,
             createdAt: metadata.createdAt,
             completions: completions,
             iconName: metadata.iconName,
@@ -183,7 +183,8 @@ class _StatsScreenState extends State<StatsScreen> {
             id: metadata.id,
             name: metadata.name,
             description: metadata.description,
-            colorIndex: metadata.colorIndex,
+            lightColorValue: metadata.lightColorValue,
+            darkColorValue: metadata.darkColorValue,
             createdAt: metadata.createdAt,
             completions: completions,
             iconName: metadata.iconName,
@@ -473,6 +474,14 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
+  /// Get the habit color based on current theme brightness
+  Color _getHabitColor(BuildContext context, Habit habit) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.light 
+        ? Color(habit.lightColorValue) 
+        : Color(habit.darkColorValue);
+  }
+
   /// Builds the habit header card with icon and basic information
   Widget _buildHabitHeader(BuildContext context, Habit habit) {
     return Card(
@@ -489,7 +498,7 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
               child: Icon(
                 habit.iconName.toIconData,
-                color: Theme.of(context).colorScheme.habitColor(habit.colorIndex),
+                color: _getHabitColor(context, habit),
                 size: 36.0,
               ),
             ),

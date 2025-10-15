@@ -284,91 +284,40 @@ extension HabitColors on ColorScheme {
   /// - Index 20: Custom color (user-defined)
   static const List<HabitColorPair> _habitColorPairs = [
     // Row 1: Essential Colors (0-6)
-    HabitColorPair(
-      light: Color(0xFF2196F3), // Blue
-      dark: Color(0xFF64B5F6),
-    ),
-    HabitColorPair(
-      light: Color(0xFF4CAF50), // Green
-      dark: Color(0xFF81C784),
-    ),
-    HabitColorPair(
-      light: Color(0xFFF44336), // Red
-      dark: Color(0xFFE57373),
-    ),
-    HabitColorPair(
-      light: Color(0xFF9C27B0), // Purple
-      dark: Color(0xFFBA68C8),
-    ),
-    HabitColorPair(
-      light: Color(0xFFFF9800), // Orange
-      dark: Color(0xFFFFB74D),
-    ),
-    HabitColorPair(
-      light: Color(0xFF00BCD4), // Cyan
-      dark: Color(0xFF4DD0E1),
-    ),
-    HabitColorPair(
-      light: Color(0xFFE91E63), // Pink
-      dark: Color(0xFFF06292),
-    ),
-
+    HabitColorPair(light: Color(0xFF94a3b8), dark: Color(0xFF334155)), // Slate
+    HabitColorPair(light: Color(0xFF9ca3af), dark: Color(0xFF374151)), // Gray
+    HabitColorPair(light: Color(0xFFa3a3a3), dark: Color(0xFF404040)), // Neutral
+    HabitColorPair(light: Color(0xFFf87171), dark: Color(0xFFb91c1c)), // Red
+    HabitColorPair(light: Color(0xFFfb923c), dark: Color(0xFFc2410c)), // Orange
+    HabitColorPair(light: Color(0xFFfbbf24), dark: Color(0xFFb45309)), // Amber
+    HabitColorPair(light: Color(0xFFfacc15), dark: Color(0xFFa16207)), // Yellow
     // Row 2: Secondary Colors (7-13)
-    HabitColorPair(
-      light: Color(0xFF3F51B5), // Indigo
-      dark: Color(0xFF7986CB),
-    ),
-    HabitColorPair(
-      light: Color(0xFF009688), // Teal
-      dark: Color(0xFF4DB6AC),
-    ),
-    HabitColorPair(
-      light: Color(0xFF8BC34A), // Light Green
-      dark: Color(0xFFAED581),
-    ),
-    HabitColorPair(
-      light: Color(0xFFFFC107), // Amber
-      dark: Color(0xFFFFD54F),
-    ),
-    HabitColorPair(
-      light: Color(0xFF795548), // Brown
-      dark: Color(0xFFA1887F),
-    ),
-    HabitColorPair(
-      light: Color(0xFF607D8B), // Blue Grey
-      dark: Color(0xFF90A4AE),
-    ),
-    HabitColorPair(
-      light: Color(0xFF673AB7), // Deep Purple
-      dark: Color(0xFF9575CD),
-    ),
-
+    HabitColorPair(light: Color(0xFFa3e635), dark: Color(0xFF4d7c0f)), // Lime
+    HabitColorPair(light: Color(0xFF4ade80), dark: Color(0xFF15803d)), // Green
+    HabitColorPair(light: Color(0xFF34d399), dark: Color(0xFF047857)), // Emerald
+    HabitColorPair(light: Color(0xFF2dd4bf), dark: Color(0xFF0f766e)), // Teal
+    HabitColorPair(light: Color(0xFF22d3ee), dark: Color(0xFF0e7490)), // Cyan
+    HabitColorPair(light: Color(0xFF38bdf8), dark: Color(0xFF0369a1)), // Sky
+    HabitColorPair(light: Color(0xFF60a5fa), dark: Color(0xFF1d4ed8)), // Blue
     // Row 3: Tertiary Colors (14-19)
-    HabitColorPair(
-      light: Color(0xFF2E7D32), // Dark Green
-      dark: Color(0xFF66BB6A),
-    ),
-    HabitColorPair(
-      light: Color(0xFFD32F2F), // Dark Red
-      dark: Color(0xFFEF5350),
-    ),
-    HabitColorPair(
-      light: Color(0xFF1976D2), // Dark Blue
-      dark: Color(0xFF42A5F5),
-    ),
-    HabitColorPair(
-      light: Color(0xFF7B1FA2), // Dark Purple
-      dark: Color(0xFFAB47BC),
-    ),
-    HabitColorPair(
-      light: Color(0xFFF57C00), // Deep Orange
-      dark: Color(0xFFFF9800),
-    ),
-    HabitColorPair(
-      light: Color(0xFF00695C), // Dark Teal
-      dark: Color(0xFF26A69A),
-    ),
+    HabitColorPair(light: Color(0xFF818cf8), dark: Color(0xFF4338ca)), // Indigo
+    HabitColorPair(light: Color(0xFFa78bfa), dark: Color(0xFF6d28d9)), // Violet
+    HabitColorPair(light: Color(0xFFc084fc), dark: Color(0xFF7e22ce)), // Purple
+    HabitColorPair(light: Color(0xFFe879f9), dark: Color(0xFFa21caf)), // Fuchsia
+    HabitColorPair(light: Color(0xFFf472b6), dark: Color(0xFFbe185d)), // Pink
+    HabitColorPair(light: Color(0xFFfb7185), dark: Color(0xFFbe123c)), // Rose
   ];
+
+  /// Convert integer color value to Color object
+  ///
+  /// Helper method to convert stored color values back to Color objects.
+  /// This is used when reading color values from the database.
+  ///
+  /// @param value The integer color value (e.g., 0xFF2196F3)
+  /// @return Color object
+  static Color colorFromValue(int value) {
+    return Color(value);
+  }
 
   /// Get habit color by index with theme awareness
   ///

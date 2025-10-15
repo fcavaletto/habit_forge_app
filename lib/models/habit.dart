@@ -207,8 +207,11 @@ class Habit {
   /// Optional detailed description of the habit
   final String description;
 
-  /// Index into the app's color palette for visual customization
-  final int colorIndex;
+  /// Light theme color value for visual customization
+  final int lightColorValue;
+
+  /// Dark theme color value for visual customization
+  final int darkColorValue;
 
   /// Timestamp when this habit was first created
   final DateTime createdAt;
@@ -241,14 +244,14 @@ class Habit {
   /// Whether to allow tracking completions beyond the target goal
   final bool allowExceedGoal;
 
-  /// Maximum number of habit colors available in the theme
-  static const int maxColorIndex = 20;
-
   /// Default icon name for new habits
   static const String defaultIconName = 'check_circle';
 
-  /// Default color index for new habits
-  static const int defaultColorIndex = 0;
+  /// Default light color value for new habits (Slate light)
+  static const int defaultLightColorValue = 4287137464; // 0xFF94a3b8
+
+  /// Default dark color value for new habits (Slate dark)
+  static const int defaultDarkColorValue = 4281546069; // 0xFF334155
 
   /// Default frequency days (every day active)
   static const Map<String, int> defaultFrequencyDays = {
@@ -265,7 +268,8 @@ class Habit {
     required this.id,
     required this.name,
     required this.description,
-    required this.colorIndex,
+    required this.lightColorValue,
+    required this.darkColorValue,
     required this.createdAt,
     required this.completions,
     this.iconName = defaultIconName,
@@ -276,9 +280,7 @@ class Habit {
     this.frequencyDays = defaultFrequencyDays,
     this.targetGoal = defaultTargetGoal,
     this.allowExceedGoal = false,
-  }) : assert(colorIndex >= 0 && colorIndex <= maxColorIndex,
-              'Color index must be between 0 and $maxColorIndex'),
-       assert(targetGoal > 0, 'Target goal must be greater than 0');
+  }) : assert(targetGoal > 0, 'Target goal must be greater than 0');
 
   /// Factory constructor to create a new habit with deterministic ID generation.
   ///
@@ -293,17 +295,18 @@ class Habit {
   ///
   /// @param name Required habit name (will be trimmed and used for ID generation)
   /// @param description Optional detailed description (will be trimmed)
-  /// @param colorIndex Visual color theme index (clamped to valid range 0-8)
+  /// @param lightColorValue Light theme color value
+  /// @param darkColorValue Dark theme color value
   /// @param iconName Material Design icon identifier (used for ID generation)
   /// @param reminderTime Optional daily reminder time (null disables reminders)
   /// @param enableReminders Whether to enable reminder notifications
   /// @param isArchived Whether habit should start in archived state
   /// @return New Habit instance with deterministic ID and current timestamp
-  /// @throws AssertionError if colorIndex is outside valid range
   factory Habit.create({
     required String name,
     String description = '',
-    int colorIndex = defaultColorIndex,
+    int lightColorValue = defaultLightColorValue,
+    int darkColorValue = defaultDarkColorValue,
     String iconName = defaultIconName,
     TimeOfDay? reminderTime,
     bool enableReminders = false,
@@ -320,7 +323,8 @@ class Habit {
       id: id, // Deterministic ID based on name + icon
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
-      colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
+      lightColorValue: lightColorValue,
+      darkColorValue: darkColorValue,
       createdAt: DateTime.now().toUtc(), // Creation timestamp
       completions: <DateTime, CompletionRecord>{}, // Start with empty completion history
       iconName: iconName,
@@ -341,7 +345,8 @@ class Habit {
   ///
   /// @param name Required habit name (will be trimmed)
   /// @param description Optional detailed description (will be trimmed)
-  /// @param colorIndex Visual color theme index (clamped to valid range 0-47)
+  /// @param lightColorValue Light theme color value
+  /// @param darkColorValue Dark theme color value
   /// @param iconName Material Design icon identifier
   /// @param reminderTime Optional daily reminder time (null disables reminders)
   /// @param enableReminders Whether to enable reminder notifications
@@ -349,11 +354,11 @@ class Habit {
   /// @param frequencyDays Map of days when habit is active
   /// @param targetGoal Daily completion target
   /// @return New Habit instance with UUID and current timestamp
-  /// @throws AssertionError if colorIndex is outside valid range
   factory Habit.createWithUuid({
     required String name,
     String description = '',
-    int colorIndex = defaultColorIndex,
+    int lightColorValue = defaultLightColorValue,
+    int darkColorValue = defaultDarkColorValue,
     String iconName = defaultIconName,
     TimeOfDay? reminderTime,
     bool enableReminders = false,
@@ -369,7 +374,8 @@ class Habit {
       id: id, // UUID-based ID
       name: name.trim(), // Clean user input
       description: description.trim(), // Clean user input
-      colorIndex: colorIndex.clamp(0, maxColorIndex), // Ensure valid color index
+      lightColorValue: lightColorValue,
+      darkColorValue: darkColorValue,
       createdAt: DateTime.now().toUtc(), // Creation timestamp
       completions: <DateTime, CompletionRecord>{}, // Start with empty completion history
       iconName: iconName,
@@ -394,7 +400,8 @@ class Habit {
       id: metadata.id,
       name: metadata.name,
       description: metadata.description,
-      colorIndex: metadata.colorIndex,
+      lightColorValue: metadata.lightColorValue,
+      darkColorValue: metadata.darkColorValue,
       createdAt: metadata.createdAt,
       completions: <DateTime, CompletionRecord>{}, // Empty completions
       iconName: metadata.iconName,
@@ -708,7 +715,8 @@ class Habit {
     String? id,
     String? name,
     String? description,
-    int? colorIndex,
+    int? lightColorValue,
+    int? darkColorValue,
     DateTime? createdAt,
     Map<DateTime, CompletionRecord>? completions,
     String? iconName,
@@ -724,7 +732,8 @@ class Habit {
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
-      colorIndex: colorIndex ?? this.colorIndex,
+      lightColorValue: lightColorValue ?? this.lightColorValue,
+      darkColorValue: darkColorValue ?? this.darkColorValue,
       createdAt: createdAt ?? this.createdAt,
       completions: completions ?? this.completions,
       iconName: iconName ?? this.iconName,
@@ -752,7 +761,8 @@ class Habit {
       'id': id,
       'name': name,
       'description': description,
-      'colorIndex': colorIndex,
+      'lightColorValue': lightColorValue,
+      'darkColorValue': darkColorValue,
       'createdAt': createdAt.toIso8601String(), // ISO 8601 format for dates
       'iconName': iconName,
       // Handle nullable TimeOfDay serialization
@@ -799,7 +809,8 @@ class Habit {
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String,
-      colorIndex: json['colorIndex'] as int? ?? defaultColorIndex, // Default to first color
+      lightColorValue: json['lightColorValue'] as int? ?? defaultLightColorValue, // Default to slate light
+      darkColorValue: json['darkColorValue'] as int? ?? defaultDarkColorValue, // Default to slate dark
       createdAt: DateTime.parse(json['createdAt'] as String),
       iconName: json['iconName'] as String? ?? defaultIconName, // Default icon
       reminderTime: reminderTime,

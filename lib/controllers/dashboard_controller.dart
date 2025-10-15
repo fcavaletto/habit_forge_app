@@ -370,28 +370,32 @@ class DashboardController {
       Habit.createWithUuid(
         name: 'Drink Water',
         description: 'Drink 8 glasses of water daily',
-        colorIndex: 0,
+        lightColorValue: 0xFF94a3b8, // Slate light
+        darkColorValue: 0xFF334155,  // Slate dark
         iconName: 'local_drink',
         targetGoal: 8,
       ),
       Habit.createWithUuid(
         name: 'Take a Walk',
         description: 'Go for a 10-minute walk outdoors',
-        colorIndex: 1,
+        lightColorValue: 0xFF9ca3af, // Gray light
+        darkColorValue: 0xFF374151,  // Gray dark
         iconName: 'directions_walk',
         targetGoal: 1,
       ),
       Habit.createWithUuid(
         name: 'Read 10 Minutes',
         description: 'Read a book for at least 10 minutes',
-        colorIndex: 2,
+        lightColorValue: 0xFFa3a3a3, // Neutral light
+        darkColorValue: 0xFF404040,  // Neutral dark
         iconName: 'book',
         targetGoal: 1,
       ),
       Habit.createWithUuid(
         name: 'Eat Vegetables',
         description: 'Eat 4 portions of vegetables daily',
-        colorIndex: 3,
+        lightColorValue: 0xFFf87171, // Red light
+        darkColorValue: 0xFFb91c1c,  // Red dark
         iconName: 'eco',
         targetGoal: 4,
       ),

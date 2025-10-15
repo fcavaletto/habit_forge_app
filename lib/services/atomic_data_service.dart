@@ -553,7 +553,8 @@ class AtomicDataService implements IAtomicDataService {
           id: row['id'] as String,
           name: row['name'] as String,
           description: row['description'] as String? ?? '',
-          colorIndex: row['color_index'] as int? ?? 0,
+          lightColorValue: row['light_color_value'] as int? ?? 4287137464, // Default to slate light
+          darkColorValue: row['dark_color_value'] as int? ?? 4281546069, // Default to slate dark
           createdAt: createdAtDates[i],
           iconName: row['icon_name'] as String? ?? 'check_circle',
           reminderTime: reminderTime,
@@ -1026,7 +1027,8 @@ class AtomicDataService implements IAtomicDataService {
       final habit = Habit.createWithUuid(
         name: habitData.name,
         description: habitData.description,
-        colorIndex: habitData.colorIndex,
+        lightColorValue: habitData.lightColorValue,
+        darkColorValue: habitData.darkColorValue,
         iconName: habitData.iconName,
         reminderTime: habitData.reminderTime,
         enableReminders: habitData.enableReminders,
@@ -1273,7 +1275,8 @@ class AtomicDataService implements IAtomicDataService {
       final updatedHabit = currentHabit.copyWith(
         name: updates['name'] as String?,
         description: updates['description'] as String?,
-        colorIndex: updates['colorIndex'] as int?,
+        lightColorValue: updates['lightColorValue'] as int?,
+        darkColorValue: updates['darkColorValue'] as int?,
         iconName: updates['iconName'] as String?,
         reminderTime: _parseReminderTime(updates['reminderTime']),
         enableReminders: updates['enableReminders'] as bool?,
@@ -1788,7 +1791,8 @@ class AtomicDataService implements IAtomicDataService {
 class HabitData {
   final String name;
   final String description;
-  final int colorIndex;
+  final int lightColorValue;
+  final int darkColorValue;
   final String iconName;
   final TimeOfDay? reminderTime;
   final bool enableReminders;
@@ -1799,7 +1803,8 @@ class HabitData {
   const HabitData({
     required this.name,
     this.description = '',
-    this.colorIndex = 0,
+    this.lightColorValue = 4287137464, // Default to slate light
+    this.darkColorValue = 4281546069, // Default to slate dark
     this.iconName = 'check_circle',
     this.reminderTime,
     this.enableReminders = false,
@@ -1815,15 +1820,6 @@ class HabitData {
         component: 'HabitData',
         operation: 'validation',
       ));
-    }
-    if (colorIndex < 0 || colorIndex > Habit.maxColorIndex) {
-      throw DataValidationException(
-        'Color index must be between 0 and ${Habit.maxColorIndex}',
-        DataAccessContext(
-          component: 'HabitData',
-          operation: 'validation',
-        ),
-      );
     }
     if (targetGoal <= 0) {
       throw DataValidationException(

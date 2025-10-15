@@ -163,7 +163,8 @@ class HabitMetadata {
   final String id;
   final String name;
   final String description;
-  final int colorIndex;
+  final int lightColorValue;
+  final int darkColorValue;
   final DateTime createdAt;
   final String iconName;
   final TimeOfDay? reminderTime;
@@ -178,7 +179,8 @@ class HabitMetadata {
     required this.id,
     required this.name,
     required this.description,
-    required this.colorIndex,
+    required this.lightColorValue,
+    required this.darkColorValue,
     required this.createdAt,
     required this.iconName,
     this.reminderTime,
@@ -190,13 +192,21 @@ class HabitMetadata {
     required this.allowExceedGoal,
   });
   
+  /// Get the appropriate color based on brightness
+  Color getColor(Brightness brightness) {
+    return brightness == Brightness.light 
+        ? Color(lightColorValue) 
+        : Color(darkColorValue);
+  }
+  
   /// Create HabitMetadata from a Habit object
   factory HabitMetadata.fromHabit(Habit habit) {
     return HabitMetadata(
       id: habit.id,
       name: habit.name,
       description: habit.description,
-      colorIndex: habit.colorIndex,
+      lightColorValue: habit.lightColorValue,
+      darkColorValue: habit.darkColorValue,
       createdAt: habit.createdAt,
       iconName: habit.iconName,
       reminderTime: habit.reminderTime,
@@ -215,7 +225,8 @@ class HabitMetadata {
       id: id,
       name: name,
       description: description,
-      colorIndex: colorIndex,
+      lightColorValue: lightColorValue,
+      darkColorValue: darkColorValue,
       createdAt: createdAt,
       iconName: iconName,
       reminderTime: reminderTime,
@@ -234,7 +245,8 @@ class HabitMetadata {
     return id == other.id &&
            name == other.name &&
            description == other.description &&
-           colorIndex == other.colorIndex &&
+           lightColorValue == other.lightColorValue &&
+           darkColorValue == other.darkColorValue &&
            createdAt == other.createdAt &&
            iconName == other.iconName &&
            reminderTime == other.reminderTime &&
@@ -257,7 +269,7 @@ class HabitMetadata {
   
   @override
   String toString() {
-    return 'HabitMetadata(id: $id, name: $name, colorIndex: $colorIndex)';
+    return 'HabitMetadata(id: $id, name: $name, lightColorValue: $lightColorValue, darkColorValue: $darkColorValue)';
   }
 }
 

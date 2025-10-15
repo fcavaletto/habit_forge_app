@@ -38,7 +38,8 @@ void main() {
         id: 'test-habit',
         name: 'Test Habit',
         description: 'Test Description',
-        colorIndex: 1,
+        lightColorValue: 0xFF94a3b8,
+        darkColorValue: 0xFF334155,
         iconName: 'fitness_center',
         createdAt: DateTime.now(),
         enableReminders: false,
@@ -50,7 +51,8 @@ void main() {
 
       expect(metadata.id, 'test-habit');
       expect(metadata.name, 'Test Habit');
-      expect(metadata.colorIndex, 1);
+      expect(metadata.lightColorValue, 0xFF94a3b8);
+      expect(metadata.darkColorValue, 0xFF334155);
       expect(metadata.isArchived, false);
     });
 
@@ -59,7 +61,8 @@ void main() {
         id: 'test-habit',
         name: 'Test Habit',
         description: 'Test Description',
-        colorIndex: 1,
+        lightColorValue: 0xFF94a3b8,
+        darkColorValue: 0xFF334155,
         iconName: 'fitness_center',
         createdAt: DateTime.now(),
         enableReminders: false,
@@ -73,7 +76,8 @@ void main() {
         id: metadata.id,
         name: metadata.name,
         description: metadata.description,
-        colorIndex: metadata.colorIndex,
+        lightColorValue: metadata.lightColorValue,
+        darkColorValue: metadata.darkColorValue,
         createdAt: metadata.createdAt,
         completions: {},
         iconName: metadata.iconName,
@@ -88,7 +92,8 @@ void main() {
 
       expect(habit.id, 'test-habit');
       expect(habit.name, 'Test Habit');
-      expect(habit.colorIndex, 1);
+      expect(habit.lightColorValue, 0xFF94a3b8);
+      expect(habit.darkColorValue, 0xFF334155);
       expect(habit.completions, isEmpty);
     });
 
@@ -128,13 +133,15 @@ void main() {
       const habitData = HabitData(
         name: 'Test Habit',
         description: 'Test Description',
-        colorIndex: 1,
+        lightColorValue: 0xFF94a3b8,
+        darkColorValue: 0xFF334155,
         targetGoal: 2,
       );
 
       expect(habitData.name, 'Test Habit');
       expect(habitData.targetGoal, 2);
-      expect(habitData.colorIndex, 1);
+      expect(habitData.lightColorValue, 0xFF94a3b8);
+      expect(habitData.darkColorValue, 0xFF334155);
     });
 
     test('should validate HabitData correctly', () {
@@ -146,7 +153,7 @@ void main() {
       const invalidData = HabitData(name: '');
       expect(() => invalidData.validate(), throwsA(isA<DataValidationException>()));
 
-      const invalidColorData = HabitData(name: 'Test', colorIndex: -1);
+      const invalidColorData = HabitData(name: 'Test', lightColorValue: -1, darkColorValue: -1);
       expect(() => invalidColorData.validate(), throwsA(isA<DataValidationException>()));
     });
 
@@ -192,13 +199,15 @@ void main() {
       final habit = Habit.createWithUuid(
         name: 'Test Habit',
         description: 'Test Description',
-        colorIndex: 1,
+        lightColorValue: 0xFF94a3b8,
+        darkColorValue: 0xFF334155,
         targetGoal: 2,
       );
 
       expect(habit.name, 'Test Habit');
       expect(habit.targetGoal, 2);
-      expect(habit.colorIndex, 1);
+      expect(habit.lightColorValue, 0xFF94a3b8);
+      expect(habit.darkColorValue, 0xFF334155);
       expect(habit.completions, isEmpty);
     });
 
@@ -223,7 +232,8 @@ void main() {
         id: habit.id,
         name: habit.name,
         description: habit.description,
-        colorIndex: habit.colorIndex,
+        lightColorValue: habit.lightColorValue,
+        darkColorValue: habit.darkColorValue,
         createdAt: habit.createdAt,
         iconName: habit.iconName,
         enableReminders: habit.enableReminders,
@@ -242,7 +252,8 @@ void main() {
         id: metadata.id,
         name: metadata.name,
         description: metadata.description,
-        colorIndex: metadata.colorIndex,
+        lightColorValue: metadata.lightColorValue,
+        darkColorValue: metadata.darkColorValue,
         createdAt: metadata.createdAt,
         completions: {},
         iconName: metadata.iconName,
