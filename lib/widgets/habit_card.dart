@@ -368,7 +368,7 @@ class HabitCard extends StatelessWidget {
         margin: EdgeInsets.all(borderWidth), // Theme-based border width
         decoration: BoxDecoration(
           color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(11.0),
+          borderRadius: BorderRadius.circular(11),
         ),
         child: Semantics(
           label: accessibilityLabel,

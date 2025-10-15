@@ -159,7 +159,7 @@ class IconUtils {
       case 'local_dining':
         return Icons.local_dining;
       
-      // Legacy support for old icon names
+      // Backward compatibility for default icon name
       case 'check_circle':
         return Icons.local_fire_department; // Map old default to fire icon
       

@@ -586,10 +586,10 @@ class Habit {
     return weekdays[weekday % 7];
   }
 
-  /// Calculate current streak of consecutive goal-achieved days (legacy getter)
+  /// Calculate current streak of consecutive goal-achieved days
   ///
-  /// This is the original implementation for backward compatibility.
-  /// New code should use calculateCurrentStreak() with explicit parameters.
+  /// Convenience getter that calls calculateCurrentStreak() with default parameters.
+  /// Provides a simple interface for accessing the current streak value.
   ///
   /// @return Number of consecutive days with goal achieved (ending on virtual current date or yesterday)
   int get currentStreak {
