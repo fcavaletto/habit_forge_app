@@ -270,42 +270,32 @@ class AppTheme {
 extension HabitColors on ColorScheme {
   /// Curated palette of 20 vibrant yet pleasant color pairs for habit visualization
   ///
-  /// Each color pair is carefully selected to ensure:
-  /// ✅ High contrast ratios for accessibility in both themes
-  /// ✅ Visual distinction between neighboring colors
-  /// ✅ Support for color vision deficiencies
-  /// ✅ Consistent appearance across light and dark themes
-  /// ✅ Vibrant but pleasant aesthetic that's easy on the eyes
-  ///
   /// Layout: 3 rows × 7 columns (20 predefined colors + 1 custom color)
-  /// - Row 1 (0-6): Essential colors - Primary hues
-  /// - Row 2 (7-13): Secondary colors - Complementary variations
-  /// - Row 3 (14-19): Tertiary colors - Sophisticated tones
   /// - Index 20: Custom color (user-defined)
   static const List<HabitColorPair> _habitColorPairs = [
     // Row 1: Essential Colors (0-6)
-    HabitColorPair(light: Color(0xFF94a3b8), dark: Color(0xFF334155)), // Slate
-    HabitColorPair(light: Color(0xFF9ca3af), dark: Color(0xFF374151)),
-    HabitColorPair(light: Color(0xFFa3a3a3), dark: Color(0xFF404040)), // Neutral
-    HabitColorPair(light: Color(0xFFf87171), dark: Color(0xFFb91c1c)), // Red
-    HabitColorPair(light: Color(0xFFfb923c), dark: Color(0xFFc2410c)), // Orange
-    HabitColorPair(light: Color(0xFFfbbf24), dark: Color(0xFFb45309)), // Amber
-    HabitColorPair(light: Color(0xFFfacc15), dark: Color(0xFFa16207)), // Yellow
+    HabitColorPair(light: Color(0xffe44344), dark: Color(0xFF334155)),
+    HabitColorPair(light: Color(0xffee6f1a), dark: Color(0xFF374151)),
+    HabitColorPair(light: Color(0xffe99813), dark: Color(0xFF404040)),
+    HabitColorPair(light: Color(0xffdfad11), dark: Color(0xFFb91c1c)),
+    HabitColorPair(light: Color(0xff81c31a), dark: Color(0xFFc2410c)),
+    HabitColorPair(light: Color(0xff24bd5b), dark: Color(0xFFb45309)),
+    HabitColorPair(light: Color(0xff15b27e), dark: Color(0xFFa16207)),
     // Row 2: Secondary Colors (7-13)
-    HabitColorPair(light: Color(0xFFa3e635), dark: Color(0xFF4d7c0f)), // Lime
-    HabitColorPair(light: Color(0xFF4ade80), dark: Color(0xFF15803d)), // Green
-    HabitColorPair(light: Color(0xFF34d399), dark: Color(0xFF047857)), // Emerald
-    HabitColorPair(light: Color(0xFF2dd4bf), dark: Color(0xFF0f766e)), // Teal
-    HabitColorPair(light: Color(0xFF22d3ee), dark: Color(0xFF0e7490)), // Cyan
-    HabitColorPair(light: Color(0xFF38bdf8), dark: Color(0xFF0369a1)), // Sky
-    HabitColorPair(light: Color(0xFF60a5fa), dark: Color(0xFF1d4ed8)), // Blue
+    HabitColorPair(light: Color(0xff1ab1a1), dark: Color(0xFF4d7c0f)),
+    HabitColorPair(light: Color(0xff0fafcd), dark: Color(0xFF15803d)),
+    HabitColorPair(light: Color(0xff159fe0), dark: Color(0xFF047857)),
+    HabitColorPair(light: Color(0xff3a7eec), dark: Color(0xFF0f766e)),
+    HabitColorPair(light: Color(0xff6063e8), dark: Color(0xFF0e7490)),
+    HabitColorPair(light: Color(0xff8759eb), dark: Color(0xFF0369a1)),
+    HabitColorPair(light: Color(0xffa052ef), dark: Color(0xFF1d4ed8)),
     // Row 3: Tertiary Colors (14-19)
-    HabitColorPair(light: Color(0xFF818cf8), dark: Color(0xFF4338ca)), // Indigo
-    HabitColorPair(light: Color(0xFFa78bfa), dark: Color(0xFF6d28d9)), // Violet
-    HabitColorPair(light: Color(0xFFc084fc), dark: Color(0xFF7e22ce)), // Purple
-    HabitColorPair(light: Color(0xFFe879f9), dark: Color(0xFFa21caf)), // Fuchsia
-    HabitColorPair(light: Color(0xFFf472b6), dark: Color(0xFFbe185d)), // Pink
-    HabitColorPair(light: Color(0xFFfb7185), dark: Color(0xFFbe123c)), // Rose
+    HabitColorPair(light: Color(0xffd045e5), dark: Color(0xFF4338ca)),
+    HabitColorPair(light: Color(0xffe14794), dark: Color(0xFF6d28d9)),
+    HabitColorPair(light: Color(0xffeb3f5c), dark: Color(0xFF7e22ce)),
+    HabitColorPair(light: Color(0xff637187), dark: Color(0xFFa21caf)),
+    HabitColorPair(light: Color(0xff737373), dark: Color(0xFFbe185d)),
+    HabitColorPair(light: Color(0xff756e69), dark: Color(0xFFbe123c)), 
   ];
 
   /// Convert integer color value to Color object
