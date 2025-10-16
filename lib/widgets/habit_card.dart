@@ -21,8 +21,8 @@ import 'segmented_progress_ring.dart';
 /// - **Completed**: Goal achieved - shows check icon, calls onDecrement (reset)
 class SmartCompletionButton extends StatelessWidget {
   // Constants for button dimensions and styling
-  static const double _buttonSize = 48.0;
-  static const double _completedIconSize = 28.0;
+  static const double _buttonSize = 50.0;
+  static const double _completedIconSize = 20.0;
   static const double _defaultIconSize = 24.0;
   static const double _emptyAlpha = 0.3;
   static const double _completedAlpha = 1.0;
@@ -408,16 +408,20 @@ class HabitCard extends StatelessWidget {
                       label: 'Habit icon',
                       excludeSemantics: true,
                       child: Container(
-                        width: 48, // 50% bigger (32 * 1.5)
-                        height: 48,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
-                          color: habitColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(9), // Slightly larger radius
+                          color: habitColor.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(
+                              color: Colors.grey,
+                              width: 1
+                          ),
                         ),
                         child: Icon(
                           habit.iconName.toIconData,
-                          color: habitColor,
-                          size: 30, // 50% bigger (20 * 1.5)
+                          color: colorScheme.onSurface.withValues(alpha: 1),
+                          size: 25,
                         ),
                       ),
                     ),
