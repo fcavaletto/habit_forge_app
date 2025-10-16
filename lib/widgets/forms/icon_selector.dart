@@ -174,15 +174,21 @@ class IconSelector extends StatelessWidget {
       // Calculate scrollable width for all columns
       scrollableWidth = (iconSize + spacing) * totalColumns;
     } else {
-      // Landscape: Show all 18 columns with appropriate sizing
-      iconSize = (availableWidth - (spacing * (totalColumns + 1))) / totalColumns;
+      // Landscape: Show more columns but still allow scrolling
+      // Show approximately 8-10 columns visible, rest scrollable
+      const targetVisibleColumns = 8.5; // 8 full + 0.5 partial
+      
+      // Calculate icon size based on visible columns
+      iconSize = (availableWidth - (spacing * (targetVisibleColumns.floor() + 1))) / targetVisibleColumns;
       
       // Apply minimum size constraint
       iconSize = math.max(iconSize, minIconSize);
       
-      // In landscape, show all columns
-      visibleColumns = totalColumns.toDouble();
-      scrollableWidth = availableWidth;
+      // Calculate how many columns are actually visible
+      visibleColumns = (availableWidth - spacing) / (iconSize + spacing);
+      
+      // Calculate scrollable width for all columns
+      scrollableWidth = (iconSize + spacing) * totalColumns;
     }
     
     return _IconLayoutParams(

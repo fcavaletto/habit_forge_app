@@ -63,20 +63,27 @@ class ColorSelector extends StatelessWidget {
       builder: (context, constraints) {
         const spacing = 12.0;
         const minColorSize = 40.0;
+        const maxColorSize = 60.0;
         
         final availableWidth = constraints.maxWidth;
-        final colorSize = ((availableWidth - (colorsPerRow - 1) * spacing) / colorsPerRow)
-            .clamp(minColorSize, 60.0);
+        final isLandscape = availableWidth > 600;
+        
+        // In landscape, show more colors per row
+        final actualColorsPerRow = isLandscape ? (colorsPerRow * 1.5).round() : colorsPerRow;
+        final actualRows = isLandscape ? (totalColors / actualColorsPerRow).ceil() : rows;
+        
+        final colorSize = ((availableWidth - (actualColorsPerRow - 1) * spacing) / actualColorsPerRow)
+            .clamp(minColorSize, maxColorSize);
         
         return SizedBox(
-          height: (colorSize * rows) + (spacing * (rows - 1)),
+          height: (colorSize * actualRows) + (spacing * (actualRows - 1)),
           child: Column(
-            children: List.generate(rows, (rowIndex) {
+            children: List.generate(actualRows, (rowIndex) {
               return Padding(
-                padding: EdgeInsets.only(bottom: rowIndex < rows - 1 ? spacing : 0),
+                padding: EdgeInsets.only(bottom: rowIndex < actualRows - 1 ? spacing : 0),
                 child: Row(
-                  children: List.generate(colorsPerRow, (colIndex) {
-                    final colorIndex = (rowIndex * colorsPerRow) + colIndex;
+                  children: List.generate(actualColorsPerRow, (colIndex) {
+                    final colorIndex = (rowIndex * actualColorsPerRow) + colIndex;
                     
                     if (colorIndex >= totalColors) {
                       return const SizedBox.shrink();
@@ -88,7 +95,7 @@ class ColorSelector extends StatelessWidget {
                       brightness,
                       colorIndex,
                       colorSize,
-                      colIndex < colorsPerRow - 1 ? spacing : 0,
+                      colIndex < actualColorsPerRow - 1 ? spacing : 0,
                     );
                   }),
                 ),

@@ -284,7 +284,7 @@ extension HabitColors on ColorScheme {
   /// - Index 20: Custom color (user-defined)
   static const List<HabitColorPair> _habitColorPairs = [
     // Row 1: Essential Colors (0-6)
-    HabitColorPair(light: Color(0xFF94a3b8), dark: Color(0x90BE6D)),
+    HabitColorPair(light: Color(0xFF94a3b8), dark: Color(0xFF334155)), // Slate
     HabitColorPair(light: Color(0xFF9ca3af), dark: Color(0xFF374151)),
     HabitColorPair(light: Color(0xFFa3a3a3), dark: Color(0xFF404040)), // Neutral
     HabitColorPair(light: Color(0xFFf87171), dark: Color(0xFFb91c1c)), // Red
