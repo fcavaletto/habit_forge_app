@@ -274,28 +274,28 @@ extension HabitColors on ColorScheme {
   /// - Index 20: Custom color (user-defined)
   static const List<HabitColorPair> _habitColorPairs = [
     // Row 1: Essential Colors (0-6)
-    HabitColorPair(light: Color(0xffe44344), dark: Color(0xFF334155)),
-    HabitColorPair(light: Color(0xffee6f1a), dark: Color(0xFF374151)),
-    HabitColorPair(light: Color(0xffe99813), dark: Color(0xFF404040)),
-    HabitColorPair(light: Color(0xffdfad11), dark: Color(0xFFb91c1c)),
-    HabitColorPair(light: Color(0xff81c31a), dark: Color(0xFFc2410c)),
-    HabitColorPair(light: Color(0xff24bd5b), dark: Color(0xFFb45309)),
-    HabitColorPair(light: Color(0xff15b27e), dark: Color(0xFFa16207)),
+    HabitColorPair(light: Color(0xffe44344), dark: Color(0xFFED6D6E)),
+    HabitColorPair(light: Color(0xffee6f1a), dark: Color(0xFFF18F3C)),
+    HabitColorPair(light: Color(0xffe99813), dark: Color(0xFFEFB628)),
+    HabitColorPair(light: Color(0xffdfad11), dark: Color(0xffefc41b)),
+    HabitColorPair(light: Color(0xff81c31a), dark: Color(0xff9ddc36)),
+    HabitColorPair(light: Color(0xff24bd5b), dark: Color(0xff49d47b)),
+    HabitColorPair(light: Color(0xff15b27e), dark: Color(0xff34cb93)),
     // Row 2: Secondary Colors (7-13)
-    HabitColorPair(light: Color(0xff1ab1a1), dark: Color(0xFF4d7c0f)),
-    HabitColorPair(light: Color(0xff0fafcd), dark: Color(0xFF15803d)),
-    HabitColorPair(light: Color(0xff159fe0), dark: Color(0xFF047857)),
-    HabitColorPair(light: Color(0xff3a7eec), dark: Color(0xFF0f766e)),
-    HabitColorPair(light: Color(0xff6063e8), dark: Color(0xFF0e7490)),
-    HabitColorPair(light: Color(0xff8759eb), dark: Color(0xFF0369a1)),
-    HabitColorPair(light: Color(0xffa052ef), dark: Color(0xFF1d4ed8)),
+    HabitColorPair(light: Color(0xff1ab1a1), dark: Color(0xff2eccb9)),
+    HabitColorPair(light: Color(0xff0fafcd), dark: Color(0xff26cae3)),
+    HabitColorPair(light: Color(0xff159fe0), dark: Color(0xFF38B5EF)),
+    HabitColorPair(light: Color(0xff3a7eec), dark: Color(0xff5f9fef)),
+    HabitColorPair(light: Color(0xff6063e8), dark: Color(0xff7e87ee)),
+    HabitColorPair(light: Color(0xff8759eb), dark: Color(0xffa086f0)),
+    HabitColorPair(light: Color(0xffa052ef), dark: Color(0xffb981f3)),
     // Row 3: Tertiary Colors (14-19)
-    HabitColorPair(light: Color(0xffd045e5), dark: Color(0xFF4338ca)),
-    HabitColorPair(light: Color(0xffe14794), dark: Color(0xFF6d28d9)),
-    HabitColorPair(light: Color(0xffeb3f5c), dark: Color(0xFF7e22ce)),
-    HabitColorPair(light: Color(0xff637187), dark: Color(0xFFa21caf)),
-    HabitColorPair(light: Color(0xff737373), dark: Color(0xFFbe185d)),
-    HabitColorPair(light: Color(0xff756e69), dark: Color(0xFFbe123c)), 
+    HabitColorPair(light: Color(0xffd045e5), dark: Color(0xffde77ee)),
+    HabitColorPair(light: Color(0xffe14794), dark: Color(0xffea70b0)),
+    HabitColorPair(light: Color(0xffeb3f5c), dark: Color(0xfff16d84)),
+    HabitColorPair(light: Color(0xff637187), dark: Color(0xff8f9db1)),
+    HabitColorPair(light: Color(0xff756e69), dark: Color(0xffa19c99)),
+    HabitColorPair(light: Color(0xff000000), dark: Color(0xffffffff)),
   ];
 
   /// Convert integer color value to Color object
