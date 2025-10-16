@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../widgets/forms/frequency_selector.dart';
+import '../providers/app_state_provider.dart';
 
 /// Controller class that handles all business logic for adding/editing habits
 ///
@@ -39,6 +40,7 @@ import '../widgets/forms/frequency_selector.dart';
 class AddHabitController {
   final Function(Habit) onHabitAdded;
   final List<Habit> existingHabits;
+  final AppState _appState;
 
   // Form state
   final TextEditingController nameController = TextEditingController();
@@ -60,7 +62,8 @@ class AddHabitController {
   AddHabitController({
     required this.onHabitAdded,
     required this.existingHabits,
-  }) {
+    required AppState appState,
+  }) : _appState = appState {
     // Clear error message when user starts typing
     nameController.addListener(_clearError);
     descriptionController.addListener(_clearError);
@@ -99,122 +102,82 @@ class AddHabitController {
     // Description is now optional - no validation needed
 
     // Validate target goal
-    final targetGoalText = targetGoalController.text.trim();
-    if (targetGoalText.isEmpty) {
+    final goalText = targetGoalController.text.trim();
+    if (goalText.isEmpty) {
       errorMessage = 'Target goal is required';
       return false;
     }
 
-    final parsedGoal = int.tryParse(targetGoalText);
-    if (parsedGoal == null || parsedGoal <= 0) {
-      errorMessage = 'Target goal must be a positive number';
+    final goalValue = int.tryParse(goalText);
+    if (goalValue == null) {
+      errorMessage = 'Target goal must be a valid number';
       return false;
     }
 
+    if (goalValue <= 0) {
+      errorMessage = 'Target goal must be greater than 0';
+      return false;
+    }
+
+    if (goalValue > 1000) {
+      errorMessage = 'Target goal cannot exceed 1000';
+      return false;
+    }
+
+    targetGoal = goalValue;
     return true;
   }
 
-  /// Check if the form is valid and ready for habit creation
-  bool get canCreateHabit {
-    return nameController.text.trim().isNotEmpty &&
-           targetGoalController.text.trim().isNotEmpty &&
-           !isLoading;
+  /// Check for duplicate habits
+  bool _isDuplicateHabit() {
+    final normalizedName = nameController.text.toLowerCase().trim();
+    return existingHabits.any((habit) =>
+        habit.name.toLowerCase().trim() == normalizedName &&
+        habit.iconName == selectedIconName);
   }
 
-  /// Get the current frequency days map
-  Map<String, int> get selectedFrequencyDays {
-    return frequencyData.days;
-  }
+  /// Save the habit
+  Future<void> saveHabit() async {
+    if (!validateForm()) return;
 
-  /// Create a new habit with the current form data
-  void createHabit() {
-    if (!validateForm()) {
+    if (_isDuplicateHabit()) {
+      errorMessage = 'A habit with this name and icon already exists';
       return;
     }
 
-    isLoading = true;
-    errorMessage = null;
-
     try {
-      // Check for duplicate habits
-      final habitName = nameController.text.trim();
-      final duplicateExists = existingHabits.any(
-        (habit) => habit.name.toLowerCase() == habitName.toLowerCase() &&
-                   habit.iconName == selectedIconName,
-      );
+      isLoading = true;
 
-      if (duplicateExists) {
-        errorMessage = 'A habit with this name and icon already exists';
-        isLoading = false;
-        return;
-      }
-
-      // Create the habit
       final habit = Habit.createWithUuid(
-        name: habitName,
+        name: nameController.text.trim(),
         description: descriptionController.text.trim(),
         lightColorValue: selectedLightColor,
         darkColorValue: selectedDarkColor,
         iconName: selectedIconName,
         reminderTime: enableReminders ? reminderTime : null,
         enableReminders: enableReminders,
-        frequencyDays: selectedFrequencyDays,
+        frequencyDays: frequencyData.days,
         targetGoal: targetGoal,
         allowExceedGoal: allowExceedGoal,
       );
 
-      // Add the habit
+      debugPrint('🎯 Habit created successfully: ${habit.name}');
+
+      // Actually save the habit to storage
+      final saveResult = await _appState.habitProvider.addHabit(habit);
+      if (!saveResult.success) {
+        errorMessage = saveResult.errorMessage;
+        return;
+      }
+
       onHabitAdded(habit);
-      
-      // Reset form
-      _resetForm();
-      
+
     } catch (e) {
       errorMessage = 'Failed to create habit: $e';
+      debugPrint('❌ Error in AddHabitController.saveHabit: $e');
     } finally {
       isLoading = false;
     }
-  }
-
-  /// Reset the form to its initial state
-  void _resetForm() {
-    nameController.clear();
-    descriptionController.clear();
-    targetGoalController.text = '1';
-    selectedIconName = 'local_fire_department';
-    selectedLightColor = 0xFF94a3b8;
-    selectedDarkColor = 0xFF334155;
-    frequencyData = FrequencyData.forType(Frequency.everyDay);
-    reminderTime = null;
-    enableReminders = false;
-    targetGoal = 1;
-    allowExceedGoal = false;
-    errorMessage = null;
-  }
-
-  /// Handle name field changes
-  void onNameChanged(String value) {
-    _clearError();
-  }
-
-  /// Handle description field changes
-  void onDescriptionChanged(String value) {
-    _clearError();
-  }
-
-  /// Handle target goal field changes
-  void onTargetGoalChanged(String value) {
-    final parsedGoal = int.tryParse(value.trim());
-    if (parsedGoal != null && parsedGoal > 0) {
-      targetGoal = parsedGoal;
-    }
-    _clearError();
-  }
-
-  /// Handle allow exceed goal toggle
-  void onAllowExceedGoalChanged(bool value) {
-    allowExceedGoal = value;
-    _clearError();
   }
 
   /// Dispose of all resources
