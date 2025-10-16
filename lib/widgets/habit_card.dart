@@ -411,16 +411,18 @@ class HabitCard extends StatelessWidget {
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: habitColor.withValues(alpha: 0.3),
+                          color: habitColor.withValues(alpha: 0),
                           borderRadius: BorderRadius.circular(9),
                           border: Border.all(
-                              color: Colors.grey,
+                              color: habitColor,
                               width: 1
                           ),
                         ),
                         child: Icon(
                           habit.iconName.toIconData,
-                          color: colorScheme.onSurface.withValues(alpha: 1),
+                          //color: Colors.white,
+                          //color: colorScheme.onSurface.withValues(alpha: 1),
+                          color: habitColor,
                           size: 25,
                         ),
                       ),

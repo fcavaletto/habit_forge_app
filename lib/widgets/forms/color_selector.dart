@@ -302,13 +302,13 @@ class ColorSelector extends StatelessWidget {
 
   /// Get theme-consistent border color
   Color _getThemeBorderColor(Brightness brightness) {
-    return brightness == Brightness.light ? Colors.black : Colors.transparent;
+    return brightness == Brightness.light ? Colors.black : Colors.white;
   }
 
   /// Build the selection indicator (circle with contrast border)
   Widget _buildSelectionIndicator(Brightness brightness) {
-    final circleColor = Colors.black;
-    final borderColor = Colors.white;
+    final circleColor = _getThemeBorderColor(brightness);
+    final borderColor = brightness == Brightness.light ? Colors.white : Colors.black;
 
     
     return Center(
