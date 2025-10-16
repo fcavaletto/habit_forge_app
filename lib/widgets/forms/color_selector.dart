@@ -75,7 +75,7 @@ class ColorSelector extends StatelessWidget {
         final colorSize = ((availableWidth - (actualColorsPerRow - 1) * spacing) / actualColorsPerRow)
             .clamp(minColorSize, maxColorSize);
         
-        return SizedBox(
+    return SizedBox(
           height: (colorSize * actualRows) + (spacing * (actualRows - 1)),
           child: Column(
             children: List.generate(actualRows, (rowIndex) {
@@ -192,21 +192,13 @@ class ColorSelector extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected 
-                ? (brightness == Brightness.light ? Colors.black : Colors.white) 
+                ? _getThemeBorderColor(brightness)
                 : Colors.transparent, 
-            width: 3
+            width: 2
           ),
-          boxShadow: isSelected ? [BoxShadow(color: customColor.withValues(alpha: 0.3), spreadRadius: 2, blurRadius: 4)] : null,
         ),
         child: isSelected 
-            ? Container(
-                width: 16,
-                height: 16,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-              )
+            ? _buildSelectionIndicator(brightness)
             : const Icon(Icons.palette, color: Colors.white, size: 20),
       );
     } else {
@@ -220,21 +212,13 @@ class ColorSelector extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected 
-                ? (brightness == Brightness.light ? Colors.black : Colors.white) 
+                ? _getThemeBorderColor(brightness)
                 : Colors.transparent, 
-            width: 3
+            width: 1
           ),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.grey.withValues(alpha: 0.3), spreadRadius: 2, blurRadius: 4)] : null,
         ),
         child: isSelected 
-            ? Container(
-                width: 16,
-                height: 16,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-              )
+            ? _buildSelectionIndicator(brightness)
             : const Icon(Icons.add, color: Colors.white, size: 20),
       );
     }
@@ -258,20 +242,12 @@ class ColorSelector extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected 
-              ? (brightness == Brightness.light ? Colors.black : Colors.white) 
+              ? _getThemeBorderColor(brightness)
               : Colors.transparent, 
-          width: 3
+          width: 2
         ),
-        boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.3), spreadRadius: 2, blurRadius: 4)] : null,
       ),
-      child: isSelected ? Container(
-        width: 16,
-        height: 16,
-        decoration: BoxDecoration(
-          color: brightness == Brightness.light ? Colors.black : Colors.white,
-          shape: BoxShape.circle,
-        ),
-      ) : null,
+      child: isSelected ? _buildSelectionIndicator(brightness) : null,
     );
   }
 
@@ -322,5 +298,32 @@ class ColorSelector extends StatelessWidget {
       'Custom Color',
     ];
     return colorNames[index % colorNames.length];
+  }
+
+  /// Get theme-consistent border color
+  Color _getThemeBorderColor(Brightness brightness) {
+    return brightness == Brightness.light ? Colors.black : Colors.transparent;
+  }
+
+  /// Build the selection indicator (circle with contrast border)
+  Widget _buildSelectionIndicator(Brightness brightness) {
+    final circleColor = Colors.black;
+    final borderColor = Colors.white;
+
+    
+    return Center(
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: circleColor,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: borderColor,
+            width: 1,
+          ),
+        ),
+      ),
+    );
   }
 }
