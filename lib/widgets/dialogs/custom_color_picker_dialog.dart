@@ -47,14 +47,16 @@ class _CustomColorPickerDialogState extends State<CustomColorPickerDialog> {
   Color _generateThemeVariant(Color color, Brightness targetBrightness) {
     final hsl = HSLColor.fromColor(color);
     if (targetBrightness == Brightness.dark) {
-      return hsl
-          .withSaturation((hsl.saturation - 0.15).clamp(0.0, 1.0))
-          .withLightness((hsl.lightness - 0.1).clamp(0.0, 1.0))
-          .toColor();
-    } else {
+      // For dark theme: make colors LIGHTER for better visibility
       return hsl
           .withSaturation((hsl.saturation + 0.15).clamp(0.0, 1.0))
           .withLightness((hsl.lightness + 0.1).clamp(0.0, 1.0))
+          .toColor();
+    } else {
+      // For light theme: make colors DARKER for better contrast
+      return hsl
+          .withSaturation((hsl.saturation - 0.15).clamp(0.0, 1.0))
+          .withLightness((hsl.lightness - 0.1).clamp(0.0, 1.0))
           .toColor();
     }
   }

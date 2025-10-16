@@ -190,11 +190,23 @@ class ColorSelector extends StatelessWidget {
         decoration: BoxDecoration(
           color: customColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? Colors.white : Colors.transparent, width: 3),
+          border: Border.all(
+            color: isSelected 
+                ? (brightness == Brightness.light ? Colors.black : Colors.white) 
+                : Colors.transparent, 
+            width: 3
+          ),
           boxShadow: isSelected ? [BoxShadow(color: customColor.withValues(alpha: 0.3), spreadRadius: 2, blurRadius: 4)] : null,
         ),
         child: isSelected 
-            ? const Icon(Icons.check, color: Colors.white, size: 24) 
+            ? Container(
+                width: 16,
+                height: 16,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              )
             : const Icon(Icons.palette, color: Colors.white, size: 20),
       );
     } else {
@@ -206,11 +218,23 @@ class ColorSelector extends StatelessWidget {
             begin: Alignment.topLeft, end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? Colors.white : Colors.transparent, width: 3),
+          border: Border.all(
+            color: isSelected 
+                ? (brightness == Brightness.light ? Colors.black : Colors.white) 
+                : Colors.transparent, 
+            width: 3
+          ),
           boxShadow: isSelected ? [BoxShadow(color: Colors.grey.withValues(alpha: 0.3), spreadRadius: 2, blurRadius: 4)] : null,
         ),
         child: isSelected 
-            ? const Icon(Icons.check, color: Colors.white, size: 24) 
+            ? Container(
+                width: 16,
+                height: 16,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              )
             : const Icon(Icons.add, color: Colors.white, size: 20),
       );
     }
@@ -232,10 +256,22 @@ class ColorSelector extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isSelected ? Colors.white : Colors.transparent, width: 3),
+        border: Border.all(
+          color: isSelected 
+              ? (brightness == Brightness.light ? Colors.black : Colors.white) 
+              : Colors.transparent, 
+          width: 3
+        ),
         boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.3), spreadRadius: 2, blurRadius: 4)] : null,
       ),
-      child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 24) : null,
+      child: isSelected ? Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          color: brightness == Brightness.light ? Colors.black : Colors.white,
+          shape: BoxShape.circle,
+        ),
+      ) : null,
     );
   }
 

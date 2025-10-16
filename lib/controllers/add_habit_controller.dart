@@ -48,8 +48,8 @@ class AddHabitController {
   final TextEditingController targetGoalController = TextEditingController(text: '1');
 
   String selectedIconName = 'local_fire_department';
-  int selectedLightColor = 0xFF94a3b8; // Default to Slate light
-  int selectedDarkColor = 0xFF334155; // Default to Slate dark
+  int selectedLightColor = 0xFFe44344; // Default to Red light (first color)
+  int selectedDarkColor = 0xFFED6D6E; // Default to Red dark (first color)
   FrequencyData frequencyData = FrequencyData.forType(Frequency.everyDay);
   TimeOfDay? reminderTime;
   bool enableReminders = false;
