@@ -1821,6 +1821,21 @@ class HabitData {
         operation: 'validation',
       ));
     }
+    
+    if (name.trim().length > 40) {
+      throw DataValidationException('Habit name must be 40 characters or less', DataAccessContext(
+        component: 'HabitData',
+        operation: 'validation',
+      ));
+    }
+    
+    if (description.trim().length > 200) {
+      throw DataValidationException('Description must be 200 characters or less', DataAccessContext(
+        component: 'HabitData',
+        operation: 'validation',
+      ));
+    }
+    
     if (targetGoal <= 0) {
       throw DataValidationException(
         'Target goal must be greater than 0',

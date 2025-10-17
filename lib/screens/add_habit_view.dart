@@ -94,9 +94,11 @@ class _AddHabitViewState extends State<AddHabitView> {
             _buildSectionTitle('Habit Name'),
             TextFormField(
               controller: _controller.nameController,
+              maxLength: 40,
               decoration: const InputDecoration(
                 hintText: 'Enter habit name',
                 border: OutlineInputBorder(),
+                counterText: '', // Hide character counter
               ),
             ),
             const SizedBox(height: 24),
@@ -106,9 +108,11 @@ class _AddHabitViewState extends State<AddHabitView> {
             TextFormField(
               controller: _controller.descriptionController,
               maxLines: 3,
+              maxLength: 200,
               decoration: const InputDecoration(
                 hintText: 'Describe your habit (optional)',
                 border: OutlineInputBorder(),
+                counterText: '', // Hide character counter
               ),
             ),
             const SizedBox(height: 24),

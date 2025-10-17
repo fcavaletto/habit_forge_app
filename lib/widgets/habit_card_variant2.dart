@@ -3,6 +3,7 @@ import '../models/habit.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
 import '../services/virtual_date_service.dart';
+import '../services/haptic_feedback_service.dart';
 import 'segmented_progress_ring.dart';
 
 /// Smart completion button that adapts its appearance and behavior
@@ -214,17 +215,30 @@ class SmartCompletionButtonVariant2 extends StatelessWidget {
   void _handleButtonPress(int todayCount, bool isCompleted) {
     if (habit.allowExceedGoal) {
       // For habits that allow exceeding goal, always open custom completion modal
+      HapticFeedbackService.heavy(); // Intensified: heavy instead of selection
       onCustomCompletion?.call();
     } else {
       // Standard behavior for habits that don't allow exceeding goal
       if (todayCount == 0) {
         // Add first completion
+        HapticFeedbackService.heavy(); // Intensified: heavy instead of medium
         onIncrement?.call();
       } else if (isCompleted) {
         // Reset all completions
+        HapticFeedbackService.medium(); // Intensified: medium instead of light
         onDecrement?.call();
       } else {
-        // Add another completion
+        // Add another completion - check if this will reach the goal
+        final willReachGoal = (todayCount + 1) >= habit.targetGoal;
+        if (willReachGoal) {
+          // Intensified: double heavy vibration for goal reached
+          HapticFeedbackService.heavy();
+          Future.delayed(const Duration(milliseconds: 100), () {
+            HapticFeedbackService.heavy();
+          });
+        } else {
+          HapticFeedbackService.heavy(); // Intensified: heavy instead of medium
+        }
         onIncrement?.call();
       }
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../widgets/forms/frequency_selector.dart';
 import '../providers/app_state_provider.dart';
+import '../services/haptic_feedback_service.dart';
 
 /// Controller class that handles all business logic for adding/editing habits
 ///
@@ -24,7 +25,7 @@ import '../providers/app_state_provider.dart';
 /// - Target goal settings
 ///
 /// ## Validation Rules:
-/// - Name: Required, 1-50 characters
+/// - Name: Required, 1-40 characters
 /// - Description: Optional, max 200 characters
 /// - Target Goal: Must be positive integer
 /// - Icon/Color: Must be valid selections
@@ -96,31 +97,48 @@ class AddHabitController {
   bool validateForm() {
     if (nameController.text.trim().isEmpty) {
       errorMessage = 'Habit name is required';
+      HapticFeedbackService.error();
       return false;
     }
 
-    // Description is now optional - no validation needed
+    // Validate habit name length
+    if (nameController.text.trim().length > 40) {
+      errorMessage = 'Habit name must be 40 characters or less';
+      HapticFeedbackService.error();
+      return false;
+    }
+
+    // Validate description length
+    if (descriptionController.text.trim().length > 200) {
+      errorMessage = 'Description must be 200 characters or less';
+      HapticFeedbackService.error();
+      return false;
+    }
 
     // Validate target goal
     final goalText = targetGoalController.text.trim();
     if (goalText.isEmpty) {
       errorMessage = 'Target goal is required';
+      HapticFeedbackService.error();
       return false;
     }
 
     final goalValue = int.tryParse(goalText);
     if (goalValue == null) {
       errorMessage = 'Target goal must be a valid number';
+      HapticFeedbackService.error();
       return false;
     }
 
     if (goalValue <= 0) {
       errorMessage = 'Target goal must be greater than 0';
+      HapticFeedbackService.error();
       return false;
     }
 
     if (goalValue > 1000) {
       errorMessage = 'Target goal cannot exceed 1000';
+      HapticFeedbackService.error();
       return false;
     }
 
@@ -142,6 +160,7 @@ class AddHabitController {
 
     if (_isDuplicateHabit()) {
       errorMessage = 'A habit with this name and icon already exists';
+      HapticFeedbackService.error();
       return;
     }
 
@@ -149,8 +168,12 @@ class AddHabitController {
       isLoading = true;
 
       final habit = Habit.createWithUuid(
-        name: nameController.text.trim(),
-        description: descriptionController.text.trim(),
+        name: nameController.text.trim().length > 40 
+            ? nameController.text.trim().substring(0, 40)
+            : nameController.text.trim(),
+        description: descriptionController.text.trim().length > 200
+            ? descriptionController.text.trim().substring(0, 200)
+            : descriptionController.text.trim(),
         lightColorValue: selectedLightColor,
         darkColorValue: selectedDarkColor,
         iconName: selectedIconName,
@@ -171,9 +194,11 @@ class AddHabitController {
       }
 
       onHabitAdded(habit);
+      HapticFeedbackService.light();
 
     } catch (e) {
       errorMessage = 'Failed to create habit: $e';
+      HapticFeedbackService.error();
       debugPrint('❌ Error in AddHabitController.saveHabit: $e');
     } finally {
       isLoading = false;
