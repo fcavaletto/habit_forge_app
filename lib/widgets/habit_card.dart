@@ -88,8 +88,8 @@ class SmartCompletionButton extends StatelessWidget {
           width: _buttonSize,
           height: _buttonSize,
           decoration: BoxDecoration(
-            shape: isCompleted ? BoxShape.rectangle : BoxShape.circle,
-            borderRadius: isCompleted ? BorderRadius.circular(8.0) : null,
+            shape: (isCompleted || habit.targetGoal == 1) ? BoxShape.rectangle : BoxShape.circle,
+            borderRadius: (isCompleted || habit.targetGoal == 1) ? BorderRadius.circular(8.0) : null,
             color: _getButtonColor(habitColor, buttonState),
           ),
           child: Stack(
@@ -131,7 +131,15 @@ class SmartCompletionButton extends StatelessWidget {
   /// 
   /// Completed buttons are fully opaque, while empty/in-progress buttons
   /// are semi-transparent to indicate they're interactive.
+  /// For habits with goal = 1, use lighter hue when not completed, full color when completed.
   Color _getButtonColor(Color habitColor, ButtonState state) {
+    // Special case: when goal is 1, use lighter hue if not completed, full color if completed
+    if (habit.targetGoal == 1) {
+      final alpha = (state == ButtonState.completed) ? _completedAlpha : _emptyAlpha;
+      return habitColor.withValues(alpha: alpha);
+    }
+    
+    // Original logic for goals > 1
     final alpha = (state == ButtonState.empty || state == ButtonState.inProgress) 
         ? _emptyAlpha 
         : _completedAlpha;
