@@ -538,12 +538,12 @@ class _DashboardViewVariant1State extends State<DashboardViewVariant1>
       
       // Create 20 habits, one for each color in the palette
       for (int i = 0; i < 20; i++) {
-        final colorPair = colorScheme.habitColorPairs[i];
+        final colorPair = colorScheme.habitColorPairs[19-i];
         final randomIcon = IconSelector.availableIcons[random.nextInt(IconSelector.availableIcons.length)];
         
         final habit = Habit.createWithUuid(
-          name: 'Title: color #${i + 1}',
-          description: 'Test habit with color ${i + 1}',
+          name: 'Title: color #${19 - i + 1}',
+          description: 'Test habit with color ${19 - i + 1}',
           lightColorValue: colorPair.light.toARGB32(),
           darkColorValue: colorPair.dark.toARGB32(),
           iconName: randomIcon,
@@ -552,7 +552,7 @@ class _DashboardViewVariant1State extends State<DashboardViewVariant1>
           frequencyDays: const {
             'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1
           }, // Every day
-          targetGoal: 1,
+          targetGoal: 20-i,
           allowExceedGoal: false,
         );
         

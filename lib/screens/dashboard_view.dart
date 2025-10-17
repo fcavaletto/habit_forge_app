@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
-import 'dart:math' as math;
 import '../models/habit.dart';
 import '../providers/app_state_provider.dart';
 import '../providers/habit_provider.dart';
@@ -16,8 +15,6 @@ import '../screens/add_habit_screen.dart';
 import 'stats_screen.dart';
 import '../utils/data_freshness.dart';
 import '../widgets/custom_completion_modal.dart';
-import '../theme.dart';
-import '../widgets/forms/icon_selector.dart';
 
 /// Dashboard View - Pure UI component for the main habit tracking interface
 ///
@@ -235,17 +232,6 @@ class _DashboardViewState extends State<DashboardView>
         ),
       ),
       actions: [
-        // Test habits button (for development)
-        Semantics(
-          label: 'Create test habits',
-          hint: 'Creates 20 test habits with different colors',
-          button: true,
-          child: IconButton(
-            icon: const Icon(Icons.palette),
-            onPressed: _createTestHabits,
-            tooltip: 'Create Test Habits',
-          ),
-        ),
         // Add habit button
         Semantics(
           label: 'Add new habit',
@@ -527,65 +513,6 @@ class _DashboardViewState extends State<DashboardView>
         ),
       ),
     );
-  }
-
-  /// Creates 20 test habits with different colors for UI testing
-  Future<void> _createTestHabits() async {
-    try {
-      final appState = context.read<AppState>();
-      final colorScheme = Theme.of(context).colorScheme;
-      final random = math.Random();
-      
-      // Create 20 habits, one for each color in the palette
-      for (int i = 0; i < 20; i++) {
-        final colorPair = colorScheme.habitColorPairs[i];
-        final randomIcon = IconSelector.availableIcons[random.nextInt(IconSelector.availableIcons.length)];
-        
-        final habit = Habit.createWithUuid(
-          name: 'Title: color #${i + 1}',
-          description: 'Test habit with color ${i + 1}',
-          lightColorValue: colorPair.light.toARGB32(),
-          darkColorValue: colorPair.dark.toARGB32(),
-          iconName: randomIcon,
-          reminderTime: null,
-          enableReminders: false,
-          frequencyDays: const {
-            'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1
-          }, // Every day
-          targetGoal: 1,
-          allowExceedGoal: false,
-        );
-        
-        // Add the habit to the app state
-        await appState.habitProvider.addHabit(habit);
-      }
-      
-      // Refresh the dashboard to show the new habits
-      _controller.loadHabitsForDashboard();
-      
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Created 20 test habits successfully!'),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      
-    } catch (e) {
-      debugPrint('❌ Failed to create test habits: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create test habits: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
   }
 
   void _onHabitTap(Habit habit) {
