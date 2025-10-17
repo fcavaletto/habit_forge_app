@@ -22,7 +22,7 @@ import 'segmented_progress_ring.dart';
 class SmartCompletionButtonVariant1 extends StatelessWidget {
   // Constants for button dimensions and styling
   static const double _buttonSize = 50.0;
-  static const double _completedIconSize = 20.0;
+  static const double _completedIconSize = 24.0;
   static const double _defaultIconSize = 24.0;
   static const double _emptyAlpha = 0.3;
   static const double _completedAlpha = 1.0;
@@ -87,7 +87,8 @@ class SmartCompletionButtonVariant1 extends StatelessWidget {
           width: _buttonSize,
           height: _buttonSize,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
+            shape: isCompleted ? BoxShape.rectangle : BoxShape.circle,
+            borderRadius: isCompleted ? BorderRadius.circular(8.0) : null,
             color: _getButtonColor(habitColor, buttonState),
           ),
           child: Stack(
@@ -138,9 +139,17 @@ class SmartCompletionButtonVariant1 extends StatelessWidget {
 
   /// Returns the appropriate icon for the current button state.
   /// 
-  /// - Empty/In Progress: Add icon (Icons.add)
-  /// - Completed: Check icon (Icons.check)
+  /// - For habits with goal = 1: Always shows check icon (tick)
+  /// - For habits with goal > 1:
+  ///   - Empty/In Progress: Add icon (Icons.add)
+  ///   - Completed: Check icon (Icons.check)
   IconData _getButtonIcon(ButtonState state) {
+    // Special case: when goal is 1, always show check icon (tick)
+    if (habit.targetGoal == 1) {
+      return Icons.check;
+    }
+    
+    // Original logic for goals > 1
     switch (state) {
       case ButtonState.empty:
       case ButtonState.inProgress:
