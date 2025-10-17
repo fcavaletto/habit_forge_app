@@ -104,7 +104,7 @@ class SmartCompletionButtonVariant3 extends StatelessWidget {
               // Main action icon (add or check)
               Icon(
                 _getButtonIcon(buttonState),
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
                 size: _getIconSize(buttonState),
               ),
             ],

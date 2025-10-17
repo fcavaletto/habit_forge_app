@@ -3,6 +3,7 @@ import '../models/habit.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
 import '../services/virtual_date_service.dart';
+import '../services/haptic_feedback_service.dart';
 import 'segmented_progress_ring.dart';
 
 /// Smart completion button that adapts its appearance and behavior
@@ -213,18 +214,26 @@ class SmartCompletionButton extends StatelessWidget {
   ///   - In progress state: Calls [onIncrement] to add another completion
   void _handleButtonPress(int todayCount, bool isCompleted) {
     if (habit.allowExceedGoal) {
-      // For habits that allow exceeding goal, always open custom completion modal
+      HapticFeedbackService.heavy(); // Intensified
       onCustomCompletion?.call();
     } else {
-      // Standard behavior for habits that don't allow exceeding goal
       if (todayCount == 0) {
-        // Add first completion
+        HapticFeedbackService.heavy(); // Intensified
         onIncrement?.call();
       } else if (isCompleted) {
-        // Reset all completions
+        HapticFeedbackService.medium(); // Intensified
         onDecrement?.call();
       } else {
-        // Add another completion
+        final willReachGoal = (todayCount + 1) >= habit.targetGoal;
+        if (willReachGoal) {
+          // Double heavy vibration for goal completion
+          HapticFeedbackService.heavy();
+          Future.delayed(const Duration(milliseconds: 100), () {
+            HapticFeedbackService.heavy();
+          });
+        } else {
+          HapticFeedbackService.heavy(); // Intensified
+        }
         onIncrement?.call();
       }
     }
@@ -423,14 +432,12 @@ class HabitCard extends StatelessWidget {
                           color: habitColor.withValues(alpha: 0),
                           borderRadius: BorderRadius.circular(9),
                           border: Border.all(
-                              color: habitColor,
-                              width: 1
+                            color: habitColor,
+                            width: 1
                           ),
                         ),
                         child: Icon(
                           habit.iconName.toIconData,
-                          //color: Colors.white,
-                          //color: colorScheme.onSurface.withValues(alpha: 1),
                           color: habitColor,
                           size: 25,
                         ),
@@ -441,95 +448,94 @@ class HabitCard extends StatelessWidget {
 
                     // Action buttons row
                     Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Stats button
-                      Semantics(
-                        label: 'View ${habit.name} statistics',
-                        hint: 'Opens detailed statistics for this habit',
-                        button: true,
-                        child: InkWell(
-                          onTap: onStats ?? () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => StatsScreen(habit: habit),
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(24), // 50% bigger radius
-                          child: Container(
-                            width: 42, // 50% bigger (28 * 1.5)
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerHighest,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.bar_chart,
-                              color: colorScheme.onSurface.withValues(alpha: 0.7),
-                              size: 24, // 50% bigger (16 * 1.5)
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      // Smart completion button - single button that adapts to state
-                      SmartCompletionButton(
-                        habit: habit,
-                        onIncrement: onIncrement,
-                        onDecrement: onDecrement,
-                        onCustomCompletion: onCustomCompletion,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-
-              // Habit details
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Habit text content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Habit name
-                        Text(
-                          habit.name,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        // Only show description and spacing if description is not empty
-                        if (habit.description.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          
-                          // Habit description
-                          Text(
-                            habit.description,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 11,
+                        // Stats button
+                        Semantics(
+                          label: 'View ${habit.name} statistics',
+                          hint: 'Opens detailed statistics for this habit',
+                          button: true,
+                          child: InkWell(
+                            onTap: onStats ?? () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => StatsScreen(habit: habit),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(24),
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.bar_chart,
+                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                size: 24,
+                              ),
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 6),
+                        // Smart completion button
+                        SmartCompletionButton(
+                          habit: habit,
+                          onIncrement: onIncrement,
+                          onDecrement: onDecrement,
+                          onCustomCompletion: onCustomCompletion,
+                        ),
                       ],
                     ),
-                  ),
+                  ],
+                ),
 
-                  const SizedBox(width: 8),
+                const SizedBox(height: 8),
 
-                ],
-              ),
+                // Habit details
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Habit text content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Habit name
+                          Text(
+                            habit.name,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                          // Only show description and spacing if description is not empty
+                          if (habit.description.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            
+                            // Habit description
+                            Text(
+                              habit.description,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+                  ],
+                ),
 
               const SizedBox(height: 8),
 
@@ -577,9 +583,9 @@ class HabitCard extends StatelessWidget {
             ],
           ),
         ),
-        ),
       ),
     ),
+      ),
     );
   }
 
