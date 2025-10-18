@@ -200,11 +200,24 @@ class _SmartCompletionButtonVariant3State extends State<SmartCompletionButtonVar
               child: _buildProgressIndicator(todayCount, habitColor, context),
             ),
           ],
-          Icon(
-            _getButtonIcon(buttonState),
-            color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
-            size: _getIconSize(buttonState),
-          ),
+          // Icon with conditional border (only when not completed)
+          isCompleted 
+            ? Icon(
+                _getButtonIcon(buttonState),
+                color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
+                size: _getIconSize(buttonState),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black, width: 1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Icon(
+                  _getButtonIcon(buttonState),
+                  color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
+                  size: _getIconSize(buttonState),
+                ),
+              ),
         ],
       ),
     );
