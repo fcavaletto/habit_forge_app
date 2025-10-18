@@ -19,7 +19,7 @@ import 'segmented_progress_ring.dart';
 /// - **Empty**: No completions today - shows add icon, calls onIncrement
 /// - **In Progress**: Some completions but goal not met - shows add icon, calls onIncrement
 /// - **Completed**: Goal achieved - shows check icon, calls onDecrement (reset)
-class SmartCompletionButtonVariant3 extends StatelessWidget {
+class SmartCompletionButtonVariant3 extends StatefulWidget {
   // Constants for button dimensions and styling
   static const double _buttonSize = 50.0;
   static const double _completedIconSize = 24.0;
@@ -59,23 +59,108 @@ class SmartCompletionButtonVariant3 extends StatelessWidget {
     this.onCustomCompletion,
   });
 
+  @override
+  State<SmartCompletionButtonVariant3> createState() => _SmartCompletionButtonVariant3State();
+}
+
+class _SmartCompletionButtonVariant3State extends State<SmartCompletionButtonVariant3>
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late AnimationController _burstController;
+  late Animation<double> _burstScaleAnimation;
+  late Animation<double> _burstOpacityAnimation;
+  bool _wasCompleted = false;
+  bool _isBursting = false;
+  
+  // Store completed state for overlay
+  int? _burstOverlayCount;
+  Color? _burstOverlayColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 700), // Total: 200 + 100 + 400
+      vsync: this,
+    );
+    
+    // Create three-phase animation
+    _pulseAnimation = TweenSequence<double>([
+      // Phase 1: Grow to 1.1x over 200ms (28.6% of 700ms)
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.1)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 28.6,
+      ),
+      // Phase 2: Hold at 1.1x for 100ms (14.3% of 700ms)
+      TweenSequenceItem(
+        tween: ConstantTween<double>(1.1),
+        weight: 14.3,
+      ),
+      // Phase 3: Shrink to 1.0x over 400ms (57.1% of 700ms)
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.1, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 57.1,
+      ),
+    ]).animate(_pulseController);
+    
+    // New burst animation
+    _burstController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    
+    _burstScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.3,
+    ).animate(CurvedAnimation(
+      parent: _burstController,
+      curve: Curves.easeOut,
+    ));
+    
+    _burstOpacityAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _burstController,
+      curve: Curves.easeOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _burstController.dispose();
+    super.dispose();
+  }
+
   /// Get the habit color based on current theme brightness
   Color _getHabitColor(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     return brightness == Brightness.light 
-        ? Color(habit.lightColorValue) 
-        : Color(habit.darkColorValue);
+        ? Color(widget.habit.lightColorValue) 
+        : Color(widget.habit.darkColorValue);
   }
 
   @override
   Widget build(BuildContext context) {
     // Get current completion state
-    final todayCount = habit.getCompletionCount(VirtualDateService().currentDate);
-    final isCompleted = habit.isGoalAchieved(VirtualDateService().currentDate);
+    final todayCount = widget.habit.getCompletionCount(VirtualDateService().currentDate);
+    final isCompleted = widget.habit.isGoalAchieved(VirtualDateService().currentDate);
     final habitColor = _getHabitColor(context);
 
     // Determine button state based on completion
     final buttonState = _getButtonState(todayCount, isCompleted);
+
+    // Trigger pulse animation when goal is reached (only if not bursting)
+    if (isCompleted && !_wasCompleted && !_isBursting) {
+      _pulseController.forward(from: 0.0);
+      _wasCompleted = true;
+    } else if (!isCompleted) {
+      _wasCompleted = false;
+    }
 
     return Semantics(
       label: _getAccessibilityLabel(todayCount, isCompleted),
@@ -83,33 +168,9 @@ class SmartCompletionButtonVariant3 extends StatelessWidget {
       button: true,
       child: GestureDetector(
         onTap: () => _handleButtonPress(todayCount, isCompleted),
-        child: Container(
-          width: _buttonSize,
-          height: _buttonSize,
-          decoration: BoxDecoration(
-            shape: isCompleted ? BoxShape.rectangle : BoxShape.circle,
-            borderRadius: isCompleted ? BorderRadius.circular(8.0) : null,
-            color: _getButtonColor(habitColor, buttonState),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Progress ring for multi-completion habits (goal > 1)
-              // Only show when not completed to avoid visual clutter
-              if (habit.targetGoal > 1 && buttonState != ButtonState.completed) ...[
-                SizedBox.expand(
-                  child: _buildProgressIndicator(todayCount, habitColor, context),
-                ),
-              ],
-              // Main action icon (add or check)
-              Icon(
-                _getButtonIcon(buttonState),
-                color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
-                size: _getIconSize(buttonState),
-              ),
-            ],
-          ),
-        ),
+        child: _isBursting
+            ? _buildBurstingWithOverlay(context, habitColor, todayCount, isCompleted, buttonState)
+            : _buildNormalButton(context, habitColor, todayCount, isCompleted, buttonState),
       ),
     );
   }
