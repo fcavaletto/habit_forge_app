@@ -200,22 +200,41 @@ class _SmartCompletionButtonVariant3State extends State<SmartCompletionButtonVar
               child: _buildProgressIndicator(todayCount, habitColor, context),
             ),
           ],
-          // Icon with conditional border (only when not completed)
+          // Icon with conditional stroke border (only when not completed)
           isCompleted 
             ? Icon(
                 _getButtonIcon(buttonState),
                 color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
                 size: _getIconSize(buttonState),
               )
-            : Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black, width: 1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Icon(
-                  _getButtonIcon(buttonState),
+            : Text(
+                '+',
+                style: TextStyle(
+                  fontSize: _getIconSize(buttonState),
                   color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
-                  size: _getIconSize(buttonState),
+                  fontWeight: FontWeight.bold,
+                  shadows: const [
+                    Shadow(
+                      color: Colors.black,
+                      offset: Offset(1, 1),
+                      blurRadius: 0,
+                    ),
+                    Shadow(
+                      color: Colors.black,
+                      offset: Offset(-1, 1),
+                      blurRadius: 0,
+                    ),
+                    Shadow(
+                      color: Colors.black,
+                      offset: Offset(1, -1),
+                      blurRadius: 0,
+                    ),
+                    Shadow(
+                      color: Colors.black,
+                      offset: Offset(-1, -1),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
               ),
         ],

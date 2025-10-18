@@ -109,7 +109,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     
     // New burst animation
     _burstController = AnimationController(
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
     
@@ -388,11 +388,11 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   ///   - In progress state: Calls [onIncrement] to add another completion
   void _handleButtonPress(int todayCount, bool isCompleted) {
     if (widget.habit.allowExceedGoal) {
-      HapticFeedbackService.heavy(); // Intensified
+      HapticFeedbackService.selection();
       widget.onCustomCompletion?.call();
     } else {
       if (todayCount == 0) {
-        HapticFeedbackService.heavy(); // Intensified
+        HapticFeedbackService.selection();
         widget.onIncrement?.call();
       } else if (isCompleted) {
         // Store completed state for overlay
@@ -405,7 +405,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
         });
         
         // Immediately change the data state
-        HapticFeedbackService.medium(); // Intensified
+        HapticFeedbackService.selection();
         widget.onDecrement?.call();
         
         // Start burst overlay animation
@@ -420,13 +420,9 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       } else {
         final willReachGoal = (todayCount + 1) >= widget.habit.targetGoal;
         if (willReachGoal) {
-          // Double heavy vibration for goal completion
           HapticFeedbackService.heavy();
-          Future.delayed(const Duration(milliseconds: 100), () {
-            HapticFeedbackService.heavy();
-          });
         } else {
-          HapticFeedbackService.heavy(); // Intensified
+          HapticFeedbackService.selection(); // Intensified
         }
         widget.onIncrement?.call();
       }

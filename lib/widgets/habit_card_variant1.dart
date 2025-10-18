@@ -171,7 +171,7 @@ class _SmartCompletionButtonVariant1State extends State<SmartCompletionButtonVar
           ],
           Icon(
             _getButtonIcon(buttonState),
-            color: Colors.white,
+            color: isCompleted ? Colors.white : habitColor,
             size: _getIconSize(buttonState),
           ),
         ],
@@ -387,11 +387,11 @@ class _SmartCompletionButtonVariant1State extends State<SmartCompletionButtonVar
   ///   - In progress state: Calls [onIncrement] to add another completion
   void _handleButtonPress(int todayCount, bool isCompleted) {
     if (widget.habit.allowExceedGoal) {
-      HapticFeedbackService.heavy(); // Intensified
+      HapticFeedbackService.selection(); // Intensified
       widget.onCustomCompletion?.call();
     } else {
       if (todayCount == 0) {
-        HapticFeedbackService.heavy(); // Intensified
+        HapticFeedbackService.selection(); // Intensified
         widget.onIncrement?.call();
       } else if (isCompleted) {
         // Store completed state for overlay
@@ -404,7 +404,7 @@ class _SmartCompletionButtonVariant1State extends State<SmartCompletionButtonVar
         });
         
         // Immediately change the data state
-        HapticFeedbackService.medium(); // Intensified
+        HapticFeedbackService.selection(); // Intensified
         widget.onDecrement?.call();
         
         // Start burst overlay animation
@@ -425,7 +425,7 @@ class _SmartCompletionButtonVariant1State extends State<SmartCompletionButtonVar
             HapticFeedbackService.heavy();
           });
         } else {
-          HapticFeedbackService.heavy(); // Intensified
+          HapticFeedbackService.selection(); // Intensified
         }
         widget.onIncrement?.call();
       }
