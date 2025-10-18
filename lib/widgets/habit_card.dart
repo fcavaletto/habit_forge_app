@@ -65,10 +65,18 @@ class SmartCompletionButton extends StatefulWidget {
 }
 
 class _SmartCompletionButtonState extends State<SmartCompletionButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late AnimationController _burstController;
+  late Animation<double> _burstScaleAnimation;
+  late Animation<double> _burstOpacityAnimation;
   bool _wasCompleted = false;
+  bool _isBursting = false;
+  
+  // Store completed state for overlay
+  int? _burstOverlayCount;
+  Color? _burstOverlayColor;
 
   @override
   void initState() {
@@ -98,11 +106,34 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
         weight: 57.1,
       ),
     ]).animate(_pulseController);
+    
+    // New burst animation
+    _burstController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    
+    _burstScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.3,
+    ).animate(CurvedAnimation(
+      parent: _burstController,
+      curve: Curves.easeOut,
+    ));
+    
+    _burstOpacityAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _burstController,
+      curve: Curves.easeOut,
+    ));
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _burstController.dispose();
     super.dispose();
   }
 
@@ -112,6 +143,111 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     return brightness == Brightness.light 
         ? Color(widget.habit.lightColorValue) 
         : Color(widget.habit.darkColorValue);
+  }
+
+  /// Builds the button container with the specified parameters
+  Widget _buildButtonContainer({
+    required Color habitColor,
+    required ButtonState buttonState,
+    required int todayCount,
+    required bool isCompleted,
+    required BuildContext context,
+  }) {
+    return Container(
+      width: SmartCompletionButton._buttonSize,
+      height: SmartCompletionButton._buttonSize,
+      decoration: BoxDecoration(
+        shape: (isCompleted || widget.habit.targetGoal == 1) ? BoxShape.rectangle : BoxShape.circle,
+        borderRadius: (isCompleted || widget.habit.targetGoal == 1) ? BorderRadius.circular(8.0) : null,
+        color: _getButtonColor(habitColor, buttonState),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (widget.habit.targetGoal > 1 && buttonState != ButtonState.completed) ...[
+            SizedBox.expand(
+              child: _buildProgressIndicator(todayCount, habitColor, context),
+            ),
+          ],
+          Icon(
+            _getButtonIcon(buttonState),
+            color: Colors.white,
+            size: _getIconSize(buttonState),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the normal button with pulse animation (current behavior)
+  Widget _buildNormalButton(
+    BuildContext context,
+    Color habitColor,
+    int todayCount,
+    bool isCompleted,
+    ButtonState buttonState,
+  ) {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _pulseAnimation.value,
+          child: child,
+        );
+      },
+      child: _buildButtonContainer(
+        habitColor: habitColor,
+        buttonState: buttonState,
+        todayCount: todayCount,
+        isCompleted: isCompleted,
+        context: context,
+      ),
+    );
+  }
+
+  /// Builds the incomplete button + bursting completed overlay
+  Widget _buildBurstingWithOverlay(
+    BuildContext context,
+    Color habitColor,
+    int todayCount,
+    bool isCompleted,
+    ButtonState buttonState,
+  ) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // 1. Incomplete button (current actual state)
+        _buildButtonContainer(
+          habitColor: habitColor,
+          buttonState: buttonState,
+          todayCount: todayCount,
+          isCompleted: isCompleted,
+          context: context,
+        ),
+        
+        // 2. Bursting completed button overlay (stored state)
+        if (_burstOverlayColor != null && _burstOverlayCount != null)
+          AnimatedBuilder(
+            animation: Listenable.merge([_burstScaleAnimation, _burstOpacityAnimation]),
+            builder: (context, child) {
+              return Opacity(
+                opacity: _burstOpacityAnimation.value,
+                child: Transform.scale(
+                  scale: _burstScaleAnimation.value,
+                  child: child,
+                ),
+              );
+            },
+            child: _buildButtonContainer(
+              habitColor: _burstOverlayColor!,
+              buttonState: ButtonState.completed,
+              todayCount: _burstOverlayCount!,
+              isCompleted: true,
+              context: context,
+            ),
+          ),
+      ],
+    );
   }
 
   @override
@@ -124,8 +260,8 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     // Determine button state based on completion
     final buttonState = _getButtonState(todayCount, isCompleted);
 
-    // Trigger pulse animation when goal is reached
-    if (isCompleted && !_wasCompleted) {
+    // Trigger pulse animation when goal is reached (only if not bursting)
+    if (isCompleted && !_wasCompleted && !_isBursting) {
       _pulseController.forward(from: 0.0);
       _wasCompleted = true;
     } else if (!isCompleted) {
@@ -138,42 +274,9 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       button: true,
       child: GestureDetector(
         onTap: () => _handleButtonPress(todayCount, isCompleted),
-        child: AnimatedBuilder(
-          animation: _pulseAnimation,
-          builder: (context, child) {
-            return Transform.scale(
-              scale: _pulseAnimation.value,
-              child: child,
-            );
-          },
-          child: Container(
-            width: SmartCompletionButton._buttonSize,
-            height: SmartCompletionButton._buttonSize,
-            decoration: BoxDecoration(
-              shape: (isCompleted || widget.habit.targetGoal == 1) ? BoxShape.rectangle : BoxShape.circle,
-              borderRadius: (isCompleted || widget.habit.targetGoal == 1) ? BorderRadius.circular(8.0) : null,
-              color: _getButtonColor(habitColor, buttonState),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Progress ring for multi-completion habits (goal > 1)
-                // Only show when not completed to avoid visual clutter
-                if (widget.habit.targetGoal > 1 && buttonState != ButtonState.completed) ...[
-                  SizedBox.expand(
-                    child: _buildProgressIndicator(todayCount, habitColor, context),
-                  ),
-                ],
-                // Main action icon (add or check)
-                Icon(
-                  _getButtonIcon(buttonState),
-                  color: Colors.white,
-                  size: _getIconSize(buttonState),
-                ),
-              ],
-            ),
-          ),
-        ),
+        child: _isBursting
+            ? _buildBurstingWithOverlay(context, habitColor, todayCount, isCompleted, buttonState)
+            : _buildNormalButton(context, habitColor, todayCount, isCompleted, buttonState),
       ),
     );
   }
@@ -292,8 +395,28 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
         HapticFeedbackService.heavy(); // Intensified
         widget.onIncrement?.call();
       } else if (isCompleted) {
+        // Store completed state for overlay
+        final habitColor = _getHabitColor(context);
+        
+        setState(() {
+          _burstOverlayCount = todayCount;
+          _burstOverlayColor = habitColor;
+          _isBursting = true;
+        });
+        
+        // Immediately change the data state
         HapticFeedbackService.medium(); // Intensified
         widget.onDecrement?.call();
+        
+        // Start burst overlay animation
+        _burstController.forward(from: 0.0).then((_) {
+          setState(() {
+            _isBursting = false;
+            _burstOverlayCount = null;
+            _burstOverlayColor = null;
+          });
+          _burstController.reset();
+        });
       } else {
         final willReachGoal = (todayCount + 1) >= widget.habit.targetGoal;
         if (willReachGoal) {
