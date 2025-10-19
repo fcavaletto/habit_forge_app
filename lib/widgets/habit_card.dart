@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:habit_forge_app/utils/color_extensions.dart';
 import '../models/habit.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
@@ -25,14 +26,14 @@ class SmartCompletionButton extends StatefulWidget {
   static const double _buttonSize = 50.0;
   static const double _completedIconSize = 24.0;
   static const double _defaultIconSize = 24.0;
-  static const double _emptyAlpha = 0.3;
+  static const double _emptyAlpha = 0.1;
   static const double _completedAlpha = 1.0;
   
   // Progress ring constants
   static const double _progressRingSize = 48.0;
   static const double _progressStrokeWidth = 8.0;
   static const double _progressStartAngleOffset = 15.0;
-  static const double _segmentAlpha = 0.9;
+  static const double _segmentAlpha = 1;
   static const double _emptySegmentAlpha = 0.4;
   static const int _maxSegmentedGoal = 12;
   
@@ -171,7 +172,9 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
           ],
           Icon(
             _getButtonIcon(buttonState),
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.light
+              ? isCompleted ? Colors.white : habitColor.darken(0.1)
+              : Colors.white.withOpacity(0.8),
             size: _getIconSize(buttonState),
           ),
         ],

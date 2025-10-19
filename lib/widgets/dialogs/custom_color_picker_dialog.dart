@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import '../../utils/color_extensions.dart';
 
 class CustomColorPickerDialog extends StatefulWidget {
   final Function(Color lightColor, Color darkColor) onColorSelected;
@@ -48,15 +49,13 @@ class _CustomColorPickerDialogState extends State<CustomColorPickerDialog> {
     final hsl = HSLColor.fromColor(color);
     if (targetBrightness == Brightness.dark) {
       // For dark theme: make colors LIGHTER for better visibility
-      return hsl
+      return HSLColor.fromColor(color.lighten(0.1))
           .withSaturation((hsl.saturation + 0.15).clamp(0.0, 1.0))
-          .withLightness((hsl.lightness + 0.1).clamp(0.0, 1.0))
           .toColor();
     } else {
       // For light theme: make colors DARKER for better contrast
-      return hsl
+      return HSLColor.fromColor(color.darken(0.1))
           .withSaturation((hsl.saturation - 0.15).clamp(0.0, 1.0))
-          .withLightness((hsl.lightness - 0.1).clamp(0.0, 1.0))
           .toColor();
     }
   }

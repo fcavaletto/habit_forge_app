@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:habit_forge_app/utils/color_extensions.dart';
 import '../models/habit.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
@@ -200,43 +201,11 @@ class _SmartCompletionButtonVariant3State extends State<SmartCompletionButtonVar
               child: _buildProgressIndicator(todayCount, habitColor, context),
             ),
           ],
-          // Icon with conditional stroke border (only when not completed)
-          isCompleted 
-            ? Icon(
-                _getButtonIcon(buttonState),
-                color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
-                size: _getIconSize(buttonState),
-              )
-            : Text(
-                '+',
-                style: TextStyle(
-                  fontSize: _getIconSize(buttonState),
-                  color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
-                  shadows: const [
-                    Shadow(
-                      color: Colors.black,
-                      offset: Offset(1, 1),
-                      blurRadius: 0,
-                    ),
-                    Shadow(
-                      color: Colors.black,
-                      offset: Offset(-1, 1),
-                      blurRadius: 0,
-                    ),
-                    Shadow(
-                      color: Colors.black,
-                      offset: Offset(1, -1),
-                      blurRadius: 0,
-                    ),
-                    Shadow(
-                      color: Colors.black,
-                      offset: Offset(-1, -1),
-                      blurRadius: 0,
-                    ),
-                  ],
-                ),
-              ),
+          Icon(
+            _getButtonIcon(buttonState),
+            color: isCompleted ? Colors.white : habitColor.darken(0.1),
+            size: _getIconSize(buttonState),
+          ),
         ],
       ),
     );

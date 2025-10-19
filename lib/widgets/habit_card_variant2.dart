@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:habit_forge_app/utils/color_extensions.dart';
 import '../models/habit.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
@@ -171,7 +172,7 @@ class _SmartCompletionButtonVariant2State extends State<SmartCompletionButtonVar
           ],
           Icon(
             _getButtonIcon(buttonState),
-            color: Colors.white,
+            color: isCompleted ? Colors.white : habitColor.darken(0.1),
             size: _getIconSize(buttonState),
           ),
         ],
