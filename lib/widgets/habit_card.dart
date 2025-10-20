@@ -174,7 +174,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
             _getButtonIcon(buttonState),
             color: Theme.of(context).brightness == Brightness.light
               ? isCompleted ? Colors.white : habitColor.darken(0.1)
-              : Colors.white.withOpacity(0.8),
+              : Colors.white.withValues(alpha: 0.8),
             size: _getIconSize(buttonState),
           ),
         ],
