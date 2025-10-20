@@ -5,7 +5,6 @@ import 'theme.dart';
 import 'screens/dashboard_view.dart';
 import 'providers/app_state_provider.dart';
 import 'providers/habit_provider.dart';
-import 'widgets/error_boundary.dart';
 import 'services/service_factory.dart';
 
 /// Application entry point with persistent cache preloading
@@ -24,7 +23,11 @@ Future<void> main() async {
 
   debugPrint('🚀 Starting Flutter app with cache preloading...');
 
-  GlobalErrorHandler.setup();
+  // Set up global error handling
+  FlutterError.onError = (FlutterErrorDetails details) {
+    debugPrint('Flutter Error: ${details.exception}');
+    debugPrint('Stack trace: ${details.stack}');
+  };
   
   // Initialize ServiceFactory before creating any providers
   debugPrint('🏭 Initializing ServiceFactory...');
@@ -39,29 +42,24 @@ Future<void> main() async {
   
   // Start the app - data is ALREADY loaded, no loading screen needed
   runApp(
-    ErrorBoundary(
-      onError: (error) {
-        debugPrint('Global error caught: ${error.exception}');
-      },
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-          ChangeNotifierProxyProvider<AppState, HabitProvider>(
-            create: (context) => appState.habitProvider,
-            update: (context, appState, previous) => appState.habitProvider,
-          ),
-        ],
-        child: Consumer<AppState>(
-          builder: (context, appState, child) {
-            return MaterialApp(
-              title: 'Habit Forge',
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
-              themeMode: appState.themeMode,
-                home: const DashboardView(),
-            );
-          },
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppState>.value(value: appState),
+        ChangeNotifierProxyProvider<AppState, HabitProvider>(
+          create: (context) => appState.habitProvider,
+          update: (context, appState, previous) => appState.habitProvider,
         ),
+      ],
+      child: Consumer<AppState>(
+        builder: (context, appState, child) {
+          return MaterialApp(
+            title: 'Habit Forge',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: appState.themeMode,
+              home: const DashboardView(),
+          );
+        },
       ),
     ),
   );
