@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import 'theme.dart';
-import 'screens/dashboard_navigation_container.dart';
+import 'screens/dashboard_view.dart';
 import 'providers/app_state_provider.dart';
 import 'providers/habit_provider.dart';
 import 'widgets/error_boundary.dart';
@@ -58,7 +58,7 @@ Future<void> main() async {
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
               themeMode: appState.themeMode,
-                home: const DashboardNavigationContainer(),
+                home: const DashboardView(),
             );
           },
         ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dashboard_navigation_container.dart';
+import 'dashboard_view.dart';
 
 /// Dashboard Screen - Main habit tracking interface
 ///
@@ -20,7 +20,7 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-        return const DashboardNavigationContainer();
+        return const DashboardView();
   }
 }
 
