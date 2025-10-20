@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import '../models/habit.dart';
 import '../widgets/forms/frequency_selector.dart';
 import '../providers/app_state_provider.dart';
 import '../services/haptic_feedback_service.dart';
+import '../theme.dart';
 
 /// Controller class that handles all business logic for adding/editing habits
 ///
@@ -49,8 +51,8 @@ class AddHabitController {
   final TextEditingController targetGoalController = TextEditingController(text: '1');
 
   String selectedIconName = 'local_fire_department';
-  int selectedLightColor = 0xFFe44344; // Default to Red light (first color)
-  int selectedDarkColor = 0xFFED6D6E; // Default to Red dark (first color)
+  late int selectedLightColor;
+  late int selectedDarkColor;
   FrequencyData frequencyData = FrequencyData.forType(Frequency.everyDay);
   TimeOfDay? reminderTime;
   bool enableReminders = false;
@@ -64,7 +66,13 @@ class AddHabitController {
     required this.onHabitAdded,
     required this.existingHabits,
     required AppState appState,
+    required BuildContext context,
   }) : _appState = appState {
+    // Initialize with random color from predefined palette
+    final randomColors = _getRandomPaletteColors(context);
+    selectedLightColor = randomColors.light.toARGB32();
+    selectedDarkColor = randomColors.dark.toARGB32();
+    
     // Clear error message when user starts typing
     nameController.addListener(_clearError);
     descriptionController.addListener(_clearError);
@@ -75,6 +83,17 @@ class AddHabitController {
     if (errorMessage != null) {
       errorMessage = null;
     }
+  }
+
+  /// Get a random color pair from the predefined palette
+  /// 
+  /// Returns a random HabitColorPair from the 20 predefined colors (indices 0-19).
+  /// This ensures that every time the habit creation screen opens, a different
+  /// predefined color is selected instead of always defaulting to the same color.
+  HabitColorPair _getRandomPaletteColors(BuildContext context) {
+    final random = math.Random();
+    final randomIndex = random.nextInt(20); // 0-19 (20 predefined colors)
+    return HabitColors._habitColorPairs[randomIndex];
   }
 
   void onIconChanged(String iconName) {

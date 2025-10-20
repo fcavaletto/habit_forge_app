@@ -40,6 +40,7 @@ class _AddHabitViewState extends State<AddHabitView> {
       onHabitAdded: widget.onHabitAdded,
       existingHabits: widget.existingHabits,
       appState: appState,
+      context: context,
     );
     _scrollController = ScrollController();
   }
