@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/app_state_provider.dart';
 import '../../theme.dart';
 import '../dialogs/custom_color_picker_dialog.dart';
 
 /// Color selector widget for habit creation/editing
 ///
-/// Displays a static grid of predefined colors that users can select from.
+/// Displays a static grid of 20 predefined colors plus 1 custom color option.
 /// Shows a checkmark on the selected color and provides visual feedback.
-/// Supports both 7-color (default) and 21-color (extended) modes.
 /// Features a custom color picker as the 21st color option.
 class ColorSelector extends StatelessWidget {
   final Color selectedLightColor;
@@ -24,30 +21,24 @@ class ColorSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<AppState, bool>(
-      selector: (context, appState) => appState.isExtendedColorPalette,
-      builder: (context, isExtendedMode, child) {
-        final colorScheme = Theme.of(context).colorScheme;
-        final brightness = Theme.of(context).brightness;
-        
-        // Determine number of rows and colors to show
-        const colorsPerRow = 7;
-        final actualRows = isExtendedMode ? 3 : 1;
-        final totalColors = actualRows * colorsPerRow;
-        
-        return Semantics(
-          label: 'Color selection',
-          hint: 'Choose a color for your habit.',
-          child: _buildColorGrid(
-            context, 
-            colorScheme, 
-            brightness, 
-            actualRows, 
-            colorsPerRow, 
-            totalColors
-          ),
-        );
-      },
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+    
+    const colorsPerRow = 7;
+    const actualRows = 3; // Always show all 3 rows
+    const totalColors = 21; // 20 colors + 1 custom
+    
+    return Semantics(
+      label: 'Color selection',
+      hint: 'Choose a color for your habit.',
+      child: _buildColorGrid(
+        context,
+        colorScheme,
+        brightness,
+        actualRows,
+        colorsPerRow,
+        totalColors
+      ),
     );
   }
 

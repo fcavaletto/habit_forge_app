@@ -8,7 +8,6 @@ import '../repositories/settings_repository.dart';
 import 'habit_provider.dart';
 import 'notification_provider.dart';
 import 'theme_provider.dart';
-import 'extended_color_palette_provider.dart';
 import 'pro_subscription_provider.dart';
 import 'streak_settings_provider.dart';
 import 'date_provider.dart';
@@ -58,7 +57,6 @@ class AppState extends ChangeNotifier {
   final HabitProvider _habitProvider;
   final NotificationProvider _notificationProvider;
   final ThemeProvider _themeProvider;
-  final ExtendedColorPaletteProvider _extendedColorPaletteProvider;
   final ProSubscriptionProvider _proSubscriptionProvider;
   final StreakSettingsProvider _streakSettingsProvider;
   final DateProvider _dateProvider;
@@ -75,7 +73,6 @@ class AppState extends ChangeNotifier {
     this._habitProvider,
     this._notificationProvider,
     this._themeProvider,
-    this._extendedColorPaletteProvider,
     this._proSubscriptionProvider,
     this._streakSettingsProvider,
     this._dateProvider,
@@ -165,11 +162,6 @@ class AppState extends ChangeNotifier {
   ThemeProvider get themeProvider => _themeProvider;
   ThemeMode get themeMode => _themeProvider.themeMode;
 
-  // Extended color palette provider access
-  ExtendedColorPaletteProvider get extendedColorPaletteProvider =>
-      _extendedColorPaletteProvider;
-  bool get isExtendedColorPalette =>
-      _extendedColorPaletteProvider.isExtendedMode;
 
   // Pro subscription provider access
   ProSubscriptionProvider get proSubscriptionProvider =>
@@ -290,7 +282,6 @@ class AppState extends ChangeNotifier {
       try {
         await Future.wait([
           _notificationProvider.initialize(),
-          _extendedColorPaletteProvider.loadExtendedColorPaletteSetting(),
           _proSubscriptionProvider.loadProSubscriptionSetting(),
           _streakSettingsProvider.loadStreakSetting(),
           loadTimeOverrideSetting(),
@@ -418,48 +409,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Toggle extended color palette with error handling and rollback
-  /// 
-  /// This method provides optimistic UI updates with automatic rollback
-  /// if the database operation fails. It includes proper error handling
-  /// and user feedback mechanisms.
-  Future<bool> toggleExtendedColorPalette() async {
-    try {
-      // Store original state for potential rollback
-      final originalState = _extendedColorPaletteProvider.isExtendedMode;
-      final newState = !originalState;
-      
-      debugPrint('🎨 Extended color palette toggle: $originalState → $newState');
-      
-      // Optimistic UI update - update provider state immediately
-      _extendedColorPaletteProvider.setExtendedModeState(newState);
-      notifyListeners(); // Direct notification to bypass _smartCacheNotify
-      
-      // Attempt to save to storage
-      final success = await _settingsRepository.saveSetting(
-        'extended_color_palette', 
-        newState.toString()
-      );
-      
-      if (success) {
-        debugPrint('🎨 Extended color palette toggle successful: $newState');
-        return true;
-      } else {
-        // ROLLBACK: Restore original state
-        debugPrint('❌ Extended color palette save failed, rolling back to: $originalState');
-        _extendedColorPaletteProvider.setExtendedModeState(originalState);
-        notifyListeners();
-        return false;
-      }
-    } catch (e) {
-      // ROLLBACK: Restore original state on any error
-      final originalState = _extendedColorPaletteProvider.isExtendedMode;
-      debugPrint('❌ Extended color palette toggle error: $e, rolling back to: $originalState');
-      _extendedColorPaletteProvider.setExtendedModeState(originalState);
-      notifyListeners();
-      return false;
-    }
-  }
 
   /// Toggle streak calculation mode with error handling and rollback
   /// 
@@ -562,7 +511,6 @@ class AppState extends ChangeNotifier {
     _habitProvider.removeListener(notifyListeners);
     _notificationProvider.removeListener(notifyListeners);
     _themeProvider.removeListener(notifyListeners);
-    _extendedColorPaletteProvider.removeListener(notifyListeners);
     _proSubscriptionProvider.removeListener(notifyListeners);
     _streakSettingsProvider.removeListener(notifyListeners);
     super.dispose();
@@ -575,7 +523,6 @@ class AppStateProvider extends AppState {
     super.habitProvider,
     super.notificationProvider,
     super.themeProvider,
-    super.extendedColorPaletteProvider,
     super.proSubscriptionProvider,
     super.streakSettingsProvider,
     super.dateProvider,
@@ -590,9 +537,6 @@ class AppStateProvider extends AppState {
     final notificationProvider = NotificationProvider(notificationService);
     final settingsRepository = SettingsRepository(databaseService);
     final themeProvider = ThemeProvider(settingsRepository);
-    final extendedColorPaletteProvider = ExtendedColorPaletteProvider(
-      settingsRepository,
-    );
     final proSubscriptionProvider = ProSubscriptionProvider(settingsRepository);
     final streakSettingsProvider = StreakSettingsProvider(settingsRepository);
     final dateProvider = DateProvider();
@@ -601,7 +545,6 @@ class AppStateProvider extends AppState {
       habitProvider,
       notificationProvider,
       themeProvider,
-      extendedColorPaletteProvider,
       proSubscriptionProvider,
       streakSettingsProvider,
       dateProvider,
