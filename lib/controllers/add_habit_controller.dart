@@ -91,9 +91,10 @@ class AddHabitController {
   /// This ensures that every time the habit creation screen opens, a different
   /// predefined color is selected instead of always defaulting to the same color.
   HabitColorPair _getRandomPaletteColors(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final random = math.Random();
     final randomIndex = random.nextInt(20); // 0-19 (20 predefined colors)
-    return HabitColors._habitColorPairs[randomIndex];
+    return colorScheme.habitColorPairs[randomIndex];
   }
 
   void onIconChanged(String iconName) {
