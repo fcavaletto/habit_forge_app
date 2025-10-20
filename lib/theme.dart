@@ -268,34 +268,73 @@ class AppTheme {
 /// Usage: `Theme.of(context).colorScheme.getHabitColor(index, brightness)`
 ///
 extension HabitColors on ColorScheme {
-  /// Curated palette of 20 vibrant yet pleasant color pairs for habit visualization
-  ///
   /// Layout: 3 rows × 7 columns (20 predefined colors + 1 custom color)
   /// - Index 20: Custom color (user-defined)
+  /// - Modern design inspired by Material You, iOS 17, and Tailwind CSS
+  /// - Full spectrum distribution with desaturated dark variants
   static const List<HabitColorPair> _habitColorPairs = [
-    // Row 1: Essential Colors (0-6)
-    HabitColorPair(light: Color(0xffe44344), dark: Color(0xFFED6D6E)),
-    HabitColorPair(light: Color(0xffee6f1a), dark: Color(0xFFF18F3C)),
-    HabitColorPair(light: Color(0xffe99813), dark: Color(0xFFEFB628)),
-    HabitColorPair(light: Color(0xffdfad11), dark: Color(0xffefc41b)),
-    HabitColorPair(light: Color(0xff81c31a), dark: Color(0xff9ddc36)),
-    HabitColorPair(light: Color(0xff24bd5b), dark: Color(0xff49d47b)),
-    HabitColorPair(light: Color(0xff15b27e), dark: Color(0xff34cb93)),
-    // Row 2: Secondary Colors (7-13)
-    HabitColorPair(light: Color(0xff1ab1a1), dark: Color(0xff2eccb9)),
-    HabitColorPair(light: Color(0xff0fafcd), dark: Color(0xff26cae3)),
-    HabitColorPair(light: Color(0xff159fe0), dark: Color(0xFF38B5EF)),
-    HabitColorPair(light: Color(0xff3a7eec), dark: Color(0xff5f9fef)),
-    HabitColorPair(light: Color(0xff6063e8), dark: Color(0xff7e87ee)),
-    HabitColorPair(light: Color(0xff8759eb), dark: Color(0xffa086f0)),
-    HabitColorPair(light: Color(0xffa052ef), dark: Color(0xffb981f3)),
-    // Row 3: Tertiary Colors (14-19)
-    HabitColorPair(light: Color(0xffd045e5), dark: Color(0xffde77ee)),
-    HabitColorPair(light: Color(0xffe14794), dark: Color(0xffea70b0)),
-    HabitColorPair(light: Color(0xffeb3f5c), dark: Color(0xfff16d84)),
-    HabitColorPair(light: Color(0xff637187), dark: Color(0xff8f9db1)),
-    HabitColorPair(light: Color(0xff756e69), dark: Color(0xffa19c99)),
-    HabitColorPair(light: Color(0xff000000), dark: Color(0xffffffff)),
+    // Row 1: Warm Spectrum (Red → Yellow) [0-6]
+    // 0. Coral Red - Energetic, motivating
+    HabitColorPair(light: Color(0xFFEF4444), dark: Color(0xFFFC8181)),
+
+    // 1. Cherry Red - Bold, powerful
+    HabitColorPair(light: Color(0xFFDC2626), dark: Color(0xFFFF6B6B)),
+
+    // 2. Tangerine - Vibrant, creative
+    HabitColorPair(light: Color(0xFFF97316), dark: Color(0xFFFFA366)),
+
+    // 3. Amber - Warm, optimistic
+    HabitColorPair(light: Color(0xFFF59E0B), dark: Color(0xFFFFBF66)),
+
+    // 4. Sunshine - Cheerful, bright
+    HabitColorPair(light: Color(0xFFEAB308), dark: Color(0xFFFCD34D)),
+
+    // 5. Gold - Valuable, achievement
+    HabitColorPair(light: Color(0xFFCA8A04), dark: Color(0xFFF0B429)),
+
+    // 6. Lime - Fresh, energizing
+    HabitColorPair(light: Color(0xFF84CC16), dark: Color(0xFFA3E635)),
+
+    // Row 2: Cool Spectrum (Green → Blue) [7-13]
+    // 7. Emerald - Growth, balance
+    HabitColorPair(light: Color(0xFF10B981), dark: Color(0xFF34D399)),
+
+    // 8. Jade - Calm, natural
+    HabitColorPair(light: Color(0xFF059669), dark: Color(0xFF10B981)),
+
+    // 9. Forest - Stability, focus
+    HabitColorPair(light: Color(0xFF047857), dark: Color(0xFF059669)),
+
+    // 10. Aqua - Refreshing, clear
+    HabitColorPair(light: Color(0xFF06B6D4), dark: Color(0xFF22D3EE)),
+
+    // 11. Teal - Professional, trust
+    HabitColorPair(light: Color(0xFF0891B2), dark: Color(0xFF06B6D4)),
+
+    // 12. Sky - Open, peaceful
+    HabitColorPair(light: Color(0xFF0EA5E9), dark: Color(0xFF38BDF8)),
+
+    // 13. Azure - Serene, confident
+    HabitColorPair(light: Color(0xFF0284C7), dark: Color(0xFF0EA5E9)),
+
+    // Row 3: Purple/Pink Spectrum [14-19]
+    // 14. Sapphire - Deep, intelligent
+    HabitColorPair(light: Color(0xFF2563EB), dark: Color(0xFF60A5FA)),
+
+    // 15. Indigo - Mysterious, wise
+    HabitColorPair(light: Color(0xFF4F46E5), dark: Color(0xFF818CF8)),
+
+    // 16. Violet - Creative, luxury
+    HabitColorPair(light: Color(0xFF7C3AED), dark: Color(0xFFA78BFA)),
+
+    // 17. Lavender - Gentle, elegant
+    HabitColorPair(light: Color(0xFF8B5CF6), dark: Color(0xFFC4B5FD)),
+
+    // 18. Fuchsia - Bold, playful
+    HabitColorPair(light: Color(0xFFD946EF), dark: Color(0xFFE879F9)),
+
+    // 19. Rose - Romantic, warm
+    HabitColorPair(light: Color(0xFFEC4899), dark: Color(0xFFF472B6)),
   ];
 
   /// Convert integer color value to Color object
