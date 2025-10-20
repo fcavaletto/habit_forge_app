@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../models/habit.dart';
 import '../widgets/forms/frequency_selector.dart';
 import '../providers/app_state_provider.dart';
 import '../services/haptic_feedback_service.dart';
-import '../theme.dart';
 
 /// Controller class that handles all business logic for adding/editing habits
 ///
@@ -40,6 +38,9 @@ import '../theme.dart';
 ///   appState: appState,
 /// );
 /// ```
+/// 
+/// Note: Initial color selection should be handled by the view using
+/// `onColorChanged()` method after the controller is constructed.
 class AddHabitController {
   final Function(Habit) onHabitAdded;
   final List<Habit> existingHabits;
@@ -51,8 +52,8 @@ class AddHabitController {
   final TextEditingController targetGoalController = TextEditingController(text: '1');
 
   String selectedIconName = 'local_fire_department';
-  late int selectedLightColor;
-  late int selectedDarkColor;
+  int selectedLightColor = 0xFFEF4444; // Default to Coral Red (first color)
+  int selectedDarkColor = 0xFFFC8181; // Default to Coral Red dark variant
   FrequencyData frequencyData = FrequencyData.forType(Frequency.everyDay);
   TimeOfDay? reminderTime;
   bool enableReminders = false;
@@ -66,13 +67,7 @@ class AddHabitController {
     required this.onHabitAdded,
     required this.existingHabits,
     required AppState appState,
-    required BuildContext context,
   }) : _appState = appState {
-    // Initialize with random color from predefined palette
-    final randomColors = _getRandomPaletteColors(context);
-    selectedLightColor = randomColors.light.toARGB32();
-    selectedDarkColor = randomColors.dark.toARGB32();
-    
     // Clear error message when user starts typing
     nameController.addListener(_clearError);
     descriptionController.addListener(_clearError);
@@ -83,18 +78,6 @@ class AddHabitController {
     if (errorMessage != null) {
       errorMessage = null;
     }
-  }
-
-  /// Get a random color pair from the predefined palette
-  /// 
-  /// Returns a random HabitColorPair from the 20 predefined colors (indices 0-19).
-  /// This ensures that every time the habit creation screen opens, a different
-  /// predefined color is selected instead of always defaulting to the same color.
-  HabitColorPair _getRandomPaletteColors(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final random = math.Random();
-    final randomIndex = random.nextInt(20); // 0-19 (20 predefined colors)
-    return colorScheme.habitColorPairs[randomIndex];
   }
 
   void onIconChanged(String iconName) {

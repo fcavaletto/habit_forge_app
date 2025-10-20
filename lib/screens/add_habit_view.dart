@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:math' as math;
 import '../models/habit.dart';
 import '../controllers/add_habit_controller.dart';
 import '../widgets/forms/icon_selector.dart';
@@ -8,6 +9,7 @@ import '../widgets/forms/frequency_selector.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
+import '../theme.dart';
 
 /// Add Habit View - Pure UI component for adding new habits
 ///
@@ -31,6 +33,7 @@ class AddHabitView extends StatefulWidget {
 class _AddHabitViewState extends State<AddHabitView> {
   late AddHabitController _controller;
   late ScrollController _scrollController;
+  bool _didInitColors = false;
 
   @override
   void initState() {
@@ -40,9 +43,24 @@ class _AddHabitViewState extends State<AddHabitView> {
       onHabitAdded: widget.onHabitAdded,
       existingHabits: widget.existingHabits,
       appState: appState,
-      context: context,
     );
     _scrollController = ScrollController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Initialize random color selection once per screen open
+    if (!_didInitColors) {
+      final colorScheme = Theme.of(context).colorScheme;
+      final random = math.Random();
+      final randomIndex = random.nextInt(20); // 0-19 (20 predefined colors)
+      final colorPair = colorScheme.habitColorPairs[randomIndex];
+      
+      _controller.onColorChanged(colorPair.light, colorPair.dark);
+      _didInitColors = true;
+    }
   }
 
   @override
