@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme.dart';
+import '../../providers/app_state_provider.dart';
+import '../../screens/settings_screen.dart';
 import '../dialogs/custom_color_picker_dialog.dart';
+import '../dialogs/pro_upgrade_dialog.dart';
 
 /// Color selector widget for habit creation/editing
 ///
 /// Displays a static grid of 20 predefined colors plus 1 custom color option.
 /// Shows a checkmark on the selected color and provides visual feedback.
-/// Features a custom color picker as the 21st color option.
+/// The custom color picker (21st option) requires an active PRO subscription.
 class ColorSelector extends StatelessWidget {
   final Color selectedLightColor;
   final Color selectedDarkColor;
@@ -244,6 +248,45 @@ class ColorSelector extends StatelessWidget {
 
   void _handleColorTap(BuildContext context, int colorIndex) {
     if (colorIndex == 20) {
+      // Check PRO subscription status
+      final appState = Provider.of<AppState>(context, listen: false);
+      
+      if (!appState.isProSubscriptionActive) {
+        // Show PRO upgrade dialog
+        showDialog(
+          context: context,
+          builder: (context) => ProUpgradeDialog(
+            title: 'Custom Colors',
+            message: 'Unlock custom colors with PRO! Upgrade to access unlimited color customization for your habits.',
+            onUpgrade: () {
+              // Navigate back to dashboard first, then to settings
+              Navigator.of(context).pop(); // Close the add habit screen
+              Navigator.of(context).pop(); // Close the add habit dialog
+              // Now we're back at dashboard, navigate to settings
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) {
+                    final appState = Provider.of<AppState>(context, listen: false);
+                    return SettingsScreen(
+                      currentThemeMode: appState.themeMode,
+                      onThemeChanged: (mode) {
+                        appState.themeProvider.setThemeMode(mode);
+                        appState.themeProvider.saveThemeMode();
+                      },
+                      onAddSampleHabits: () {
+                        // Empty callback since we're not in dashboard context
+                      },
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        );
+        return;
+      }
+      
+      // PRO is active - show color picker
       showDialog(
         context: context,
         builder: (context) => CustomColorPickerDialog(

@@ -83,28 +83,28 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   void initState() {
     super.initState();
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 600), // Total: 200 + 100 + 400
+      duration: const Duration(milliseconds: 500), // Total: 200 + 100 + 400
       vsync: this,
     );
     
     // Create three-phase animation
     _pulseAnimation = TweenSequence<double>([
-      // Phase 1: Grow to 1.1x over 200ms (28.6% of 700ms)
+      // Phase 1: Grow to 1.1x
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.15)
+        tween: Tween<double>(begin: 1.0, end: 1.1)
             .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 28.6,
+        weight: 45.0,
       ),
-      // Phase 2: Hold at 1.1x for 100ms (14.3% of 700ms)
+      // Phase 2: Hold at 1.1x
       TweenSequenceItem(
         tween: ConstantTween<double>(1.1),
-        weight: 14.3,
+        weight: 15.0,
       ),
       // Phase 3: Shrink to 1.0x over 400ms (57.1% of 700ms)
       TweenSequenceItem(
         tween: Tween<double>(begin: 1.1, end: 1.0)
             .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 57.1,
+        weight: 40.0,
       ),
     ]).animate(_pulseController);
     
