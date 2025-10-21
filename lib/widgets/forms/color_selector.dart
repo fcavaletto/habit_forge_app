@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme.dart';
 import '../../providers/app_state_provider.dart';
-import '../../screens/settings_screen.dart';
 import '../dialogs/custom_color_picker_dialog.dart';
 import '../dialogs/pro_upgrade_dialog.dart';
 
@@ -259,27 +258,8 @@ class ColorSelector extends StatelessWidget {
             title: 'Custom Colors',
             message: 'Unlock custom colors with PRO! Upgrade to access unlimited color customization for your habits.',
             onUpgrade: () {
-              // Navigate back to dashboard first, then to settings
-              Navigator.of(context).pop(); // Close the add habit screen
-              Navigator.of(context).pop(); // Close the add habit dialog
-              // Now we're back at dashboard, navigate to settings
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) {
-                    final appState = Provider.of<AppState>(context, listen: false);
-                    return SettingsScreen(
-                      currentThemeMode: appState.themeMode,
-                      onThemeChanged: (mode) {
-                        appState.themeProvider.setThemeMode(mode);
-                        appState.themeProvider.saveThemeMode();
-                      },
-                      onAddSampleHabits: () {
-                        // Empty callback since we're not in dashboard context
-                      },
-                    );
-                  },
-                ),
-              );
+              // For now, do nothing when "Upgrade to Pro" is tapped
+              // TODO: Implement actual upgrade flow
             },
           ),
         );
