@@ -6,40 +6,40 @@ import '../models/habit.dart';
 /// Service for generating specific sample habits with historical completion data
 ///
 /// This service creates exactly 3 habits with specific completion patterns
-/// as requested: Learn Spanish, Journal Writing, and Read Pages.
+/// as requested: Eat Vegetables, Learn Spanish, and Push Ups.
 class SampleDataGeneratorService {
   static final Random _random = Random();
   
   // Specific habit templates as requested
   static const List<Map<String, dynamic>> _habitTemplates = [
     {
-      'name': 'Learn Spanish',
-      'description': 'Practice Spanish vocabulary and grammar',
-      'iconName': 'translate',
-      'lightColorValue': 0xFF94a3b8, // Slate light
-      'darkColorValue': 0xFF334155, // Slate dark
+      'name': 'Eat Vegetables',
+      'description': 'Include vegetables in your daily meals for better nutrition',
+      'iconName': 'restaurant_menu',
+      'lightColorValue': 0xFF10B981, // Emerald light
+      'darkColorValue': 0xFF34D399, // Emerald dark
       'targetGoal': 1,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
       'completionPattern': 'max_1_per_day',
       'allowExceedGoal': false,
     },
     {
-      'name': 'Journal Writing',
-      'description': 'Reflect on daily experiences',
-      'iconName': 'edit_note',
-      'lightColorValue': 0xFF9ca3af, // Gray light
-      'darkColorValue': 0xFF374151, // Gray dark
-      'targetGoal': 4,
+      'name': 'Learn Spanish',
+      'description': 'Practice Spanish vocabulary and grammar daily',
+      'iconName': 'translate',
+      'lightColorValue': 0xFF2563EB, // Sapphire light
+      'darkColorValue': 0xFF60A5FA, // Sapphire dark
+      'targetGoal': 1,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
-      'completionPattern': 'weighted_0_to_4',
+      'completionPattern': 'max_1_per_day',
       'allowExceedGoal': false,
     },
     {
-      'name': 'Read Pages',
-      'description': 'Read books to expand knowledge',
-      'iconName': 'menu_book',
-      'lightColorValue': 0xFFa3a3a3, // Neutral light
-      'darkColorValue': 0xFF404040, // Neutral dark
+      'name': 'Push Ups',
+      'description': 'Build upper body strength with daily push-ups',
+      'iconName': 'fitness_center',
+      'lightColorValue': 0xFFEF4444, // Coral Red light
+      'darkColorValue': 0xFFFC8181, // Coral Red dark
       'targetGoal': 10,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
       'completionPattern': 'random_0_to_20',
