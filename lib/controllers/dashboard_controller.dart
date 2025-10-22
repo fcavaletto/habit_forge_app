@@ -292,7 +292,7 @@ class DashboardController {
       int retrievedCount = 0; // Counter for habits restored from archive
       int addedCount = 0;    // Counter for newly created habits
 
-      // Get the 4 predefined sample habit templates
+      // Get the 3 predefined sample habit templates
       final sampleHabits = _getAllSampleHabits();
 
       // Step 1: Unarchive any archived sample habits (preserves completion history)
@@ -308,7 +308,7 @@ class DashboardController {
         }
       }
 
-      // Step 2: Create missing sample habits to ensure we have all 4 available
+      // Step 2: Create missing sample habits to ensure we have all 3 available
       for (final sampleHabit in sampleHabits) {
         // Check if this sample habit already exists (active or archived)
         final alreadyExists = allHabitsMetadata.any((existing) => existing.id == sampleHabit.id);
@@ -368,36 +368,29 @@ class DashboardController {
   List<Habit> _getAllSampleHabits() {
     return [
       Habit.createWithUuid(
-        name: 'Drink Water',
-        description: 'Drink 8 glasses of water daily',
-        lightColorValue: 0xFF94a3b8, // Slate light
-        darkColorValue: 0xFF334155,  // Slate dark
-        iconName: 'local_drink',
-        targetGoal: 8,
-      ),
-      Habit.createWithUuid(
-        name: 'Take a Walk',
-        description: 'Go for a 10-minute walk outdoors',
-        lightColorValue: 0xFF9ca3af, // Gray light
-        darkColorValue: 0xFF374151,  // Gray dark
-        iconName: 'directions_walk',
-        targetGoal: 1,
-      ),
-      Habit.createWithUuid(
-        name: 'Read 10 Minutes',
-        description: 'Read a book for at least 10 minutes',
-        lightColorValue: 0xFFa3a3a3, // Neutral light
-        darkColorValue: 0xFF404040,  // Neutral dark
-        iconName: 'book',
-        targetGoal: 1,
-      ),
-      Habit.createWithUuid(
         name: 'Eat Vegetables',
-        description: 'Eat 4 portions of vegetables daily',
-        lightColorValue: 0xFFf87171, // Red light
-        darkColorValue: 0xFFb91c1c,  // Red dark
-        iconName: 'eco',
-        targetGoal: 4,
+        description: 'Include vegetables in your daily meals for better nutrition',
+        lightColorValue: 0xFF10B981, // Emerald light
+        darkColorValue: 0xFF34D399,  // Emerald dark
+        iconName: 'restaurant_menu',
+        targetGoal: 1,
+      ),
+      Habit.createWithUuid(
+        name: 'Learn Spanish',
+        description: 'Practice Spanish vocabulary and grammar daily',
+        lightColorValue: 0xFF2563EB, // Sapphire light
+        darkColorValue: 0xFF60A5FA,  // Sapphire dark
+        iconName: 'translate',
+        targetGoal: 1,
+      ),
+      Habit.createWithUuid(
+        name: 'Push Ups',
+        description: 'Build upper body strength with daily push-ups',
+        lightColorValue: 0xFFEF4444, // Coral Red light
+        darkColorValue: 0xFFFC8181,  // Coral Red dark
+        iconName: 'fitness_center',
+        targetGoal: 10,
+        allowExceedGoal: true,
       ),
     ];
   }

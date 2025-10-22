@@ -6,43 +6,43 @@ import '../models/habit.dart';
 /// Service for generating specific sample habits with historical completion data
 ///
 /// This service creates exactly 3 habits with specific completion patterns
-/// as requested: Eat Vegetables, Learn Spanish, and Push Ups.
+/// as requested: Take a Walk, Drink Water, and Read Pages.
 class SampleDataGeneratorService {
   static final Random _random = Random();
   
   // Specific habit templates as requested
   static const List<Map<String, dynamic>> _habitTemplates = [
     {
-      'name': 'Eat Vegetables',
-      'description': 'Include vegetables in your daily meals for better nutrition',
-      'iconName': 'restaurant_menu',
-      'lightColorValue': 0xFF10B981, // Emerald light
-      'darkColorValue': 0xFF34D399, // Emerald dark
+      'name': 'Take a Walk',
+      'description': 'Go for a daily walk to stay active and healthy',
+      'iconName': 'directions_walk',
+      'lightColorValue': 0xFF84CC16, // Lime light
+      'darkColorValue': 0xFFA3E635,  // Lime dark
       'targetGoal': 1,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
-      'completionPattern': 'max_1_per_day',
+      'completionPattern': 'max_1_per_day', // Random 0 or 1
       'allowExceedGoal': false,
     },
     {
-      'name': 'Learn Spanish',
-      'description': 'Practice Spanish vocabulary and grammar daily',
-      'iconName': 'translate',
-      'lightColorValue': 0xFF2563EB, // Sapphire light
-      'darkColorValue': 0xFF60A5FA, // Sapphire dark
-      'targetGoal': 1,
+      'name': 'Drink Water',
+      'description': 'Stay hydrated by drinking 8 glasses of water daily',
+      'iconName': 'water_drop',
+      'lightColorValue': 0xFF0EA5E9, // Sky light
+      'darkColorValue': 0xFF38BDF8,  // Sky dark
+      'targetGoal': 8,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
-      'completionPattern': 'max_1_per_day',
+      'completionPattern': 'weighted_0_to_8', // Skewed toward 8
       'allowExceedGoal': false,
     },
     {
-      'name': 'Push Ups',
-      'description': 'Build upper body strength with daily push-ups',
-      'iconName': 'fitness_center',
-      'lightColorValue': 0xFFEF4444, // Coral Red light
-      'darkColorValue': 0xFFFC8181, // Coral Red dark
-      'targetGoal': 10,
+      'name': 'Read Pages',
+      'description': 'Read to expand knowledge and relax',
+      'iconName': 'menu_book',
+      'lightColorValue': 0xFF8B5CF6, // Lavender light
+      'darkColorValue': 0xFFC4B5FD,  // Lavender dark
+      'targetGoal': 5,
       'frequencyDays': {'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1},
-      'completionPattern': 'random_0_to_20',
+      'completionPattern': 'random_0_to_10', // Uniform 0-10
       'allowExceedGoal': true,
     },
   ];
@@ -168,11 +168,26 @@ class SampleDataGeneratorService {
   static int _generateCompletionCount(String pattern, int targetGoal) {
     switch (pattern) {
       case 'max_1_per_day':
-        // Learn Spanish: Randomly create maximum 1 completion per day
+        // Take a Walk: Randomly create maximum 1 completion per day
         return _random.nextBool() ? 1 : 0;
         
+      case 'weighted_0_to_8':
+        // Drink Water: Randomly assign completions from 0 to 8, skewed toward 8
+        final roll = _random.nextDouble();
+        if (roll < 0.6) {
+          return 8; // 60% chance of 8 (goal)
+        } else if (roll < 0.8) {
+          return _random.nextInt(4) + 5; // 5, 6, 7 (close to goal)
+        } else {
+          return _random.nextInt(5); // 0, 1, 2, 3, 4 (below goal)
+        }
+        
+      case 'random_0_to_10':
+        // Read Pages: Uniform random completions from 0 to 10
+        return _random.nextInt(11); // 0 to 10 inclusive
+        
       case 'weighted_0_to_4':
-        // Journal Writing: Randomly assign completions from 0 to 4, but 50% should be 4
+        // Legacy pattern for Journal Writing: Randomly assign completions from 0 to 4, but 50% should be 4
         final roll = _random.nextDouble();
         if (roll < 0.5) {
           return 4; // 50% chance of 4
@@ -181,7 +196,7 @@ class SampleDataGeneratorService {
         }
         
       case 'random_0_to_20':
-        // Read Pages: Randomly assign completions from 0 to 20
+        // Legacy pattern for Read Pages: Randomly assign completions from 0 to 20
         return _random.nextInt(21); // 0 to 20 inclusive
         
       default:
