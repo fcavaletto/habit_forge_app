@@ -369,11 +369,11 @@ class DashboardController {
     return [
       Habit.createWithUuid(
         name: 'Eat Vegetables',
-        description: 'Include vegetables in your daily meals for better nutrition',
+        description: 'Eat 4 portions of vegetables daily for better nutrition',
         lightColorValue: 0xFF10B981, // Emerald light
         darkColorValue: 0xFF34D399,  // Emerald dark
         iconName: 'restaurant_menu',
-        targetGoal: 1,
+        targetGoal: 4,
       ),
       Habit.createWithUuid(
         name: 'Learn Spanish',
@@ -389,7 +389,7 @@ class DashboardController {
         lightColorValue: 0xFFEF4444, // Coral Red light
         darkColorValue: 0xFFFC8181,  // Coral Red dark
         iconName: 'fitness_center',
-        targetGoal: 10,
+        targetGoal: 1,
         allowExceedGoal: true,
       ),
     ];
