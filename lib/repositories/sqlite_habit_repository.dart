@@ -1052,9 +1052,12 @@ class SqliteHabitRepository {
                 'goal_at_completion': entry.value.goalAtCompletion,
               }).toList();
 
-              // Use batch insert for better performance
+              // Use batch insert for better performance with OR REPLACE to handle duplicates
               for (final row in completionRows) {
-                await txn.insert('daily_completions', row);
+                await txn.rawInsert(
+                  'INSERT OR REPLACE INTO daily_completions (habit_id, completion_date, completion_count, goal_at_completion) VALUES (?, ?, ?, ?)',
+                  [row['habit_id'], row['completion_date'], row['completion_count'], row['goal_at_completion']],
+                );
               }
 
               // Insert one timestamp per completion using the actual completion times
@@ -1074,10 +1077,10 @@ class SqliteHabitRepository {
                     completionDateTime.second + j, // Small increment for multiple completions
                   );
 
-                  await txn.insert('completion_times', {
-                    'habit_id': habit.id,
-                    'completion_time': TimezoneUtils.toTimestampString(timestampDateTime),
-                  });
+                  await txn.rawInsert(
+                    'INSERT OR REPLACE INTO completion_times (habit_id, completion_time) VALUES (?, ?)',
+                    [habit.id, TimezoneUtils.toTimestampString(timestampDateTime)],
+                  );
                 }
               }
             }

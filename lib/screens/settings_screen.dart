@@ -83,41 +83,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Import Sample Data'),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'This will generate realistic sample habits with 2 years of completion data.',
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Choose import option:',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 8),
-              Text('• Add to existing habits (recommended)'),
-              Text('• Replace all existing habits'),
-            ],
+          content: const Text(
+            'This will generate realistic sample habits with 2 years of completion data.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _importSampleData(context, clearExisting: false);
-              },
-              child: const Text('Add to Existing'),
-            ),
             FilledButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _importSampleData(context, clearExisting: true);
+                _importSampleData(context);
               },
-              child: const Text('Replace All'),
+              child: const Text('Import Sample Data'),
             ),
           ],
         );
@@ -125,7 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _importSampleData(BuildContext context, {required bool clearExisting}) async {
+  Future<void> _importSampleData(BuildContext context) async {
     final appState = Provider.of<AppState>(context, listen: false);
     
     // Show progress dialog
@@ -134,10 +113,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return ImportProgressDialog(
-          clearExisting: clearExisting,
+          clearExisting: false, // Always additive
           importFunction: (onProgress) async {
             return await appState.habitProvider.importSampleHabits(
-              clearExisting: clearExisting,
+              clearExisting: false, // Always additive
               numberOfHabits: 3, // Always 3 specific habits
               onProgress: onProgress,
             );
