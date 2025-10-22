@@ -390,7 +390,7 @@ class DashboardController {
         darkColorValue: 0xFFFC8181,  // Coral Red dark
         iconName: 'fitness_center',
         targetGoal: 1,
-        allowExceedGoal: true,
+        allowExceedGoal: false,
       ),
     ];
   }

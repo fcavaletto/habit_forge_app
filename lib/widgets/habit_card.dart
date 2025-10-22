@@ -83,7 +83,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   void initState() {
     super.initState();
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 500), // Total: 200 + 100 + 400
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
     
@@ -91,18 +91,18 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     _pulseAnimation = TweenSequence<double>([
       // Phase 1: Grow to 1.1x
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.1)
+        tween: Tween<double>(begin: 1.0, end: 1.08)
             .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 45.0,
+        weight: 50.0,
       ),
       // Phase 2: Hold at 1.1x
       TweenSequenceItem(
-        tween: ConstantTween<double>(1.1),
-        weight: 15.0,
+        tween: ConstantTween<double>(1.08),
+        weight: 10.0,
       ),
-      // Phase 3: Shrink to 1.0x over 400ms (57.1% of 700ms)
+      // Phase 3: Shrink to 1.0x
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.1, end: 1.0)
+        tween: Tween<double>(begin: 1.08, end: 1.0)
             .chain(CurveTween(curve: Curves.easeInOut)),
         weight: 40.0,
       ),
@@ -110,7 +110,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     
     // New burst animation
     _burstController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 700),
       vsync: this,
     );
     
