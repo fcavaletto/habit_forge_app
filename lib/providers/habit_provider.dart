@@ -337,9 +337,9 @@ class HabitState extends ChangeNotifier {
         final habitWithCompletions = newHabit.copyWith(completions: completions);
         _habits[0] = habitWithCompletions;
         
-        // Cache completions
+        // Cache completions in persistent cache
         for (final entry in completions.entries) {
-          await _dataAccessService.cache.cacheCompletion(
+          await _persistentCache.updateCompletion(
             newHabit.id,
             entry.key,
             entry.value.count,
@@ -501,8 +501,8 @@ class HabitState extends ChangeNotifier {
         }
       }
 
-      // Update cache for this habit and date
-      await _dataAccessService.cache.cacheCompletion(habitId, date, count);
+      // Update persistent cache for this habit and date
+      await _persistentCache.updateCompletion(habitId, date, count);
 
       debugPrint(
         '✅ Database sync successful: $habitId on ${date.toIso8601String().split('T')[0]} = $count',
@@ -667,8 +667,8 @@ class HabitState extends ChangeNotifier {
       }
       // If newCount == currentCount, no database operation needed
 
-      // Update cache for this habit and date
-      await _dataAccessService.cache.cacheCompletion(habitId, date, newCount);
+      // Update persistent cache for this habit and date
+      await _persistentCache.updateCompletion(habitId, date, newCount);
 
       debugPrint(
         '✅ Database custom completion successful: $habitId on ${date.toIso8601String().split('T')[0]} = $newCount',
@@ -707,8 +707,8 @@ class HabitState extends ChangeNotifier {
         ),
       );
 
-      // Update cache for this habit and date
-      await _dataAccessService.cache.cacheCompletion(habitId, date, 0);
+      // Update persistent cache for this habit and date
+      await _persistentCache.updateCompletion(habitId, date, 0);
 
       debugPrint(
         '✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]} (removed $currentCount completions)',

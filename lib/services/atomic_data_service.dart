@@ -856,9 +856,6 @@ class AtomicDataService implements IAtomicDataService {
       // Add completions using repository
       await _repository.addMultipleCompletions(habitId, date, count);
 
-      // Invalidate cache for this habit and date
-      await _cache.invalidateCompletion(habitId, date);
-
       stopwatch.stop();
       debugPrint('✅ [ATOMIC] addCompletions completed: $count completions in ${stopwatch.elapsedMilliseconds}ms');
 
@@ -900,9 +897,6 @@ class AtomicDataService implements IAtomicDataService {
 
       // Remove completions using repository
       await _repository.removeNewestCompletions(habitId, date, count);
-
-      // Invalidate cache for this habit and date
-      await _cache.invalidateCompletion(habitId, date);
 
       stopwatch.stop();
       debugPrint('✅ [ATOMIC] removeCompletions completed: $count completions in ${stopwatch.elapsedMilliseconds}ms');

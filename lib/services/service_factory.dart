@@ -37,7 +37,7 @@ class ServiceFactory {
       _databaseService ??= DatabaseService();
 
       // Initialize caching service
-      _cachingService ??= CachingServiceFactory.createMemoryCache();
+      _cachingService ??= CachingServiceFactory.createPersistentCache();
 
       // Initialize repository
       _habitRepository ??= SqliteHabitRepository(_databaseService!);

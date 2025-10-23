@@ -388,6 +388,13 @@ class PersistentCacheService implements ICachingService {
         return false;
       }
       
+      // Check if cache is from today (day-based validation)
+      if (!_isSameDay(metadata.cachedAt, DateTime.now())) {
+        debugPrint('📅 Cache is from different day, invalidating cache');
+        await clearCache();
+        return false;
+      }
+      
       // Validate integrity
       return await _validateCacheIntegrity(metadata);
     } catch (e) {
@@ -570,27 +577,50 @@ class PersistentCacheService implements ICachingService {
   @override
   Future<void> cacheCompletion(String habitId, DateTime date, int count) async {
     await _ensureInitialized();
-    // This would need to be implemented properly
-    // For now, just mark as completed
+    // Use the existing updateCompletion method
+    await updateCompletion(habitId, date, count);
   }
 
   @override
   Future<int?> getCachedCompletion(String habitId, DateTime date) async {
     await _ensureInitialized();
-    // This would need to be implemented properly
-    return null;
+    
+    // Load habits from cache and extract completion count for specific habit/date
+    try {
+      final habits = await loadHabits();
+      
+      // Find the habit with matching ID
+      Habit? foundHabit;
+      for (final habit in habits) {
+        if (habit.id == habitId) {
+          foundHabit = habit;
+          break;
+        }
+      }
+      
+      if (foundHabit != null) {
+        return foundHabit.getCompletionCount(date);
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting cached completion: $e');
+      return null;
+    }
   }
 
   @override
   Future<void> invalidateCompletion(String habitId, DateTime date) async {
     await _ensureInitialized();
-    // This would need to be implemented properly
+    // Set completion count to 0 to "invalidate" it
+    await updateCompletion(habitId, date, 0);
   }
 
   @override
   Future<void> invalidateAllCompletions() async {
     await _ensureInitialized();
-    // This would need to be implemented properly
+    // Clear the entire cache to invalidate all completions
+    await clearCache();
   }
 
   @override
@@ -644,5 +674,15 @@ class PersistentCacheService implements ICachingService {
       // If removal fails, clear entire cache as fallback
       await clearCache();
     }
+  }
+  
+  /// Check if two dates are on the same day
+  /// 
+  /// This method compares only the year, month, and day components
+  /// of two DateTime objects, ignoring time components.
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+           date1.month == date2.month &&
+           date1.day == date2.day;
   }
 }

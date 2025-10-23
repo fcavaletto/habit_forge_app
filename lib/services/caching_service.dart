@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'persistent_cache_service.dart';
 
 /// Interface for caching services
 ///
@@ -241,9 +242,7 @@ class CachingServiceFactory {
   static ICachingService createMemoryCache() => MemoryCachingService();
 
   static ICachingService createPersistentCache() {
-    // TODO: Implement persistent cache service
-    // This would use SharedPreferences or similar for persistence across app restarts
-    return MemoryCachingService(); // Fallback for now
+    return PersistentCacheService();
   }
 
   static ICachingService createHybridCache() {
