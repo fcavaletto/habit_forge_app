@@ -15,6 +15,13 @@ import '../services/row_processor.dart';
 /// RECOMMENDED USAGE:
 /// - `atomicDataService` for fine-grained data operations (preferred)
 /// - `IDataPreparationService` implementations for UI-specific data preparation
+///
+/// ## Key Methods:
+/// - `getHabitMetadata()` - Get habit metadata without completion data
+/// - `getCompletions()` - Get completion data for habits within a date range
+/// - `getIndividualCompletionTimestamps()` - Get individual timestamps for a specific day
+/// - `getMaxStreak()` / `getCurrentStreak()` - Calculate streak data
+/// - `getHabitsNeedingAttention()` - Get habits requiring user attention
 class DataAccessService {
   final ICachingService _cache;
   late final AtomicDataService _atomicDataService;

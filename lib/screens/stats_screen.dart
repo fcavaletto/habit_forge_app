@@ -83,7 +83,7 @@ class _StatsScreenState extends State<StatsScreen> {
         final metadata = metadataResult.data!.first;
         
         // Get completion data for last 30 days
-        final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletionTimestamps(
+        final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletions(
           startDate: last30Days,
           endDate: DateTime.now(),
           habitIds: [widget.habit.id],
@@ -164,7 +164,7 @@ class _StatsScreenState extends State<StatsScreen> {
         final metadata = metadataResult.data!.first;
         
         // Get full completion data
-        final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletionTimestamps(
+        final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletions(
           startDate: DateTime(2020), // Full history
           endDate: DateTime.now(),
           habitIds: [widget.habit.id],

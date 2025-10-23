@@ -22,8 +22,8 @@ class HabitLoadConfig {
     this.endDate,
     this.convertToLocal = true,
     this.loadCompletions = true,
-    this.loadReminders = true,
-    this.loadFrequencyDays = true,
+    this.loadReminders = false,
+    this.loadFrequencyDays = false,
   });
 
   /// Create config for metadata-only loading (fastest)

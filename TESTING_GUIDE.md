@@ -23,7 +23,7 @@ Test individual atomic operations in isolation.
 flutter test test/services/atomic_data_service_test.dart
 
 # Run specific test group
-flutter test test/services/atomic_data_service_test.dart --name="getHabitFeatures"
+flutter test test/services/atomic_data_service_test.dart --name="getCompletions"
 ```
 
 **Key Test Areas:**
@@ -31,6 +31,7 @@ flutter test test/services/atomic_data_service_test.dart --name="getHabitFeature
 - ✅ Error handling for invalid inputs
 - ✅ Performance monitoring (execution time tracking)
 - ✅ Context preservation in results
+- ✅ Timezone conversion handling (`convertToLocal` parameter)
 
 ### 2. Row Processor Tests (`test/services/row_processor_test.dart`)
 

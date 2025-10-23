@@ -72,7 +72,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       final today = DateTime.now();
       final last7Days = today.subtract(const Duration(days: 6));
 
-      final completionsResult = await _atomicService.getCompletionTimestamps(
+      final completionsResult = await _atomicService.getCompletions(
         startDate: last7Days,
         endDate: today,
         context: DataAccessContext(
@@ -180,7 +180,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       final today = DateTime.now();
       final last30Days = today.subtract(const Duration(days: 29));
 
-      final completionsResult = await _atomicService.getCompletionTimestamps(
+      final completionsResult = await _atomicService.getCompletions(
         startDate: last30Days,
         endDate: today,
         context: DataAccessContext(
@@ -299,7 +299,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       }
 
       // Get completion data for the specified date range
-      final completionsResult = await _atomicService.getCompletionTimestamps(
+      final completionsResult = await _atomicService.getCompletions(
         startDate: startDate,
         endDate: endDate,
         context: DataAccessContext(

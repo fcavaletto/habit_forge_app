@@ -94,7 +94,7 @@ abstract class IAtomicDataService {
   /// 
   /// This is the consolidated method that replaces:
   /// - getHabitFeatures()
-  /// - getAllHabitsIncludingArchived() (when combined with getCompletionRecords)
+  /// - getAllHabitsIncludingArchived() (when combined with getCompletions)
   /// - getActiveHabitsForReordering() (repository method)
   Future<DataAccessResult<List<HabitMetadata>>> getHabitMetadata({
     bool includeArchived = false,
@@ -104,35 +104,21 @@ abstract class IAtomicDataService {
 
 
 
-  /// Get completion records for habits within a date range
+  /// Get completion data for habits within a date range
   ///
   /// [startDate] - Start of date range (inclusive)
   /// [endDate] - End of date range (inclusive)
   /// [habitIds] - Optional list of specific habit IDs
+  /// [convertToLocal] - Whether to convert timestamps to local time (default: true)
   /// [context] - Logging context for the operation
   ///
   /// Returns map of habit ID -> date -> CompletionRecord (includes count and goalAtCompletion)
   /// Throws DataValidationException if date range is invalid
-  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletionRecords({
+  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletions({
     required DateTime startDate,
     required DateTime endDate,
     List<String>? habitIds,
-    required DataAccessContext context,
-  });
-
-  /// Get detailed completion records with timestamps
-  ///
-  /// [startDate] - Start of date range (inclusive)
-  /// [endDate] - End of date range (inclusive)
-  /// [habitIds] - Optional list of specific habit IDs
-  /// [context] - Logging context for the operation
-  ///
-  /// Returns map of habit ID -> date -> CompletionRecord
-  /// Throws DataValidationException if date range is invalid
-  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletionTimestamps({
-    required DateTime startDate,
-    required DateTime endDate,
-    List<String>? habitIds,
+    bool convertToLocal = true,
     required DataAccessContext context,
   });
 
@@ -591,10 +577,11 @@ class AtomicDataService implements IAtomicDataService {
 
 
   @override
-  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletionRecords({
+  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletions({
     required DateTime startDate,
     required DateTime endDate,
     List<String>? habitIds,
+    bool convertToLocal = true,
     required DataAccessContext context,
   }) async {
     final stopwatch = Stopwatch()..start();
@@ -608,14 +595,22 @@ class AtomicDataService implements IAtomicDataService {
         );
       }
 
-      debugPrint('🔍 [ATOMIC] getCompletionRecords called: ${context.component}.${context.operation}');
+      // Validate habitIds if provided
+      if (habitIds != null && habitIds.isEmpty) {
+        throw DataValidationException(
+          'habitIds cannot be an empty list',
+          DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
+        );
+      }
+
+      debugPrint('🔍 [ATOMIC] getCompletions called: ${context.component}.${context.operation} (convertToLocal: $convertToLocal)');
 
       // Get habit metadata first to know which habits to query
       final metadataResult = await getHabitMetadata(
         habitIds: habitIds,
         context: DataAccessContext(
           component: 'AtomicDataService',
-          operation: 'getCompletionRecords',
+          operation: 'getCompletions',
         ),
       );
 
@@ -632,35 +627,42 @@ class AtomicDataService implements IAtomicDataService {
 
       final result = <String, Map<DateTime, CompletionRecord>>{};
 
-      // Get completion data for each habit using new RowProcessor
-      for (final habit in filteredHabits) {
+      // Get completion data for all habits in parallel
+      final completionFutures = filteredHabits.map((habit) async {
         final config = HabitLoadConfig(
           startDate: startDate,
           endDate: endDate,
-          convertToLocal: false, // Keep UTC for calculations
-          loadCompletions: true,
-          loadReminders: false,
-          loadFrequencyDays: false,
+          convertToLocal: convertToLocal,
         );
 
         final completionResult = await _rowProcessor.processCompletions(
           habitId: habit.id,
           config: config,
           context: DataAccessContext(
-            component: 'AtomicDataService',
-            operation: 'processCompletions',
-            parameters: {'habitId': habit.id},
+            component: context.component,
+            operation: context.operation,
+            parameters: {...context.parameters, 'habitId': habit.id},
           ),
         );
 
+        return MapEntry(habit.id, completionResult);
+      });
+
+      // Wait for all completion results
+      final completionResults = await Future.wait(completionFutures);
+
+      // Process results
+      for (final entry in completionResults) {
+        final habitId = entry.key;
+        final completionResult = entry.value;
+        
         if (completionResult.success && completionResult.data != null) {
-          // Return the full CompletionRecord objects (includes count and goalAtCompletion)
-          result[habit.id] = completionResult.data!.completions;
+          result[habitId] = completionResult.data!.completions;
         }
       }
 
       stopwatch.stop();
-      debugPrint('✅ [ATOMIC] getCompletionRecords completed: ${result.length} habits in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('✅ [ATOMIC] getCompletions completed: ${result.length} habits in ${stopwatch.elapsedMilliseconds}ms');
 
       return DataAccessResult.success(
         data: result,
@@ -669,98 +671,10 @@ class AtomicDataService implements IAtomicDataService {
       );
     } catch (e) {
       stopwatch.stop();
-      debugPrint('❌ [ATOMIC] getCompletionRecords failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('❌ [ATOMIC] getCompletions failed after ${stopwatch.elapsedMilliseconds}ms: $e');
 
       return DataAccessResult.failure(
-        errorMessage: 'Failed to get completion records: $e',
-        context: context,
-        executionTime: stopwatch.elapsed,
-      );
-    }
-  }
-
-  @override
-  Future<DataAccessResult<Map<String, Map<DateTime, CompletionRecord>>>> getCompletionTimestamps({
-    required DateTime startDate,
-    required DateTime endDate,
-    List<String>? habitIds,
-    required DataAccessContext context,
-  }) async {
-    final stopwatch = Stopwatch()..start();
-
-    try {
-      // Validate date range
-      if (startDate.isAfter(endDate)) {
-        throw DataValidationException(
-          'Start date cannot be after end date',
-          DataAccessContext(component: 'AtomicDataService', operation: 'validation'),
-        );
-      }
-
-      debugPrint('🔍 [ATOMIC] getCompletionTimestamps called: ${context.component}.${context.operation}');
-
-      // Get habit metadata first to know which habits to query
-      final metadataResult = await getHabitMetadata(
-        habitIds: habitIds,
-        context: DataAccessContext(
-          component: 'AtomicDataService',
-          operation: 'getCompletionTimestamps',
-        ),
-      );
-
-      if (!metadataResult.success || metadataResult.data == null) {
-        stopwatch.stop();
-        return DataAccessResult.failure(
-          errorMessage: 'Failed to get habit metadata: ${metadataResult.errorMessage}',
-          context: context,
-          executionTime: stopwatch.elapsed,
-        );
-      }
-
-      final filteredHabits = metadataResult.data!;
-
-      final result = <String, Map<DateTime, CompletionRecord>>{};
-
-      // Get completion data for each habit using new RowProcessor
-      for (final habit in filteredHabits) {
-        final config = HabitLoadConfig(
-          startDate: startDate,
-          endDate: endDate,
-          convertToLocal: true, // Convert to local time for display
-          loadCompletions: true,
-          loadReminders: false,
-          loadFrequencyDays: false,
-        );
-
-        final completionResult = await _rowProcessor.processCompletions(
-          habitId: habit.id,
-          config: config,
-          context: DataAccessContext(
-            component: 'AtomicDataService',
-            operation: 'processCompletions',
-            parameters: {'habitId': habit.id},
-          ),
-        );
-
-        if (completionResult.success && completionResult.data != null) {
-          result[habit.id] = completionResult.data!.completions;
-        }
-      }
-
-      stopwatch.stop();
-      debugPrint('✅ [ATOMIC] getCompletionTimestamps completed: ${result.length} habits in ${stopwatch.elapsedMilliseconds}ms');
-
-      return DataAccessResult.success(
-        data: result,
-        context: context,
-        executionTime: stopwatch.elapsed,
-      );
-    } catch (e) {
-      stopwatch.stop();
-      debugPrint('❌ [ATOMIC] getCompletionTimestamps failed after ${stopwatch.elapsedMilliseconds}ms: $e');
-
-      return DataAccessResult.failure(
-        errorMessage: 'Failed to get completion timestamps: $e',
+        errorMessage: 'Failed to get completions: $e',
         context: context,
         executionTime: stopwatch.elapsed,
       );

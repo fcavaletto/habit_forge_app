@@ -320,7 +320,7 @@ class HabitState extends ChangeNotifier {
       
       debugPrint('🔍 [ADD_HABIT] Loading completions for new habit only (last 7 days)');
       
-      final completionResult = await _dataAccessService.atomicDataService.getCompletionTimestamps(
+      final completionResult = await _dataAccessService.atomicDataService.getCompletions(
         startDate: last7Days,
         endDate: today,
         habitIds: [newHabit.id], // ← ONLY the new habit!
@@ -1045,7 +1045,7 @@ class HabitState extends ChangeNotifier {
       final today = DateTime.now();
       final last7Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 6));
       
-      final completionResult = await _dataAccessService.atomicDataService.getCompletionTimestamps(
+      final completionResult = await _dataAccessService.atomicDataService.getCompletions(
         startDate: last7Days,
         endDate: today,
         habitIds: [habitId],
