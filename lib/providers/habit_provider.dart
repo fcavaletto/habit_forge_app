@@ -432,6 +432,10 @@ class HabitState extends ChangeNotifier {
   ///
   /// This method handles the actual database operations after the optimistic UI update.
   /// If the database operation fails, it will rollback the UI changes.
+  /// 
+  /// Behavior depends on allowExceedGoal flag:
+  /// - allowExceedGoal = false: Simple increment/decrement with reset functionality
+  /// - allowExceedGoal = true: Uses LIFO approach for timestamp management
   Future<void> _syncCompletionToDatabase(
     String habitId,
     DateTime date,
@@ -442,6 +446,11 @@ class HabitState extends ChangeNotifier {
     try {
       final currentCount = originalHabit.getCompletionCount(date);
       final difference = count - currentCount;
+
+      if (difference == 0) {
+        debugPrint('📝 No database sync needed - count unchanged');
+        return;
+      }
 
       if (difference > 0) {
         // Add completions using AtomicDataService
@@ -454,22 +463,46 @@ class HabitState extends ChangeNotifier {
             operation: 'addCompletions',
           ),
         );
-        // Update cache for this habit and date
-        await _dataAccessService.cache.cacheCompletion(habitId, date, count);
+        debugPrint(
+          '📈 Added $difference completions for habit $habitId (${originalHabit.allowExceedGoal ? 'exceedable' : 'standard'})',
+        );
       } else if (difference < 0) {
         // Remove completions using AtomicDataService
-        await _dataAccessService.atomicDataService.removeCompletions(
-          habitId: habitId,
-          date: date,
-          count: -difference,
-          context: DataAccessContext(
-            component: 'HabitProvider',
-            operation: 'removeCompletions',
-          ),
-        );
-        // Update cache for this habit and date
-        await _dataAccessService.cache.cacheCompletion(habitId, date, count);
+        final countToRemove = -difference;
+        
+        if (originalHabit.allowExceedGoal) {
+          // For exceedable habits: Use LIFO approach (remove newest timestamps)
+          await _dataAccessService.atomicDataService.removeCompletions(
+            habitId: habitId,
+            date: date,
+            count: countToRemove,
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'removeCompletions',
+            ),
+          );
+          debugPrint(
+            '📉 Removed $countToRemove newest completions for exceedable habit $habitId (LIFO)',
+          );
+        } else {
+          // For standard habits: Reset all completions (remove all timestamps)
+          await _dataAccessService.atomicDataService.removeCompletions(
+            habitId: habitId,
+            date: date,
+            count: currentCount, // Remove all existing completions
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'removeCompletions',
+            ),
+          );
+          debugPrint(
+            '🔄 Reset all $currentCount completions for standard habit $habitId (full reset)',
+          );
+        }
       }
+
+      // Update cache for this habit and date
+      await _dataAccessService.cache.cacheCompletion(habitId, date, count);
 
       debugPrint(
         '✅ Database sync successful: $habitId on ${date.toIso8601String().split('T')[0]} = $count',
@@ -588,6 +621,9 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Sync custom completion operation to database in background
+  /// 
+  /// This method handles custom completion counts for habits with allowExceedGoal = true.
+  /// It uses LIFO approach for timestamp management (remove newest timestamps first).
   Future<void> _syncCustomCompletionToDatabase(
     String habitId,
     DateTime date,
@@ -611,10 +647,10 @@ class HabitState extends ChangeNotifier {
           ),
         );
         debugPrint(
-          '📈 Incremental increase: Added $additionalCount completions ($currentCount → $newCount)',
+          '📈 Custom completion increase: Added $additionalCount completions ($currentCount → $newCount)',
         );
       } else if (newCount < currentCount) {
-        // DECREASE: Remove completions using AtomicDataService
+        // DECREASE: Remove completions using LIFO approach (newest timestamps first)
         final countToRemove = currentCount - newCount;
         await _dataAccessService.atomicDataService.removeCompletions(
           habitId: habitId,
@@ -626,7 +662,7 @@ class HabitState extends ChangeNotifier {
           ),
         );
         debugPrint(
-          '📉 Incremental decrease: Removed $countToRemove newest completions ($currentCount → $newCount)',
+          '📉 Custom completion decrease: Removed $countToRemove newest completions ($currentCount → $newCount)',
         );
       }
       // If newCount == currentCount, no database operation needed
@@ -652,11 +688,19 @@ class HabitState extends ChangeNotifier {
     int habitIndex,
   ) async {
     try {
+      // Get current completion count to determine how many to remove
+      final currentCount = originalHabit.getCompletionCount(date);
+      
+      if (currentCount <= 0) {
+        debugPrint('📝 No completions to reset for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+        return;
+      }
+
       // Remove all completions using AtomicDataService
       await _dataAccessService.atomicDataService.removeCompletions(
         habitId: habitId,
         date: date,
-        count: 999, // Remove all completions
+        count: currentCount, // Remove actual completion count
         context: DataAccessContext(
           component: 'HabitProvider',
           operation: 'removeCompletions',
@@ -667,7 +711,7 @@ class HabitState extends ChangeNotifier {
       await _dataAccessService.cache.cacheCompletion(habitId, date, 0);
 
       debugPrint(
-        '✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]}',
+        '✅ Database reset successful: $habitId on ${date.toIso8601String().split('T')[0]} (removed $currentCount completions)',
       );
     } catch (e) {
       debugPrint('❌ Database reset failed for $habitId: $e');

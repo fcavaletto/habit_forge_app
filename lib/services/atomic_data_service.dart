@@ -899,7 +899,7 @@ class AtomicDataService implements IAtomicDataService {
       debugPrint('🔍 [ATOMIC] removeCompletions called: ${context.component}.${context.operation}');
 
       // Remove completions using repository
-      await _repository.removeOldestCompletions(habitId, date, count);
+      await _repository.removeNewestCompletions(habitId, date, count);
 
       // Invalidate cache for this habit and date
       await _cache.invalidateCompletion(habitId, date);

@@ -266,8 +266,8 @@ class SqliteHabitRepository {
   /// Remove newest completions for a habit on a specific date (LIFO)
   /// 
   /// This method removes the newest timestamps while preserving older ones.
-  /// Used when decreasing completion count from a custom modal.
-  Future<void> removeOldestCompletions(String habitId, DateTime date, int countToRemove) async {
+  /// Used when decreasing completion count from a custom modal or for exceedable habits.
+  Future<void> removeNewestCompletions(String habitId, DateTime date, int countToRemove) async {
     if (countToRemove <= 0) {
       debugPrint('📝 No completions to remove for habit $habitId');
       return;
