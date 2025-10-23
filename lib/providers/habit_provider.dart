@@ -1876,9 +1876,39 @@ class HabitProvider extends HabitState {
   }
 
 
+  /// Check if a date is "today" from the app's perspective
+  bool _isToday(DateTime date) {
+    return VirtualDateService().isToday(date);
+  }
+
   /// Update the selected date for filtering
   Future<void> updateSelectedDate(DateTime newDate) async {
     if (_selectedDate != newDate) {
+      final wasToday = _isToday(_selectedDate);
+      final isNowToday = _isToday(newDate);
+      
+      // Cache invalidation logic
+      if (wasToday && !isNowToday) {
+        // Moving away from today - invalidate cache
+        debugPrint('🗑️ Moving away from today - invalidating persistent cache');
+        try {
+          await _persistentCache.invalidateAllCompletions();
+        } catch (e) {
+          debugPrint('❌ Error invalidating cache: $e');
+          // Continue operation even if cache invalidation fails
+        }
+      } else if (!wasToday && isNowToday) {
+        // Returning to today - rebuild cache
+        debugPrint('🔄 Returning to today - rebuilding persistent cache');
+        try {
+          await _persistentCache.clearCache();
+          await loadHabitsForDashboard(forceRefresh: true);
+        } catch (e) {
+          debugPrint('❌ Error rebuilding cache: $e');
+          // Continue operation even if cache rebuild fails
+        }
+      }
+      
       _selectedDate = newDate;
 
       // Update the virtual date service to make this the "current date" for the entire app
