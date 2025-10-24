@@ -746,10 +746,18 @@ class SqliteHabitRepository {
       }
       
       for (final row in result) {
-        final hour = row['hour'] as int;
-        final count = row['count'] as int;
-        hourlyCompletions[hour] = count;
-        debugPrint('🕐 [HourlyQuery] Hour $hour: $count completions');
+        // Add null-safety checks to prevent casting errors
+        final hourValue = row['hour'];
+        final countValue = row['count'];
+        
+        if (hourValue != null && countValue != null) {
+          final hour = hourValue as int;
+          final count = countValue as int;
+          hourlyCompletions[hour] = count;
+          debugPrint('🕐 [HourlyQuery] Hour $hour: $count completions');
+        } else {
+          debugPrint('⚠️ [HourlyQuery] Skipping row with null values: hour=$hourValue, count=$countValue');
+        }
       }
       
       debugPrint('📊 Hourly completions for $habitId: ${hourlyCompletions.entries.where((e) => e.value > 0).length} hours with completions');
@@ -790,9 +798,17 @@ class SqliteHabitRepository {
       }
       
       for (final row in result) {
-        final hour = row['hour'] as int;
-        final count = row['count'] as int;
-        hourlyCompletions[hour] = count;
+        // Add null-safety checks to prevent casting errors
+        final hourValue = row['hour'];
+        final countValue = row['count'];
+        
+        if (hourValue != null && countValue != null) {
+          final hour = hourValue as int;
+          final count = countValue as int;
+          hourlyCompletions[hour] = count;
+        } else {
+          debugPrint('⚠️ [HourlyQuery] Skipping row with null values: hour=$hourValue, count=$countValue');
+        }
       }
       
       debugPrint('📊 All-time hourly completions for $habitId: ${hourlyCompletions.entries.where((e) => e.value > 0).length} hours with completions');

@@ -35,15 +35,19 @@ class DateRangeUtils {
     return DateRange(startDate, endDate);
   }
   
-  /// Get date range for "Total" analysis (all time)
+  /// Get date range for "Total" analysis (last 3 years)
+  ///
+  /// Uses a dynamic 3-year range to balance comprehensive data analysis
+  /// with performance. This ensures query-level aggregation keeps memory usage low
+  /// while providing meaningful historical patterns.
   ///
   /// @param currentDate The current virtual date
-  /// @return DateRange with start and end dates
+  /// @return DateRange with start and end dates (3 years back from current date)
   static DateRange getTotal(DateTime currentDate) {
-    final startDate = DateTime(2020); // Arbitrary early date
+    final startDate = DateTime(currentDate.year - 3, currentDate.month, currentDate.day);
     final endDate = DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59);
     
-    debugPrint('📅 [DateRange] Total: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
+    debugPrint('📅 [DateRange] Total (3 years): ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
     return DateRange(startDate, endDate);
   }
   

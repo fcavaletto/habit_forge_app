@@ -992,9 +992,24 @@ class HabitState extends ChangeNotifier {
               break;
             case 'Total':
               dateRange = DateRangeUtils.getTotal(virtualDate);
-              // Skip validation for "Total" range as it queries all time data
-              hourlyCompletions = await _habitRepository
-                  .getTotalHourlyCompletions(habitId);
+              DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
+              final result = await _dataAccessService.atomicDataService.getHourlyCompletions(
+                habitId: habitId,
+                startDate: dateRange.start,
+                endDate: dateRange.end,
+                context: DataAccessContext(
+                  component: 'HabitProvider',
+                  operation: 'loadHourlyData',
+                  parameters: {'timeRange': timeRange, 'habitId': habitId},
+                ),
+              );
+              
+              if (result.success && result.data != null) {
+                hourlyCompletions = result.data!;
+              } else {
+                debugPrint('❌ Failed to get hourly completions: ${result.errorMessage}');
+                hourlyCompletions = <int, int>{};
+              }
               break;
             default:
               throw ArgumentError('Invalid time range: $timeRange');
