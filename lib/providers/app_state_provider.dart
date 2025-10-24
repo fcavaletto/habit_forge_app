@@ -285,7 +285,7 @@ class AppState extends ChangeNotifier {
           _proSubscriptionProvider.loadProSubscriptionSetting(),
           _streakSettingsProvider.loadStreakSetting(),
           loadTimeOverrideSetting(),
-          _dateProvider.initialize(_settingsRepository), // Initialize DateProvider
+          _dateProvider.initialize(), // Initialize DateProvider (no longer needs settings repo)
         ]).timeout(
           const Duration(seconds: 8), // Reduced from 15 seconds
           onTimeout: () {
@@ -485,6 +485,7 @@ class AppState extends ChangeNotifier {
   /// - **Smart Refresh**: Respects individual provider freshness logic
   /// - **Error Isolation**: Individual provider failures don't affect others
   /// - **Performance Optimization**: Avoids unnecessary operations
+  /// - **Cache Management**: Only updates persistent cache if NOT in date override mode
   ///
   /// ## Use Cases:
   /// - App lifecycle events (resume, foreground)
@@ -492,15 +493,27 @@ class AppState extends ChangeNotifier {
   /// - Data synchronization after external changes
   /// - Recovery from error states
   Future<void> refreshAllData({bool forceRefresh = false}) async {
-    debugPrint('🔄 AppState: Refreshing all data, forceRefresh: $forceRefresh');
+    // Only update persistent cache if NOT in date override mode
+    if (!isDateOverridden) {
+      // Normal refresh with cache updates
+      await _habitProvider.loadHabitsForDashboard(forceRefresh: forceRefresh);
+    } else {
+      // Silent refresh without cache updates
+      await _habitProvider.refreshDataSilently();
+    }
+  }
 
-    await Future.wait([
-      _habitProvider.loadHabitsForDashboard(forceRefresh: forceRefresh),
-      // Note: NotificationProvider doesn't have a refresh method yet
-      // This can be added later if needed
-    ]);
-
-    debugPrint('✅ AppState: All data refreshed');
+  /// Refresh all data without updating persistent cache
+  ///
+  /// This method refreshes data from the database but does not update the
+  /// persistent cache. Used when in date override mode to avoid cache pollution.
+  ///
+  /// ## Parameters:
+  /// - [forceRefresh]: If true, bypasses freshness checks and forces refresh
+  Future<void> refreshAllDataSilently({bool forceRefresh = false}) async {
+    // Refresh all providers but skip persistent cache updates
+    await _habitProvider.refreshDataSilently();
+    // Don't update persistent cache
   }
 
   @override

@@ -1876,43 +1876,39 @@ class HabitProvider extends HabitState {
   }
 
 
-  /// Check if a date is "today" from the app's perspective
-  bool _isToday(DateTime date) {
-    return VirtualDateService().isToday(date);
-  }
-
   /// Update the selected date for filtering
   Future<void> updateSelectedDate(DateTime newDate) async {
     if (_selectedDate != newDate) {
-      final wasToday = _isToday(_selectedDate);
-      final isNowToday = _isToday(newDate);
+      final wasInOverrideMode = VirtualDateService().isVirtualMode;
       
-      // Cache invalidation logic
-      if (wasToday && !isNowToday) {
-        // Moving away from today - invalidate cache
-        debugPrint('🗑️ Moving away from today - invalidating persistent cache');
+      debugPrint('🔍 Date transition debug:');
+      debugPrint('  - Current _selectedDate: ${_formatDate(_selectedDate)}');
+      debugPrint('  - New date: ${_formatDate(newDate)}');
+      debugPrint('  - wasInOverrideMode: $wasInOverrideMode');
+      
+      // Update the virtual date service first
+      await VirtualDateService().setVirtualDate(newDate);
+      final isNowInOverrideMode = VirtualDateService().isVirtualMode;
+      
+      debugPrint('  - isNowInOverrideMode (after virtual date update): $isNowInOverrideMode');
+      
+      // NEW: Simple cache invalidation logic based on override mode changes
+      if (!wasInOverrideMode && isNowInOverrideMode) {
+        // Entering override mode - invalidate cache
+        debugPrint('🗑️ Entering date override mode - invalidating persistent cache');
         try {
           await _persistentCache.invalidateAllCompletions();
         } catch (e) {
           debugPrint('❌ Error invalidating cache: $e');
           // Continue operation even if cache invalidation fails
         }
-      } else if (!wasToday && isNowToday) {
-        // Returning to today - rebuild cache
-        debugPrint('🔄 Returning to today - rebuilding persistent cache');
-        try {
-          await _persistentCache.clearCache();
-          await loadHabitsForDashboard(forceRefresh: true);
-        } catch (e) {
-          debugPrint('❌ Error rebuilding cache: $e');
-          // Continue operation even if cache rebuild fails
-        }
+      } else if (wasInOverrideMode && !isNowInOverrideMode) {
+        // Exiting override mode - allow cache recreation
+        debugPrint('🔄 Exiting date override mode - cache will be recreated on next interaction');
+        // Don't recreate cache here - let Dashboard interactions handle it
       }
       
       _selectedDate = newDate;
-
-      // Update the virtual date service to make this the "current date" for the entire app
-      await VirtualDateService().setVirtualDate(newDate);
 
       notifyListeners();
       debugPrint('📅 Selected date updated to: ${_formatDate(newDate)}');

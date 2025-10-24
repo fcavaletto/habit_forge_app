@@ -388,7 +388,7 @@ class PersistentCacheService implements ICachingService {
         return false;
       }
       
-      // Check if cache is from today (day-based validation)
+      // Check if cache is from today (day-based validation using system date)
       if (!_isSameDay(metadata.cachedAt, DateTime.now())) {
         debugPrint('📅 Cache is from different day, invalidating cache');
         await clearCache();

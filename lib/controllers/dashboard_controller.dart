@@ -67,7 +67,14 @@ class DashboardController {
   /// Errors are handled by the underlying provider and logged appropriately.
   Future<void> loadHabits() async {
     debugPrint('📱 DashboardController: Loading habits optimized for dashboard...');
-    await _appState.habitProvider.loadHabitsForDashboard();
+    
+    // Only update persistent cache if NOT in date override mode
+    if (!_appState.isDateOverridden) {
+      await _appState.habitProvider.loadHabitsForDashboard();
+    } else {
+      await _appState.habitProvider.refreshDataSilently();
+    }
+    
     _lastRefreshTime = VirtualDateService().currentDate;
     debugPrint('📱 DashboardController: Loaded ${habits.length} habits for dashboard at $_lastRefreshTime');
   }
@@ -322,7 +329,7 @@ class DashboardController {
       }
 
       // Step 3: Refresh UI and provide user feedback
-      await loadHabitsForDashboard(); // Refresh UI
+      await loadHabitsForDashboard(); // Refresh UI (respects cache logic)
 
       if (context.mounted) {
         // Generate appropriate user feedback message based on actions taken

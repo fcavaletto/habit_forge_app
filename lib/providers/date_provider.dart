@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../services/virtual_date_service.dart';
-import '../repositories/settings_repository.dart';
 
 /// Date Provider - Reactive state management for virtual date system
 /// 
@@ -11,13 +10,13 @@ import '../repositories/settings_repository.dart';
 /// - Works with existing Provider architecture
 /// - Notifies all listeners when date changes
 /// - Provides easy access to virtual date state
-/// - Persists virtual date across app restarts
+/// - Session-based virtual date (resets on app restart)
 class DateProvider extends ChangeNotifier {
   final VirtualDateService _dateService = VirtualDateService();
   
-  /// Initialize the date provider with settings repository
-  Future<void> initialize(SettingsRepository settingsRepository) async {
-    await _dateService.initialize(settingsRepository);
+  /// Initialize the date provider (no longer needs settings repository)
+  Future<void> initialize() async {
+    await _dateService.initialize();
     notifyListeners(); // Notify listeners that date state may have changed
   }
 
