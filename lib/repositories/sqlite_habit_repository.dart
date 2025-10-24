@@ -712,32 +712,41 @@ class SqliteHabitRepository {
   /// Returns a map where keys are hours (0-23) and values are completion counts.
   ///
   /// @param habitId The ID of the habit to analyze
-  /// @param startDate The start date for the analysis (inclusive)
-  /// @param endDate The end date for the analysis (inclusive)
+  /// @param startDate The start date for the analysis (inclusive) - null for all time
+  /// @param endDate The end date for the analysis (inclusive) - null for all time
   /// @return Map<int, int> where key = hour (0-23), value = completion count
-  Future<Map<int, int>> getHourlyCompletions(String habitId, DateTime startDate, DateTime endDate) async {
+  Future<Map<int, int>> getHourlyCompletions(String habitId, DateTime? startDate, DateTime? endDate) async {
     try {
       final db = await _databaseService.database;
       
-      // Convert dates to TEXT timestamp strings for SQLite comparison
-      final startTimestamp = TimezoneUtils.toTimestampString(startDate);
-      final endTimestamp = TimezoneUtils.toTimestampString(endDate);
+      // Build query dynamically based on whether date range is provided
+      String whereClause = 'WHERE habit_id = ?';
+      List<dynamic> whereArgs = [habitId];
       
-      debugPrint('📊 [HourlyQuery] Querying hourly completions for $habitId');
-      debugPrint('📅 [HourlyQuery] Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
-      debugPrint('🕒 [HourlyQuery] TEXT range: $startTimestamp to $endTimestamp');
+      if (startDate != null && endDate != null) {
+        // Convert dates to TEXT timestamp strings for SQLite comparison
+        final startTimestamp = TimezoneUtils.toTimestampString(startDate);
+        final endTimestamp = TimezoneUtils.toTimestampString(endDate);
+        
+        whereClause += ' AND completion_time >= ? AND completion_time <= ?';
+        whereArgs.addAll([startTimestamp, endTimestamp]);
+        
+        debugPrint('📊 [HourlyQuery] Querying hourly completions for $habitId');
+        debugPrint('📅 [HourlyQuery] Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
+        debugPrint('🕒 [HourlyQuery] TEXT range: $startTimestamp to $endTimestamp');
+      } else {
+        debugPrint('📊 [HourlyQuery] Querying total hourly completions for $habitId');
+      }
       
       final result = await db.rawQuery('''
         SELECT 
           CAST(strftime('%H', completion_time) AS INTEGER) as hour,
           COUNT(*) as count
         FROM completion_times 
-        WHERE habit_id = ? 
-          AND completion_time >= ? 
-          AND completion_time <= ?
+        $whereClause
         GROUP BY hour
         ORDER BY hour
-      ''', [habitId, startTimestamp, endTimestamp]);
+      ''', whereArgs);
       
       // Convert result to Map<int, int> and ensure all hours (0-23) are represented
       final hourlyCompletions = <int, int>{};
@@ -760,7 +769,12 @@ class SqliteHabitRepository {
         }
       }
       
-      debugPrint('📊 Hourly completions for $habitId: ${hourlyCompletions.entries.where((e) => e.value > 0).length} hours with completions');
+      final activeHours = hourlyCompletions.entries.where((e) => e.value > 0).length;
+      if (startDate != null && endDate != null) {
+        debugPrint('📊 Hourly completions for $habitId: $activeHours hours with completions');
+      } else {
+        debugPrint('📊 All-time hourly completions for $habitId: $activeHours hours with completions');
+      }
       return hourlyCompletions;
     } catch (e) {
       debugPrint('❌ Error getting hourly completions: $e');
@@ -768,56 +782,6 @@ class SqliteHabitRepository {
     }
   }
 
-  /// Get total hourly completion distribution for a habit
-  ///
-  /// Analyzes all completion timestamps for a habit to show historical
-  /// completion patterns throughout the day.
-  ///
-  /// @param habitId The ID of the habit to analyze
-  /// @return Map<int, int> where key = hour (0-23), value = completion count
-  Future<Map<int, int>> getTotalHourlyCompletions(String habitId) async {
-    try {
-      final db = await _databaseService.database;
-      
-      debugPrint('📊 [HourlyQuery] Querying total hourly completions for $habitId');
-      
-      final result = await db.rawQuery('''
-        SELECT 
-          CAST(strftime('%H', completion_time, 'unixepoch', 'localtime') AS INTEGER) as hour,
-          COUNT(*) as count
-        FROM completion_times 
-        WHERE habit_id = ?
-        GROUP BY hour
-        ORDER BY hour
-      ''', [habitId]);
-      
-      // Convert result to Map<int, int> and ensure all hours (0-23) are represented
-      final hourlyCompletions = <int, int>{};
-      for (int hour = 0; hour < 24; hour++) {
-        hourlyCompletions[hour] = 0;
-      }
-      
-      for (final row in result) {
-        // Add null-safety checks to prevent casting errors
-        final hourValue = row['hour'];
-        final countValue = row['count'];
-        
-        if (hourValue != null && countValue != null) {
-          final hour = hourValue as int;
-          final count = countValue as int;
-          hourlyCompletions[hour] = count;
-        } else {
-          debugPrint('⚠️ [HourlyQuery] Skipping row with null values: hour=$hourValue, count=$countValue');
-        }
-      }
-      
-      debugPrint('📊 All-time hourly completions for $habitId: ${hourlyCompletions.entries.where((e) => e.value > 0).length} hours with completions');
-      return hourlyCompletions;
-    } catch (e) {
-      debugPrint('❌ Error getting all-time hourly completions: $e');
-      rethrow;
-    }
-  }
 
   /// Gets completion data for a habit within a date range
   /// 
