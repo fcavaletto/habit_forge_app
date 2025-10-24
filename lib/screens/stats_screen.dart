@@ -46,6 +46,12 @@ class _StatsScreenState extends State<StatsScreen> {
   // Load full habit data from database for stats
   Habit? _fullHabitData;
   bool _isLoadingFullData = false;
+  
+  // Background loading for extended data ranges
+  Map<DateTime, CompletionRecord>? _last365DaysCompletions;
+  HourlyHistogramData? _totalHourlyData;
+  bool _isLoading365Days = false;
+  bool _isLoadingTotalHourly = false;
 
   @override
   void initState() {
@@ -57,6 +63,9 @@ class _StatsScreenState extends State<StatsScreen> {
     }
     
     _loadHourlyData();
+    
+    // Start background loading for extended data ranges
+    _startBackgroundLoading();
   }
 
   @override
@@ -69,6 +78,15 @@ class _StatsScreenState extends State<StatsScreen> {
       }
       _loadHourlyData();
     }
+  }
+
+  @override
+  void dispose() {
+    // Clean up cached data when leaving stats screen
+    _last365DaysCompletions = null;
+    _totalHourlyData = null;
+    debugPrint('🗑️ Stats screen disposed - cached data cleared');
+    super.dispose();
   }
 
   /// Load last 30 days of data for fast initial rendering
@@ -257,6 +275,80 @@ class _StatsScreenState extends State<StatsScreen> {
     }
   }
 
+  /// Start background loading for extended data ranges
+  /// 
+  /// Loads 365 days completion data and total hourly data in background
+  /// so they're ready when user selects those options.
+  void _startBackgroundLoading() {
+    _loadLast365DaysInBackground();
+    _loadTotalHourlyInBackground();
+  }
+
+  /// Load last 365 days completion data in background
+  Future<void> _loadLast365DaysInBackground() async {
+    if (_isLoading365Days || _last365DaysCompletions != null) return;
+    
+    _isLoading365Days = true;
+    
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      final last365Days = DateTime.now().subtract(const Duration(days: 364));
+      
+      // Get completion data for last 365 days
+      final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletions(
+        startDate: last365Days,
+        endDate: DateTime.now(),
+        habitIds: [widget.habit.id],
+        context: DataAccessContext(
+          component: 'StatsScreen',
+          operation: 'loadLast365DaysCompletions',
+          parameters: {'habitId': widget.habit.id},
+        ),
+      );
+      
+      if (completionResult.success && completionResult.data != null && mounted) {
+        final completions = completionResult.data![widget.habit.id] ?? {};
+        setState(() {
+          _last365DaysCompletions = completions;
+        });
+        debugPrint('✅ Background loaded 365 days completion data');
+      }
+    } catch (e) {
+      debugPrint('❌ Background loading 365 days failed: $e');
+    } finally {
+      _isLoading365Days = false;
+    }
+  }
+
+  /// Load total hourly data in background
+  Future<void> _loadTotalHourlyInBackground() async {
+    if (_isLoadingTotalHourly || _totalHourlyData != null) return;
+    
+    _isLoadingTotalHourly = true;
+    
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      final currentDate = VirtualDateService().currentDate;
+      
+      final data = await appState.habitProvider.loadHourlyData(
+        widget.habit.id,
+        'Total',
+        currentDate,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _totalHourlyData = data;
+        });
+        debugPrint('✅ Background loaded total hourly data');
+      }
+    } catch (e) {
+      debugPrint('❌ Background loading total hourly failed: $e');
+    } finally {
+      _isLoadingTotalHourly = false;
+    }
+  }
+
   void _onTimeRangeChanged(String newRange) {
     if (newRange != _selectedTimeRange) {
       setState(() {
@@ -368,17 +460,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     const SizedBox(height: 24),
 
             // Hourly Completion Histogram
-            if (_hourlyData != null)
-              HourlyHistogram(
-                data: _hourlyData!,
-                onTimeRangeChanged: _onTimeRangeChanged,
-              )
-            else if (_isLoadingHourlyData)
-              _buildHistogramLoadingState()
-            else if (_hourlyDataError != null)
-              _buildHistogramErrorState()
-            else
-              _buildHistogramEmptyState(),
+            _buildHourlyHistogram(),
                     const SizedBox(height: 24),
 
                     // Monthly Calendar
@@ -682,6 +764,7 @@ class _StatsScreenState extends State<StatsScreen> {
   /// Gets completion data for the selected time range
   ///
   /// Returns completion rate data based on the currently selected time range.
+  /// Uses background-loaded data when available for better performance.
   List<double> _getCompletionDataForRange(
     String timeRange,
     Map<DateTime, CompletionRecord> completions,
@@ -693,7 +776,9 @@ class _StatsScreenState extends State<StatsScreen> {
       case 'Last 30 Days':
         return _getLast30DaysCompletionData(completions, currentDate);
       case 'Last 365 Days':
-        return _getLast365DaysCompletionData(completions, currentDate);
+        // Use background-loaded 365 days data if available, otherwise fallback to current completions
+        final dataToUse = _last365DaysCompletions ?? completions;
+        return _getLast365DaysCompletionData(dataToUse, currentDate);
       default:
         return _getLast30DaysCompletionData(completions, currentDate);
     }
@@ -983,6 +1068,39 @@ class _StatsScreenState extends State<StatsScreen> {
         ),
       ),
     );
+  }
+
+  /// Build hourly histogram with smart data selection
+  /// 
+  /// Uses background-loaded total data when user selects "Total" range,
+  /// otherwise uses the regular hourly data.
+  Widget _buildHourlyHistogram() {
+    // Use background-loaded total data if user selected "Total" and data is available
+    if (_selectedTimeRange == 'Total' && _totalHourlyData != null) {
+      return HourlyHistogram(
+        data: _totalHourlyData!,
+        onTimeRangeChanged: _onTimeRangeChanged,
+      );
+    }
+    // Use regular hourly data if available
+    else if (_hourlyData != null) {
+      return HourlyHistogram(
+        data: _hourlyData!,
+        onTimeRangeChanged: _onTimeRangeChanged,
+      );
+    }
+    // Show loading state if currently loading
+    else if (_isLoadingHourlyData) {
+      return _buildHistogramLoadingState();
+    }
+    // Show error state if there was an error
+    else if (_hourlyDataError != null) {
+      return _buildHistogramErrorState();
+    }
+    // Show empty state if no data
+    else {
+      return _buildHistogramEmptyState();
+    }
   }
 
   /// Find completion record for a specific date
