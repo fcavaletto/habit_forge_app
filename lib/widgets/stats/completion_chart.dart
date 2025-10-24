@@ -143,7 +143,7 @@ class CompletionChart extends StatelessWidget {
               show: true,
               getDotPainter: (spot, percent, barData, index) {
                 return FlDotCirclePainter(
-                  radius: 3,
+                  radius: 2.5,
                   color: colorScheme.primary,
                   strokeWidth: 2,
                   strokeColor: colorScheme.surface,
@@ -153,7 +153,7 @@ class CompletionChart extends StatelessWidget {
           ),
         ],
         minY: 0,
-        maxY: 1.05, // Increased from 1.0 to provide 5% padding above 100%
+        maxY: 1.0, // Increased from 1.0 to provide 5% padding above 100%
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
             getTooltipItems: (touchedSpots) {
