@@ -155,9 +155,9 @@ class PersistentCacheService implements ICachingService {
     }
   }
   
-  /// Save habits optimized for dashboard (last 7 days only)
-  /// 
-  /// This method saves habits with only the last 7 days of completion data,
+  /// Save habits optimized for dashboard (last 30 days only)
+  ///
+  /// This method saves habits with only the last 30 days of completion data,
   /// dramatically reducing cache size and improving performance for dashboard operations.
   /// The cache is primarily used for fast dashboard loading, so full historical data
   /// is not needed in the cache.
@@ -165,7 +165,7 @@ class PersistentCacheService implements ICachingService {
     try {
       await _ensureInitialized();
       
-      // Filter habits to dashboard-optimized data (last 7 days)
+      // Filter habits to dashboard-optimized data (last 30 days)
       final dashboardHabits = _filterHabitsForDashboard(habits);
       
       // Sort habits by orderValue (DESC) before saving to maintain proper order
@@ -200,27 +200,27 @@ class PersistentCacheService implements ICachingService {
       // Create backup
       await _prefs!.setString(_backupKey, habitsJson);
       
-      debugPrint('✅ Saved ${sortedHabits.length} dashboard-optimized habits to persistent cache (last 7 days only)');
+      debugPrint('✅ Saved ${sortedHabits.length} dashboard-optimized habits to persistent cache (last 30 days only)');
     } catch (e) {
       debugPrint('❌ Error saving dashboard habits to cache: $e');
       rethrow;
     }
   }
   
-  /// Filter habits to contain only last 7 days of completion data
+  /// Filter habits to contain only last 30 days of completion data
   /// 
   /// This helper method creates new Habit objects with only the completion
   /// data needed for dashboard display, significantly reducing memory usage
   /// and serialization overhead.
   List<Habit> _filterHabitsForDashboard(List<Habit> habits) {
     final today = DateTime.now();
-    final last7Days = today.subtract(const Duration(days: 6));
+    final last30Days = today.subtract(const Duration(days: 29));
     
     return habits.map((habit) {
-      // Filter completions to last 7 days only
+      // Filter completions to last 30 days only
       final dashboardCompletions = <DateTime, CompletionRecord>{};
       habit.completions.forEach((date, completion) {
-        if (date.isAfter(last7Days.subtract(const Duration(days: 1))) && 
+        if (date.isAfter(last30Days.subtract(const Duration(days: 1))) && 
             date.isBefore(today.add(const Duration(days: 1)))) {
           dashboardCompletions[date] = completion;
         }

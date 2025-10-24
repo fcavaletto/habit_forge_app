@@ -35,12 +35,12 @@ class HabitLoadConfig {
         loadReminders = true,
         loadFrequencyDays = true;
 
-  /// Create config for dashboard loading (last 7 days)
+  /// Create config for dashboard loading (last 30 days)
   factory HabitLoadConfig.dashboard() {
     final today = DateTime.now();
-    final last7Days = today.subtract(const Duration(days: 6));
+    final last30Days = today.subtract(const Duration(days: 29));
     return HabitLoadConfig(
-      startDate: last7Days,
+      startDate: last30Days,
       endDate: today,
       convertToLocal: true,
       loadCompletions: true,

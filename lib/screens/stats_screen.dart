@@ -24,10 +24,12 @@ import '../services/atomic_data_service.dart';
 /// - Today highlighting and completion status visualization
 class StatsScreen extends StatefulWidget {
   final Habit habit;
+  final Map<DateTime, CompletionRecord>? last30DaysCompletions;
 
   const StatsScreen({
     super.key,
     required this.habit,
+    this.last30DaysCompletions,
   });
 
   @override
@@ -48,7 +50,12 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLast30DaysData(); // Fast initial load
+    
+    // Only load fresh data if we don't have cached last 30 days data
+    if (widget.last30DaysCompletions?.isEmpty != false) {
+      _loadLast30DaysData(); // Fast initial load
+    }
+    
     _loadHourlyData();
   }
 
@@ -56,12 +63,18 @@ class _StatsScreenState extends State<StatsScreen> {
   void didUpdateWidget(StatsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.habit.id != widget.habit.id) {
-      _loadLast30DaysData(); // Fast initial load
+      // Only load fresh data if we don't have cached last 30 days data
+      if (widget.last30DaysCompletions?.isEmpty != false) {
+        _loadLast30DaysData(); // Fast initial load
+      }
       _loadHourlyData();
     }
   }
 
   /// Load last 30 days of data for fast initial rendering
+  /// 
+  /// This method is now only called when cached data is not available.
+  /// In most cases, the dashboard will have already loaded this data.
   Future<void> _loadLast30DaysData() async {
     if (!mounted) return;
     
@@ -263,7 +276,11 @@ class _StatsScreenState extends State<StatsScreen> {
   Widget build(BuildContext context) {
     // Use full habit data if available, otherwise fallback to widget habit
     final habitToUse = _fullHabitData ?? widget.habit;
-    final completions = habitToUse.completions;
+    
+    // Use cached last 30 days data if available, otherwise fallback to habit completions
+    final completions = widget.last30DaysCompletions?.isNotEmpty == true
+        ? widget.last30DaysCompletions!
+        : habitToUse.completions;
     
     return Consumer<AppState>(
         builder: (context, appState, child) {

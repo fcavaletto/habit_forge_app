@@ -36,6 +36,7 @@ abstract class IDataPreparationService {
 ///
 /// Combines atomic data operations to provide UI-ready habit data for the dashboard.
 /// Handles the complex logic of combining metadata with completion data for display.
+/// Loads the last 30 days of completion data for optimal dashboard performance.
 class DashboardDataPreparationService implements IDataPreparationService {
   final IAtomicDataService _atomicService;
 
@@ -68,12 +69,12 @@ class DashboardDataPreparationService implements IDataPreparationService {
         );
       }
 
-      // Get completion data for the last 7 days (dashboard-optimized)
+      // Get completion data for the last 30 days (dashboard-optimized)
       final today = DateTime.now();
-      final last7Days = today.subtract(const Duration(days: 6));
+      final last30Days = today.subtract(const Duration(days: 29));
 
       final completionsResult = await _atomicService.getCompletions(
-        startDate: last7Days,
+        startDate: last30Days,
         endDate: today,
         context: DataAccessContext(
           component: 'DashboardDataPreparation',

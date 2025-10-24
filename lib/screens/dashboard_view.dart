@@ -616,9 +616,16 @@ class _DashboardViewState extends State<DashboardView>
     final appState = Provider.of<AppState>(context, listen: false);
     final freshHabit = appState.habitProvider.getHabitById(habit.id) ?? habit;
     
+    // Extract last 30 days data from dashboard to pass to stats screen
+    final last30DaysData = appState.habitProvider.getLast30DaysCompletions();
+    final habitLast30Days = last30DaysData[habit.id] ?? {};
+    
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => StatsScreen(habit: freshHabit),
+        builder: (context) => StatsScreen(
+          habit: freshHabit,
+          last30DaysCompletions: habitLast30Days,
+        ),
       ),
     );
   }

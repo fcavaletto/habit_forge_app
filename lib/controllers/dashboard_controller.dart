@@ -59,7 +59,7 @@ class DashboardController {
   /// when manual refresh is requested.
   ///
   /// ## Process:
-  /// 1. Calls the habit provider to load dashboard-optimized data (last 7 days only)
+  /// 1. Calls the habit provider to load dashboard-optimized data (last 30 days only)
   /// 2. Updates the last refresh timestamp
   /// 3. Logs the operation for debugging
   ///
@@ -79,10 +79,10 @@ class DashboardController {
     debugPrint('📱 DashboardController: Loaded ${habits.length} habits for dashboard at $_lastRefreshTime');
   }
 
-  /// Load habits optimized for dashboard display (last 7 days only)
+  /// Load habits optimized for dashboard display (last 30 days only)
   ///
   /// This method is an alias for loadHabits() to maintain API consistency.
-  /// It loads habits with only the last 7 days of completion data.
+  /// It loads habits with only the last 30 days of completion data.
   Future<void> loadHabitsForDashboard() async {
     await loadHabits();
   }

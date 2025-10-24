@@ -119,6 +119,50 @@ class HabitState extends ChangeNotifier {
     return getHabitsForDate(_selectedDate).map((h) => h.id).toList();
   }
 
+  /// Get last 30 days completion data for all habits
+  /// 
+  /// Extracts the last 30 days of completion data from dashboard habits.
+  /// This data is already loaded by the dashboard and can be reused by stats screen.
+  Map<String, Map<DateTime, CompletionRecord>> getLast30DaysCompletions() {
+    final result = <String, Map<DateTime, CompletionRecord>>{};
+    
+    for (final habit in _habits) {
+      // Extract last 30 days from habit.completions
+      final last30Days = _extractLast30DaysFromCompletions(habit.completions);
+      result[habit.id] = last30Days;
+    }
+    
+    return result;
+  }
+
+  /// Extract last 30 days of completion data from habit completions
+  /// 
+  /// Filters completion records to include only the last 30 days relative to current date.
+  Map<DateTime, CompletionRecord> _extractLast30DaysFromCompletions(
+    Map<DateTime, CompletionRecord> completions
+  ) {
+    final today = VirtualDateService().currentDate;
+    final last30Days = today.subtract(const Duration(days: 29));
+    
+    return Map.fromEntries(
+      completions.entries.where((entry) {
+        final date = entry.key;
+        return date.isAfter(last30Days.subtract(const Duration(days: 1))) &&
+               date.isBefore(today.add(const Duration(days: 1)));
+      })
+    );
+  }
+
+  /// Invalidate cached data when date override changes
+  /// 
+  /// This ensures that stats screen gets fresh data when the user changes
+  /// the date through the central date provider.
+  void invalidateCachedData() {
+    debugPrint('🗑️ Invalidating cached data due to date override change');
+    // The cached data will be regenerated on next access via getLast30DaysCompletions()
+    // This is handled by the fact that we extract data from current _habits state
+  }
+
   /// Get day abbreviation from DateTime (mon, tue, wed, etc.)
   String _getDayAbbreviation(DateTime date) {
     const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -131,7 +175,7 @@ class HabitState extends ChangeNotifier {
     return habit.frequencyDays[dayAbbr] == 1;
   }
 
-  /// Load habits optimized for dashboard display (last 7 days only)
+  /// Load habits optimized for dashboard display (last 30 days only)
   Future<void> loadHabitsForDashboard({bool forceRefresh = false}) async {
     // Debounce rapid refresh calls
     _refreshTimer?.cancel();
@@ -314,14 +358,14 @@ class HabitState extends ChangeNotifier {
       _metadataCache.cacheHabitMetadata(newHabit.id, metadata);
       debugPrint('✅ [ADD_HABIT] Habit added to cache (additive)');
 
-      // Step 5: Load ONLY new habit's completions (last 7 days for dashboard)
+      // Step 5: Load ONLY new habit's completions (last 30 days for dashboard)
       final today = DateTime.now();
-      final last7Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 6));
+      final last30Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 29));
       
-      debugPrint('🔍 [ADD_HABIT] Loading completions for new habit only (last 7 days)');
+      debugPrint('🔍 [ADD_HABIT] Loading completions for new habit only (last 30 days)');
       
       final completionResult = await _dataAccessService.atomicDataService.getCompletions(
-        startDate: last7Days,
+        startDate: last30Days,
         endDate: today,
         habitIds: [newHabit.id], // ← ONLY the new habit!
         context: DataAccessContext(
@@ -1085,12 +1129,12 @@ class HabitState extends ChangeNotifier {
       
       final habitMetadata = metadataResult.data!.first;
 
-      // Step 3: Load completions for the unarchived habit (last 7 days)
+      // Step 3: Load completions for the unarchived habit (last 30 days)
       final today = DateTime.now();
-      final last7Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 6));
+      final last30Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 29));
       
       final completionResult = await _dataAccessService.atomicDataService.getCompletions(
-        startDate: last7Days,
+        startDate: last30Days,
         endDate: today,
         habitIds: [habitId],
         context: DataAccessContext(
@@ -1686,7 +1730,7 @@ class HabitProvider extends HabitState {
   /// Performs habit loading with recovery mechanisms
   Future<void> _performLoadWithRecovery(bool showLoading) async {
     try {
-      // Use new dashboard load method (last 7 days, optimized)
+      // Use new dashboard load method (last 30 days, optimized)
       await _performDashboardLoad(false);
     } catch (e) {
       debugPrint('❌ Habit loading failed: $e');
@@ -1906,6 +1950,10 @@ class HabitProvider extends HabitState {
         // Exiting override mode - allow cache recreation
         debugPrint('🔄 Exiting date override mode - cache will be recreated on next interaction');
         // Don't recreate cache here - let Dashboard interactions handle it
+      } else if (wasInOverrideMode && isNowInOverrideMode) {
+        // Date changed within override mode - invalidate cached data
+        debugPrint('🗑️ Date changed within override mode - invalidating cached data');
+        invalidateCachedData();
       }
       
       _selectedDate = newDate;
