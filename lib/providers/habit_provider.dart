@@ -1826,7 +1826,16 @@ class HabitProvider extends HabitState {
       );
       
       if (result.success) {
-      debugPrint('✅ Successfully reordered habit $draggedId in database');
+        debugPrint('✅ Successfully reordered habit $draggedId in database');
+        
+        // Update persistent cache with new order
+        try {
+          await _persistentCache.saveHabits(_habits);
+          debugPrint('✅ Updated persistent cache with new habit order');
+        } catch (e) {
+          debugPrint('⚠️ Failed to update persistent cache: $e');
+          // Non-fatal - app continues with correct in-memory order
+        }
       } else {
         debugPrint('❌ Failed to reorder habit: ${result.errorMessage}');
         throw Exception('Failed to reorder habit: ${result.errorMessage}');
@@ -1898,6 +1907,15 @@ class HabitProvider extends HabitState {
       
       if (result.success) {
         debugPrint('✅ Successfully reordered habit $draggedId in database with context');
+        
+        // Update persistent cache with new order
+        try {
+          await _persistentCache.saveHabits(_habits);
+          debugPrint('✅ Updated persistent cache with new habit order (context)');
+        } catch (e) {
+          debugPrint('⚠️ Failed to update persistent cache: $e');
+          // Non-fatal - app continues with correct in-memory order
+        }
       } else {
         debugPrint('❌ Failed to reorder habit: ${result.errorMessage}');
         throw Exception('Failed to reorder habit: ${result.errorMessage}');
