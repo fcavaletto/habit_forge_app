@@ -726,16 +726,16 @@ class SqliteHabitRepository {
       List<dynamic> whereArgs = [habitId];
       
       if (startDate != null && endDate != null) {
-        // Convert dates to TEXT timestamp strings for SQLite comparison
-        final startTimestamp = TimezoneUtils.toTimestampString(startDate);
-        final endTimestamp = TimezoneUtils.toTimestampString(endDate);
+        // Convert dates to INTEGER timestamps for fast numeric comparison
+        final startTimestamp = startDate.millisecondsSinceEpoch;
+        final endTimestamp = endDate.millisecondsSinceEpoch;
         
-        whereClause += ' AND completion_time_text >= ? AND completion_time_text <= ?';
+        whereClause += ' AND completion_time_int >= ? AND completion_time_int <= ?';
         whereArgs.addAll([startTimestamp, endTimestamp]);
         
         debugPrint('📊 [HourlyQuery] Querying hourly completions for $habitId');
         debugPrint('📅 [HourlyQuery] Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
-        debugPrint('🕒 [HourlyQuery] TEXT range: $startTimestamp to $endTimestamp');
+        debugPrint('🕒 [HourlyQuery] INTEGER range: $startTimestamp to $endTimestamp');
       } else {
         debugPrint('📊 [HourlyQuery] Querying total hourly completions for $habitId');
       }
@@ -944,23 +944,22 @@ class SqliteHabitRepository {
     try {
       final db = await _databaseService.database;
       
-      // Convert date to TEXT timestamp strings for SQLite comparison
+      // Convert date to INTEGER timestamps for fast numeric comparison
       final startOfDay = DateTime(date.year, date.month, date.day);
       final endOfDay = DateTime(date.year, date.month, date.day, 23, 59);
-      
-      final startTimestamp = TimezoneUtils.toTimestampString(startOfDay);
-      final endTimestamp = TimezoneUtils.toTimestampString(endOfDay);
+      final startTimestamp = startOfDay.millisecondsSinceEpoch;
+      final endTimestamp = endOfDay.millisecondsSinceEpoch;
       
       debugPrint('📅 [DayQuery] Querying completion timestamps for $habitId on ${date.toIso8601String()}');
-      debugPrint('🕒 [DayQuery] TEXT range: $startTimestamp to $endTimestamp');
+      debugPrint('🕒 [DayQuery] INTEGER range: $startTimestamp to $endTimestamp');
       
       final result = await db.rawQuery('''
         SELECT completion_time_text
         FROM completion_times 
         WHERE habit_id = ? 
-          AND completion_time_text >= ? 
-          AND completion_time_text <= ?
-        ORDER BY completion_time_text ASC
+          AND completion_time_int >= ? 
+          AND completion_time_int <= ?
+        ORDER BY completion_time_int ASC
       ''', [habitId, startTimestamp, endTimestamp]);
       
       // Convert TEXT timestamps back to DateTime
