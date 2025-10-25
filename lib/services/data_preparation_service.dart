@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/habit.dart';
+import '../utils/virtual_date_service.dart';
 import 'atomic_data_service.dart';
 
 /// Interface for data preparation services
