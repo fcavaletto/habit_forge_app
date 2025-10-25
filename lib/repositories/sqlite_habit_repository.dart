@@ -240,12 +240,14 @@ class SqliteHabitRepository {
         
         // Add multiple timestamp records (one per completion)
         for (int i = 0; i < count; i++) {
-          final completionTimestamp = TimezoneUtils.toTimestampString(date);
+          final timestampFormats = TimezoneUtils.toTripleFormat(date);
           await txn.insert(
             'completion_times',
             {
               'habit_id': habitId,
-              'completion_time': completionTimestamp,
+              'completion_time_text': timestampFormats['text'],
+              'completion_time_int': timestampFormats['int'],
+              'completion_hour': timestampFormats['hour'],
             },
           );
         }
@@ -299,19 +301,19 @@ class SqliteHabitRepository {
         }
         
         // Calculate the full day range for timestamp operations
-        final startOfDay = TimezoneUtils.toTimestampString(DateTime(date.year, date.month, date.day));
-        final endOfDay = TimezoneUtils.toTimestampString(
-          DateTime(date.year, date.month, date.day, 23, 59)
-        );
+        final startOfDay = DateTime(date.year, date.month, date.day);
+        final endOfDay = DateTime(date.year, date.month, date.day, 23, 59);
+        final startTimestamp = startOfDay.millisecondsSinceEpoch;
+        final endTimestamp = endOfDay.millisecondsSinceEpoch;
         
         // Get newest timestamps to remove (LIFO - Last In, First Out)
-        // We want to remove the newest timestamps, so we order by completion_time DESC
+        // We want to remove the newest timestamps, so we order by completion_time_int DESC
         final timestampsToRemove = await txn.rawQuery('''
           SELECT id FROM completion_times 
-          WHERE habit_id = ? AND completion_time >= ? AND completion_time <= ?
-          ORDER BY completion_time DESC
+          WHERE habit_id = ? AND completion_time_int >= ? AND completion_time_int <= ?
+          ORDER BY completion_time_int DESC
           LIMIT ?
-        ''', [habitId, startOfDay, endOfDay, countToRemove]);
+        ''', [habitId, startTimestamp, endTimestamp, countToRemove]);
         
         if (timestampsToRemove.length < countToRemove) {
           debugPrint('⚠️ Only found ${timestampsToRemove.length} timestamps to remove, requested $countToRemove');
@@ -1056,10 +1058,11 @@ class SqliteHabitRepository {
                     completionDateTime.minute,
                     completionDateTime.second + j, // Small increment for multiple completions
                   );
-
+                  
+                  final timestampFormats = TimezoneUtils.toTripleFormat(timestampDateTime);
                   await txn.rawInsert(
-                    'INSERT OR REPLACE INTO completion_times (habit_id, completion_time) VALUES (?, ?)',
-                    [habit.id, TimezoneUtils.toTimestampString(timestampDateTime)],
+                    'INSERT OR REPLACE INTO completion_times (habit_id, completion_time_text, completion_time_int, completion_hour) VALUES (?, ?, ?, ?)',
+                    [habit.id, timestampFormats['text'], timestampFormats['int'], timestampFormats['hour']],
                   );
                 }
               }

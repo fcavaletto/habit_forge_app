@@ -251,6 +251,26 @@ class TimezoneUtils {
     return timestampString;
   }
 
+  /// Extract hour (0-23) from DateTime for database storage
+  ///
+  /// @param dateTime The DateTime to extract hour from
+  /// @return Hour as integer (0-23)
+  static int extractHour(DateTime dateTime) {
+    return dateTime.hour;
+  }
+
+  /// Convert DateTime to all three formats for database storage
+  ///
+  /// @param dateTime The DateTime to convert
+  /// @return Map with 'text', 'int', and 'hour' keys
+  static Map<String, dynamic> toTripleFormat(DateTime dateTime) {
+    return {
+      'text': toTimestampString(dateTime),
+      'int': dateTime.millisecondsSinceEpoch,
+      'hour': dateTime.hour,
+    };
+  }
+
   /// Convert TEXT timestamp string to DateTime
   ///
   /// @param timestampString Timestamp string in 'YYYY-MM-DD HH:MM' format

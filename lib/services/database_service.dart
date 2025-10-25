@@ -175,7 +175,9 @@ class DatabaseService {
         CREATE TABLE completion_times (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
-          completion_time TEXT NOT NULL,
+          completion_time_text TEXT NOT NULL,
+          completion_time_int INTEGER NOT NULL,
+          completion_hour INTEGER NOT NULL,
           FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
@@ -221,26 +223,28 @@ class DatabaseService {
         ON daily_completions(habit_id)
       ''');
 
+      // For TEXT-based queries (backward compatibility)
       await txn.execute('''
-        CREATE INDEX idx_completion_times_habit_id 
-        ON completion_times(habit_id)
+        CREATE INDEX idx_completion_times_habit_text 
+        ON completion_times(habit_id, completion_time_text)
       ''');
 
+      // For INTEGER-based queries (fast numeric comparisons)
       await txn.execute('''
-        CREATE INDEX idx_completion_times_time 
-        ON completion_times(completion_time)
+        CREATE INDEX idx_completion_times_habit_int 
+        ON completion_times(habit_id, completion_time_int)
       ''');
 
-      // Composite index for efficient habit_id + completion_time queries
+      // For hourly analysis queries (optimal for GROUP BY hour)
       await txn.execute('''
-        CREATE INDEX idx_completion_times_habit_time 
-        ON completion_times(habit_id, completion_time)
+        CREATE INDEX idx_completion_times_habit_hour 
+        ON completion_times(habit_id, completion_hour)
       ''');
 
-      // Covering index for hourly analysis queries
+      // Covering index for hourly queries
       await txn.execute('''
         CREATE INDEX idx_completion_times_hourly_analysis 
-        ON completion_times(habit_id, completion_time, completion_time)
+        ON completion_times(habit_id, completion_hour)
       ''');
 
       await txn.execute('''
@@ -316,7 +320,9 @@ class DatabaseService {
         CREATE TABLE completion_times (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           habit_id TEXT NOT NULL,
-          completion_time TEXT NOT NULL,
+          completion_time_text TEXT NOT NULL,
+          completion_time_int INTEGER NOT NULL,
+          completion_hour INTEGER NOT NULL,
           FOREIGN KEY (habit_id) REFERENCES habit_metadata(id) ON DELETE CASCADE
         )
       ''');
@@ -359,26 +365,28 @@ class DatabaseService {
         ON daily_completions(habit_id)
       ''');
 
+      // For TEXT-based queries (backward compatibility)
       await txn.execute('''
-        CREATE INDEX idx_completion_times_habit_id 
-        ON completion_times(habit_id)
+        CREATE INDEX idx_completion_times_habit_text 
+        ON completion_times(habit_id, completion_time_text)
       ''');
 
+      // For INTEGER-based queries (fast numeric comparisons)
       await txn.execute('''
-        CREATE INDEX idx_completion_times_time 
-        ON completion_times(completion_time)
+        CREATE INDEX idx_completion_times_habit_int 
+        ON completion_times(habit_id, completion_time_int)
       ''');
 
-      // Composite index for efficient habit_id + completion_time queries
+      // For hourly analysis queries (optimal for GROUP BY hour)
       await txn.execute('''
-        CREATE INDEX idx_completion_times_habit_time 
-        ON completion_times(habit_id, completion_time)
+        CREATE INDEX idx_completion_times_habit_hour 
+        ON completion_times(habit_id, completion_hour)
       ''');
 
-      // Covering index for hourly analysis queries
+      // Covering index for hourly queries
       await txn.execute('''
         CREATE INDEX idx_completion_times_hourly_analysis 
-        ON completion_times(habit_id, completion_time, completion_time)
+        ON completion_times(habit_id, completion_hour)
       ''');
 
       await txn.execute('''
