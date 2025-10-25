@@ -231,6 +231,18 @@ class DatabaseService {
         ON completion_times(completion_time)
       ''');
 
+      // Composite index for efficient habit_id + completion_time queries
+      await txn.execute('''
+        CREATE INDEX idx_completion_times_habit_time 
+        ON completion_times(habit_id, completion_time)
+      ''');
+
+      // Covering index for hourly analysis queries
+      await txn.execute('''
+        CREATE INDEX idx_completion_times_hourly_analysis 
+        ON completion_times(habit_id, completion_time, completion_time)
+      ''');
+
       await txn.execute('''
         CREATE INDEX idx_habit_metadata_archived 
         ON habit_metadata(is_archived)
@@ -345,6 +357,28 @@ class DatabaseService {
       await txn.execute('''
         CREATE INDEX idx_daily_completions_habit_id 
         ON daily_completions(habit_id)
+      ''');
+
+      await txn.execute('''
+        CREATE INDEX idx_completion_times_habit_id 
+        ON completion_times(habit_id)
+      ''');
+
+      await txn.execute('''
+        CREATE INDEX idx_completion_times_time 
+        ON completion_times(completion_time)
+      ''');
+
+      // Composite index for efficient habit_id + completion_time queries
+      await txn.execute('''
+        CREATE INDEX idx_completion_times_habit_time 
+        ON completion_times(habit_id, completion_time)
+      ''');
+
+      // Covering index for hourly analysis queries
+      await txn.execute('''
+        CREATE INDEX idx_completion_times_hourly_analysis 
+        ON completion_times(habit_id, completion_time, completion_time)
       ''');
 
       await txn.execute('''
