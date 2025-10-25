@@ -730,7 +730,7 @@ class SqliteHabitRepository {
         final startTimestamp = TimezoneUtils.toTimestampString(startDate);
         final endTimestamp = TimezoneUtils.toTimestampString(endDate);
         
-        whereClause += ' AND completion_time >= ? AND completion_time <= ?';
+        whereClause += ' AND completion_time_text >= ? AND completion_time_text <= ?';
         whereArgs.addAll([startTimestamp, endTimestamp]);
         
         debugPrint('📊 [HourlyQuery] Querying hourly completions for $habitId');
@@ -742,12 +742,12 @@ class SqliteHabitRepository {
       
       final result = await db.rawQuery('''
         SELECT 
-          CAST(strftime('%H', completion_time) AS INTEGER) as hour,
+          completion_hour as hour,
           COUNT(*) as count
         FROM completion_times 
         $whereClause
-        GROUP BY hour
-        ORDER BY hour
+        GROUP BY completion_hour
+        ORDER BY completion_hour
       ''', whereArgs);
       
       // Convert result to Map<int, int> and ensure all hours (0-23) are represented
@@ -955,17 +955,17 @@ class SqliteHabitRepository {
       debugPrint('🕒 [DayQuery] TEXT range: $startTimestamp to $endTimestamp');
       
       final result = await db.rawQuery('''
-        SELECT completion_time
+        SELECT completion_time_text
         FROM completion_times 
         WHERE habit_id = ? 
-          AND completion_time >= ? 
-          AND completion_time <= ?
-        ORDER BY completion_time ASC
+          AND completion_time_text >= ? 
+          AND completion_time_text <= ?
+        ORDER BY completion_time_text ASC
       ''', [habitId, startTimestamp, endTimestamp]);
       
       // Convert TEXT timestamps back to DateTime
       final timestamps = result.map((row) {
-        final timestampString = row['completion_time'] as String;
+        final timestampString = row['completion_time_text'] as String;
         return TimezoneUtils.fromTimestampString(timestampString);
       }).toList();
       
