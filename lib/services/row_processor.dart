@@ -4,7 +4,7 @@ import '../models/habit.dart';
 import '../services/database_service.dart';
 import '../services/habit_metadata_cache_service.dart';
 import '../utils/timezone_utils.dart';
-import '../utils/virtual_date_service.dart';
+import 'virtual_date_service.dart';
 import 'atomic_data_service.dart';
 import 'caching_service.dart';
 import 'data_access_monitor.dart';
