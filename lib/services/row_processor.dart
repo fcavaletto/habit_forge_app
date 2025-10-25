@@ -37,7 +37,7 @@ class HabitLoadConfig {
 
   /// Create config for dashboard loading (last 30 days)
   factory HabitLoadConfig.dashboard() {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     final last30Days = today.subtract(const Duration(days: 29));
     return HabitLoadConfig(
       startDate: last30Days,
@@ -51,7 +51,7 @@ class HabitLoadConfig {
 
   /// Create config for stats loading (last 30 days)
   factory HabitLoadConfig.stats() {
-    final today = DateTime.now();
+    final today = VirtualDateService().currentDate;
     final last30Days = today.subtract(const Duration(days: 29));
     return HabitLoadConfig(
       startDate: last30Days,

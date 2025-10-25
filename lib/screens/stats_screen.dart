@@ -98,7 +98,8 @@ class _StatsScreenState extends State<StatsScreen> {
     
     try {
       final appState = Provider.of<AppState>(context, listen: false);
-      final last30Days = DateTime.now().subtract(const Duration(days: 30));
+      final today = VirtualDateService().currentDate;
+      final last30Days = today.subtract(const Duration(days: 30));
       
       // Get habit metadata first
       final metadataResult = await appState.habitProvider.dataAccessService.atomicDataService.getHabitMetadata(
@@ -116,7 +117,7 @@ class _StatsScreenState extends State<StatsScreen> {
         // Get completion data for last 30 days
         final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletions(
           startDate: last30Days,
-          endDate: DateTime.now(),
+          endDate: today,
           habitIds: [widget.habit.id],
           context: DataAccessContext(
             component: 'StatsScreen',
@@ -197,7 +198,7 @@ class _StatsScreenState extends State<StatsScreen> {
         // Get full completion data
         final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletions(
           startDate: DateTime(2020), // Full history
-          endDate: DateTime.now(),
+          endDate: VirtualDateService().currentDate,
           habitIds: [widget.habit.id],
           context: DataAccessContext(
             component: 'StatsScreen',
@@ -292,12 +293,13 @@ class _StatsScreenState extends State<StatsScreen> {
     
     try {
       final appState = Provider.of<AppState>(context, listen: false);
-      final last365Days = DateTime.now().subtract(const Duration(days: 364));
+      final today = VirtualDateService().currentDate;
+      final last365Days = today.subtract(const Duration(days: 364));
       
       // Get completion data for last 365 days
       final completionResult = await appState.habitProvider.dataAccessService.atomicDataService.getCompletions(
         startDate: last365Days,
-        endDate: DateTime.now(),
+        endDate: today,
         habitIds: [widget.habit.id],
         context: DataAccessContext(
           component: 'StatsScreen',

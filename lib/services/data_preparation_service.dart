@@ -70,7 +70,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       }
 
       // Get completion data for the last 30 days (dashboard-optimized)
-      final today = DateTime.now();
+      final today = VirtualDateService().currentDate;
       final last30Days = today.subtract(const Duration(days: 29));
 
       final completionsResult = await _atomicService.getCompletions(
@@ -178,7 +178,7 @@ class DashboardDataPreparationService implements IDataPreparationService {
       }
 
       // Get completion data for the last 30 days (stats-optimized)
-      final today = DateTime.now();
+      final today = VirtualDateService().currentDate;
       final last30Days = today.subtract(const Duration(days: 29));
 
       final completionsResult = await _atomicService.getCompletions(
