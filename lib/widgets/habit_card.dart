@@ -74,6 +74,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   late Animation<double> _burstOpacityAnimation;
   bool _wasCompleted = false;
   bool _isBursting = false;
+  bool _wasTappedByUser = false; // New flag to track user tap
   
   // Store completed state for overlay
   int? _burstOverlayCount;
@@ -263,10 +264,14 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     // Determine button state based on completion
     final buttonState = _getButtonState(todayCount, isCompleted);
 
-    // Trigger pulse animation when goal is reached (only if not bursting)
-    if (isCompleted && !_wasCompleted && !_isBursting) {
+    // Trigger pulse animation when goal is reached (only if not bursting and user tapped)
+    if (isCompleted && !_wasCompleted && _wasTappedByUser) {
       _pulseController.forward(from: 0.0);
       _wasCompleted = true;
+      // Reset the tap flag after triggering
+      setState(() {
+        _wasTappedByUser = false;
+      });
     } else if (!isCompleted) {
       _wasCompleted = false;
     }
@@ -381,15 +386,17 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     return 'Tap to add another completion';
   }
 
-  /// Handles button press events based on current completion state.
+  /// Handles button press based on current state
   /// 
   /// Behavior:
-  /// - For allowExceedGoal habits: Always opens custom completion modal
-  /// - For standard habits:
-  ///   - Empty state: Calls [onIncrement] to add first completion
-  ///   - Completed state: Calls [onDecrement] to reset all completions
-  ///   - In progress state: Calls [onIncrement] to add another completion
+  /// - Empty state: Calls [onIncrement] to mark first completion
+  /// - Completed state: Calls [onDecrement] to reset (burst animation)
+  /// - In progress state: Calls [onIncrement] to add another completion
   void _handleButtonPress(int todayCount, bool isCompleted) {
+    setState(() {
+      _wasTappedByUser = true; // Set flag on user tap
+    });
+
     if (widget.habit.allowExceedGoal) {
       HapticFeedbackService.selection();
       widget.onCustomCompletion?.call();
@@ -430,6 +437,16 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
         widget.onIncrement?.call();
       }
     }
+
+    // Reset the tap flag after processing
+    // Use addPostFrameCallback to ensure it resets after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _wasTappedByUser = false;
+        });
+      }
+    });
   }
 
   /// Calculates the dynamic gap size based on the habit's goal.
