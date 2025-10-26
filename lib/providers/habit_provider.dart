@@ -359,7 +359,7 @@ class HabitState extends ChangeNotifier {
       debugPrint('✅ [ADD_HABIT] Habit added to cache (additive)');
 
       // Step 5: Load ONLY new habit's completions (last 30 days for dashboard)
-      final today = DateTime.now();
+      final today = VirtualDateService().currentDate;
       final last30Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 29));
       
       debugPrint('🔍 [ADD_HABIT] Loading completions for new habit only (last 30 days)');
@@ -1145,7 +1145,7 @@ class HabitState extends ChangeNotifier {
       final habitMetadata = metadataResult.data!.first;
 
       // Step 3: Load completions for the unarchived habit (last 30 days)
-      final today = DateTime.now();
+      final today = VirtualDateService().currentDate;
       final last30Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 29));
       
       final completionResult = await _dataAccessService.atomicDataService.getCompletions(
