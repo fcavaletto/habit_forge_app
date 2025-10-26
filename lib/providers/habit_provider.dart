@@ -1971,22 +1971,29 @@ class HabitProvider extends HabitState {
       
       // NEW: Simple cache invalidation logic based on override mode changes
       if (!wasInOverrideMode && isNowInOverrideMode) {
-        // Entering override mode - invalidate cache
+        // Entering override mode - invalidate cache and reload data
         debugPrint('🗑️ Entering date override mode - invalidating persistent cache');
         try {
           await _persistentCache.invalidateAllCompletions();
+          debugPrint('✅ Cleared persistent cache');
         } catch (e) {
           debugPrint('❌ Error invalidating cache: $e');
           // Continue operation even if cache invalidation fails
         }
+        // CRITICAL: Reload habits from database with new virtual date
+        debugPrint('🔄 Reloading habits from database for new virtual date');
+        await refreshDataSilently();
       } else if (wasInOverrideMode && !isNowInOverrideMode) {
         // Exiting override mode - allow cache recreation
         debugPrint('🔄 Exiting date override mode - cache will be recreated on next interaction');
         // Don't recreate cache here - let Dashboard interactions handle it
       } else if (wasInOverrideMode && isNowInOverrideMode) {
-        // Date changed within override mode - invalidate cached data
+        // Date changed within override mode - invalidate cached data and reload
         debugPrint('🗑️ Date changed within override mode - invalidating cached data');
         invalidateCachedData();
+        // CRITICAL: Reload habits from database for new virtual date
+        debugPrint('🔄 Reloading habits from database for new virtual date');
+        await refreshDataSilently();
       }
       
       _selectedDate = newDate;
