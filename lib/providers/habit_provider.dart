@@ -1880,7 +1880,7 @@ class HabitProvider extends HabitState {
   ) async {
     try {
       debugPrint(
-        '🔄 Reordering habit $draggedId to position $newPosition in filtered context',
+        '🔄 Reordering habit $draggedId to position $newPosition in filtered context'
       );
 
       // Optimistic update - move habit in local list immediately
@@ -1889,7 +1889,7 @@ class HabitProvider extends HabitState {
       _habits.insert(newPosition, draggedHabit);
 
       debugPrint(
-        '🔄 Optimistically reordered habit $draggedId to position $newPosition in context',
+        '🔄 Optimistically reordered habit $draggedId to position $newPosition in context'
       );
       notifyListeners();
 
@@ -1908,7 +1908,56 @@ class HabitProvider extends HabitState {
       if (result.success) {
         debugPrint('✅ Successfully reordered habit $draggedId in database with context');
         
-        // Update persistent cache with new order
+        // NEW: Reload updated orderValues from DB for visible habits
+        try {
+          // Edge case: Skip if no visible habits
+          if (visibleHabitIds.isEmpty) {
+            debugPrint('📭 No visible habits to reload orderValues for');
+          } else {
+            final metadataResult = await _dataAccessService.atomicDataService.getHabitMetadata(
+              habitIds: visibleHabitIds,
+              includeArchived: false,
+              context: DataAccessContext(
+                component: 'HabitProvider',
+                operation: 'reloadOrderValuesAfterReorder',
+                parameters: {'visibleCount': visibleHabitIds.length},
+              ),
+            );
+
+            if (metadataResult.success && metadataResult.data != null) {
+              final updatedMetadata = metadataResult.data!;
+
+              // Update local _habits with new orderValues
+              for (final meta in updatedMetadata) {
+                final habitIndex = _habits.indexWhere((h) => h.id == meta.id);
+                if (habitIndex != -1) {
+                  final updatedHabit = _habits[habitIndex].copyWith(
+                    orderValue: meta.orderValue,
+                  );
+                  _habits[habitIndex] = updatedHabit;
+                }
+              }
+
+              // Re-sort local list by updated orderValues (should match optimistic order)
+              _habits.sort((a, b) => (b.orderValue ?? 0.0).compareTo(a.orderValue ?? 0.0));
+
+              debugPrint('✅ Reloaded and applied orderValues for ${updatedMetadata.length} habits');
+            } else {
+              throw Exception('Failed to reload orderValues: ${metadataResult.errorMessage}');
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ Failed to reload orderValues from DB: $e');
+          // Fallback: Locally calculate orderValues based on current _habits order
+          final total = _habits.length;
+          for (int i = 0; i < total; i++) {
+            final newOrderValue = (total - i) * 1000.0;
+            _habits[i] = _habits[i].copyWith(orderValue: newOrderValue);
+          }
+          debugPrint('🔄 Fallback: Locally calculated orderValues for $total habits');
+        }
+        
+        // Update persistent cache with new order (now with synced orderValues)
         try {
           await _persistentCache.saveHabits(_habits);
           debugPrint('✅ Updated persistent cache with new habit order (context)');
@@ -1927,14 +1976,14 @@ class HabitProvider extends HabitState {
         // Normalize every 10 reorders using atomic service
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
         final result = await _dataAccessService.atomicDataService.normalizeOrderValues(
-        context: DataAccessContext(
-          component: 'HabitProvider',
+          context: DataAccessContext(
+            component: 'HabitProvider',
             operation: 'normalizeOrderValues',
             parameters: {'reorderCount': _reorderCount},
-        ),
-      );
+          ),
+        );
 
-      if (result.success) {
+        if (result.success) {
           debugPrint('✅ Successfully normalized order values');
         } else {
           debugPrint('❌ Failed to normalize order values: ${result.errorMessage}');
@@ -1951,7 +2000,6 @@ class HabitProvider extends HabitState {
       notifyListeners();
     }
   }
-
 
   /// Update the selected date for filtering
   Future<void> updateSelectedDate(DateTime newDate) async {
