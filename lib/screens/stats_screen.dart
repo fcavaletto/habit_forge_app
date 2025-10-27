@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/habit.dart';
@@ -56,9 +57,14 @@ class _StatsScreenState extends State<StatsScreen> {
 
   // Sliding prefetch controller
   StatsCalendarController? _calendarController;
+  Timer? _calendarUpdateDebounce;
   void _onCalendarDataUpdated() {
     if (!mounted) return;
-    setState(() {});
+    _calendarUpdateDebounce?.cancel();
+    _calendarUpdateDebounce = Timer(AppConstants.quickAnimation, () {
+      if (!mounted) return;
+      setState(() {});
+    });
   }
 
   @override
@@ -511,8 +517,6 @@ class _StatsScreenState extends State<StatsScreen> {
               onVisibleMonthChanged: (visibleMonth) {
                 _calendarController?.ensureMonthLoaded(month: visibleMonth);
                 _calendarController?.prefetchAroundMonth(center: visibleMonth, radius: 2);
-                // Trigger rebuild to reflect newly merged data when ready
-                setState(() {});
               },
             ),
           ],
