@@ -13,6 +13,7 @@ import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
 import '../services/virtual_date_service.dart';
 import '../services/atomic_data_service.dart';
+import '../providers/stats_calendar_provider.dart';
 
 /// Stats Screen - Displays analytics and charts for habit tracking
 ///
@@ -53,6 +54,13 @@ class _StatsScreenState extends State<StatsScreen> {
   bool _isLoading365Days = false;
   bool _isLoadingTotalHourly = false;
 
+  // Sliding prefetch controller
+  StatsCalendarController? _calendarController;
+  void _onCalendarDataUpdated() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +74,19 @@ class _StatsScreenState extends State<StatsScreen> {
     
     // Start background loading for extended data ranges
     _startBackgroundLoading();
+
+    // Initialize sliding prefetch after first frame to avoid blocking UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      _calendarController = StatsCalendarController(
+        dataAccessService: appState.habitProvider.dataAccessService,
+        habitId: widget.habit.id,
+      );
+      _calendarController!.addListener(_onCalendarDataUpdated);
+      final currentMonth = DateTime(VirtualDateService().currentDate.year, VirtualDateService().currentDate.month, 1);
+      _calendarController!.prefetchAroundMonth(center: currentMonth, radius: 2);
+      _calendarController!.ensureMonthLoaded(month: currentMonth);
+    });
   }
 
   @override
@@ -77,6 +98,20 @@ class _StatsScreenState extends State<StatsScreen> {
         _loadLast30DaysData(); // Fast initial load
       }
       _loadHourlyData();
+
+      // Update prefetch controller to new habit
+      final appState = Provider.of<AppState>(context, listen: false);
+      _calendarController ??= StatsCalendarController(
+        dataAccessService: appState.habitProvider.dataAccessService,
+        habitId: widget.habit.id,
+      );
+      // Ensure listener is attached in case controller was just created
+      _calendarController!.removeListener(_onCalendarDataUpdated);
+      _calendarController!.addListener(_onCalendarDataUpdated);
+      _calendarController!.updateHabit(widget.habit.id);
+      final currentMonth = DateTime(VirtualDateService().currentDate.year, VirtualDateService().currentDate.month, 1);
+      _calendarController!.prefetchAroundMonth(center: currentMonth, radius: 2);
+      _calendarController!.ensureMonthLoaded(month: currentMonth);
     }
   }
 
@@ -86,6 +121,8 @@ class _StatsScreenState extends State<StatsScreen> {
     _last365DaysCompletions = null;
     _totalHourlyData = null;
     debugPrint('🗑️ Stats screen disposed - cached data cleared');
+    _calendarController?.removeListener(_onCalendarDataUpdated);
+    _calendarController?.dispose();
     super.dispose();
   }
 
@@ -467,10 +504,16 @@ class _StatsScreenState extends State<StatsScreen> {
 
                     // Monthly Calendar
             MonthlyCalendar(
-              completions: completions,
+              completions: _calendarController?.mergeWithMonthData(completions) ?? completions,
               currentDate: currentDate,
               habitId: widget.habit.id,
               dataAccessService: appState.habitProvider.dataAccessService,
+              onVisibleMonthChanged: (visibleMonth) {
+                _calendarController?.ensureMonthLoaded(month: visibleMonth);
+                _calendarController?.prefetchAroundMonth(center: visibleMonth, radius: 2);
+                // Trigger rebuild to reflect newly merged data when ready
+                setState(() {});
+              },
             ),
           ],
         ),

@@ -64,7 +64,7 @@ class AppConstants {
 
 
   // Navigation Hints
-  static const String swipeToNavigateHint = 'Swipe to navigate months';
+  static const String swipeToNavigateHint = 'Swipe left/right to navigate months';
   static const String tapToViewDetailsHint = 'Tap to view details';
   static const String longPressForOptionsHint = 'Long press for options';
 

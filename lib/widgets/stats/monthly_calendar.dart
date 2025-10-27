@@ -14,6 +14,7 @@ class MonthlyCalendar extends StatefulWidget {
   final DateTime? selectedMonth;
   final String habitId; // Habit ID for fetching completion timestamps
   final DataAccessService dataAccessService;
+  final void Function(DateTime visibleMonth)? onVisibleMonthChanged;
 
   const MonthlyCalendar({
     super.key,
@@ -22,6 +23,7 @@ class MonthlyCalendar extends StatefulWidget {
     this.selectedMonth,
     required this.habitId,
     required this.dataAccessService,
+    this.onVisibleMonthChanged,
   });
 
   @override
@@ -102,6 +104,11 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: AppConstants.calendarTotalMonths,
+                onPageChanged: (pageIndex) {
+                  final monthOffset = pageIndex - AppConstants.calendarInitialPage;
+                  final targetMonth = DateTime(widget.currentDate.year, widget.currentDate.month + monthOffset, 1);
+                  widget.onVisibleMonthChanged?.call(targetMonth);
+                },
                 itemBuilder: (context, pageIndex) {
                   final monthOffset = pageIndex - AppConstants.calendarInitialPage;
                   final targetMonth = DateTime(widget.currentDate.year, widget.currentDate.month + monthOffset, 1);
