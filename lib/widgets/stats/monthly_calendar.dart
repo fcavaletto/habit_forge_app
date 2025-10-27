@@ -110,9 +110,14 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                   widget.onVisibleMonthChanged?.call(targetMonth);
                 },
                 itemBuilder: (context, pageIndex) {
-                  final monthOffset = pageIndex - AppConstants.calendarInitialPage;
-                  final targetMonth = DateTime(widget.currentDate.year, widget.currentDate.month + monthOffset, 1);
-                  return _buildMonthGrid(targetMonth);
+                  final monthOffset = pageIndex -
+                      AppConstants.calendarInitialPage;
+                  final targetMonth = DateTime(widget.currentDate.year,
+                      widget.currentDate.month + monthOffset, 1);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: _buildMonthGrid(targetMonth),
+                  );
                 },
               ),
             ),
@@ -125,18 +130,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
   /// Calculate dynamic calendar height based on the number of rows needed
   double _calculateCalendarHeight() {
     // Calculate the maximum number of rows needed across all months
-    int maxRows = 6; // Default to 6 rows
-    
-    // Check a few months to find the maximum rows needed
-    for (int i = -2; i <= 2; i++) {
-      final month = DateTime(widget.currentDate.year, widget.currentDate.month + i, 1);
-      final lastDay = DateTime(month.year, month.month + 1, 0);
-      final firstWeekday = month.weekday;
-      final offset = (firstWeekday - 1) % 7;
-      final totalDays = lastDay.day;
-      final rowsNeeded = ((totalDays + offset) / 7).ceil();
-      maxRows = maxRows < rowsNeeded ? rowsNeeded : maxRows;
-    }
+    int maxRows = 7; // Default to 6 rows
     
     // Calculate height: header + spacing + (rows * cell_height) + spacing
     const headerHeight = 40.0; // Month/year header
