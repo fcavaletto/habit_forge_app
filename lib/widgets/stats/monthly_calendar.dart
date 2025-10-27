@@ -238,34 +238,37 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                         : null,
                   ),
                   alignment: Alignment.center,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Day number
-                      Text(
-                        dayNumber.toString(),
-                        style: TextStyle(
-                          color: isFullyCompleted
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : hasCompletion
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                      ),
-                      // Completion tick (top-right corner)
-                      if (isFullyCompleted)
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Icon(
-                            Icons.check_circle,
-                            size: 12,
-                            color: Theme.of(context).colorScheme.onPrimary,
+                  child: SizedBox.expand(
+                    child: Stack(
+                      children: [
+                        // Day number - centered
+                        Center(
+                          child: Text(
+                            dayNumber.toString(),
+                            style: TextStyle(
+                              color: isFullyCompleted
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : hasCompletion
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
-                    ],
+                        // Completion tick (top-right corner)
+                        if (isFullyCompleted)
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Icon(
+                              Icons.check_circle,
+                              size: 9,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               );
