@@ -31,6 +31,9 @@ class CacheMetadata {
   /// Cache format version for migration support
   final int cacheFormatVersion;
 
+  /// The virtual date when cache was created
+  final DateTime cachedVirtualDate;
+
   const CacheMetadata({
     required this.version,
     required this.cachedAt,
@@ -38,6 +41,7 @@ class CacheMetadata {
     required this.habitCount,
     required this.lastModified,
     this.cacheFormatVersion = 1,
+    required this.cachedVirtualDate,
   });
 
   /// Create CacheMetadata from JSON
@@ -49,6 +53,7 @@ class CacheMetadata {
       habitCount: json['habitCount'] as int,
       lastModified: DateTime.parse(json['lastModified'] as String),
       cacheFormatVersion: json['cacheFormatVersion'] as int? ?? 1,
+      cachedVirtualDate: DateTime.parse(json['cachedVirtualDate'] as String),
     );
   }
 
@@ -61,6 +66,7 @@ class CacheMetadata {
       'habitCount': habitCount,
       'lastModified': lastModified.toIso8601String(),
       'cacheFormatVersion': cacheFormatVersion,
+      'cachedVirtualDate': cachedVirtualDate.toIso8601String(),
     };
   }
 
@@ -96,6 +102,13 @@ class CacheMetadata {
     return DateTime.now().difference(lastModified) > maxStaleness;
   }
 
+  /// Check if cache virtual date matches current virtual date
+  bool isVirtualDateMatch(DateTime currentVirtualDate) {
+    return cachedVirtualDate.year == currentVirtualDate.year &&
+           cachedVirtualDate.month == currentVirtualDate.month &&
+           cachedVirtualDate.day == currentVirtualDate.day;
+  }
+
   /// Create a copy with updated values
   CacheMetadata copyWith({
     String? version,
@@ -104,6 +117,7 @@ class CacheMetadata {
     int? habitCount,
     DateTime? lastModified,
     int? cacheFormatVersion,
+    DateTime? cachedVirtualDate,
   }) {
     return CacheMetadata(
       version: version ?? this.version,
@@ -112,6 +126,7 @@ class CacheMetadata {
       habitCount: habitCount ?? this.habitCount,
       lastModified: lastModified ?? this.lastModified,
       cacheFormatVersion: cacheFormatVersion ?? this.cacheFormatVersion,
+      cachedVirtualDate: cachedVirtualDate ?? this.cachedVirtualDate,
     );
   }
 
@@ -131,7 +146,8 @@ class CacheMetadata {
         other.dataHash == dataHash &&
         other.habitCount == habitCount &&
         other.lastModified == lastModified &&
-        other.cacheFormatVersion == cacheFormatVersion;
+        other.cacheFormatVersion == cacheFormatVersion &&
+        other.cachedVirtualDate == cachedVirtualDate;
   }
 
   @override
@@ -143,6 +159,7 @@ class CacheMetadata {
       habitCount,
       lastModified,
       cacheFormatVersion,
+      cachedVirtualDate,
     );
   }
 }

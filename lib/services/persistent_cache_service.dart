@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'caching_service.dart';
 import '../models/habit.dart';
 import '../models/cache_metadata.dart';
+import '../services/virtual_date_service.dart';
 
 /// Service for persistent caching of habit data using SharedPreferences
 ///
@@ -139,6 +140,8 @@ class PersistentCacheService implements ICachingService {
         dataHash: _generateDataHash(habitsJson),
         habitCount: sortedHabits.length,
         lastModified: DateTime.now(),
+        cachedVirtualDate: VirtualDateService().currentDate,
+        cacheFormatVersion: 2,
       );
       
       // Save to cache
@@ -191,6 +194,8 @@ class PersistentCacheService implements ICachingService {
         dataHash: _generateDataHash(habitsJson),
         habitCount: sortedHabits.length,
         lastModified: DateTime.now(),
+        cachedVirtualDate: VirtualDateService().currentDate,
+        cacheFormatVersion: 2,
       );
       
       // Save to cache
@@ -391,6 +396,13 @@ class PersistentCacheService implements ICachingService {
       // Check if cache is from today (day-based validation using system date)
       if (!_isSameDay(metadata.cachedAt, DateTime.now())) {
         debugPrint('📅 Cache is from different day, invalidating cache');
+        await clearCache();
+        return false;
+      }
+
+      // Check if cache virtual date matches current virtual date
+      if (!metadata.isVirtualDateMatch(VirtualDateService().currentDate)) {
+        debugPrint('📅 Cache virtual date mismatch, invalidating cache');
         await clearCache();
         return false;
       }
