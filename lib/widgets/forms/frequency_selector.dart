@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
+import '../../widgets/dialogs/pro_upgrade_dialog.dart';
 
-/// Frequency selector widget for habit scheduling
+/// Frequency selector widget for habit scheduling recording
 ///
 /// Allows users to select how often they want to perform a habit:
-/// - Every Day
-/// - Workdays (Mon-Fri)
-/// - Weekend (Sat-Sun)
-/// - Custom (select specific days)
+/// - Every Day (Free)
+/// - Workdays (Mon-Fri) (Free)
+/// - Weekend (Sat-Sun) (Free)
+/// - Custom (select specific days) (PRO)
 class FrequencySelector extends StatefulWidget {
   final FrequencyData frequencyData;
   final Function(FrequencyData) onFrequencyChanged;
+  final bool isProActive; // PRO subscription status
 
   const FrequencySelector({
     super.key,
     required this.frequencyData,
     required this.onFrequencyChanged,
+    this.isProActive = true, // Default to true for backward compatibility
   });
 
   @override
@@ -30,20 +33,51 @@ class _FrequencySelectorState extends State<FrequencySelector> {
     _currentFrequency = widget.frequencyData;
   }
 
-  void _onFrequencyTypeChanged(Frequency newType) {
+  void _onFrequencyTypeChanged(Frequency newType, BuildContext context) {
+    // Check PRO subscription for Custom selection
+    if (newType == Frequency.custom && !widget.isProActive) {
+      // Show PRO upgrade dialog
+      _showProDialog(context);
+      return; // Don't change frequency
+    }
+
     setState(() {
       _currentFrequency = FrequencyData.forType(newType);
     });
     widget.onFrequencyChanged(_currentFrequency);
   }
 
-  void _onCustomDayChanged(String day, bool selected) {
+  void _onCustomDayChanged(String day, bool selected, BuildContext context) {
     if (_currentFrequency.type == Frequency.custom) {
+      // Check PRO when interacting with custom days
+      if (!widget.isProActive) {
+        _showProDialog(context);
+        return; // Don't allow changes
+      }
+
       setState(() {
-        _currentFrequency = _currentFrequency.copyWithDay(day, selected ? 1 : 0);
+        _currentFrequency = _currentFrequency.copyWithDay(
+          day,
+          selected ? 1 : 0,
+        );
       });
       widget.onFrequencyChanged(_currentFrequency);
     }
+  }
+
+  /// Show PRO upgrade dialog for Custom frequency feature
+  void _showProDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => ProUpgradeDialog(
+        title: 'Custom Frequency',
+        message:
+            'Unlock custom frequency selection with PRO! Choose exactly which days of the week you want to track your habit.',
+        onUpgrade: () {
+          // TODO: Implement actual upgrade flow
+        },
+      ),
+    );
   }
 
   @override
@@ -58,17 +92,23 @@ class _FrequencySelectorState extends State<FrequencySelector> {
           ...Frequency.values.map((frequency) {
             final isSelected = frequency == _currentFrequency.type;
             return Semantics(
-              label: '${frequency.displayName} frequency option${isSelected ? ', selected' : ''}',
-              hint: frequency.description + (isSelected ? '. Currently selected' : '. Tap to select'),
+              label:
+                  '${frequency.displayName} frequency option${isSelected ? ', selected' : ''}',
+              hint:
+                  frequency.description +
+                  (isSelected ? '. Currently selected' : '. Tap to select'),
               button: true,
               selected: isSelected,
               child: GestureDetector(
-                onTap: () => _onFrequencyTypeChanged(frequency),
+                onTap: () => _onFrequencyTypeChanged(frequency, context),
                 child: Focus(
                   autofocus: isSelected,
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected ? Colors.blue[50] : Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
@@ -106,6 +146,16 @@ class _FrequencySelectorState extends State<FrequencySelector> {
                             color: Colors.blue,
                             size: 20,
                           ),
+                        if (frequency == Frequency.custom &&
+                            !widget.isProActive)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Icon(
+                              Icons.lock,
+                              size: 18,
+                              color: Colors.grey[600],
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -114,46 +164,53 @@ class _FrequencySelectorState extends State<FrequencySelector> {
             );
           }),
 
-        // Custom day selection (only shown when Custom is selected)
-        if (_currentFrequency.type == Frequency.custom) ...[
-          const SizedBox(height: 16),
-          Semantics(
-            label: 'Select specific days for custom frequency',
-            hint: 'Choose which days of the week you want to perform this habit',
-            child: const Text(
-              'Select days:',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
+          // Custom day selection (only shown when Custom is selected)
+          if (_currentFrequency.type == Frequency.custom) ...[
+            const SizedBox(height: 16),
+            Semantics(
+              label: 'Select specific days for custom frequency',
+              hint:
+                  'Choose which days of the week you want to perform this habit',
+              child: const Text(
+                'Select days:',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((day) {
-              final dayName = _getDayDisplayName(day);
-              final isSelected = _currentFrequency.days[day] == 1;
-              return Semantics(
-                label: '$dayName${isSelected ? ', selected' : ', not selected'}',
-                hint: isSelected ? 'Tap to remove from selected days' : 'Tap to add to selected days',
-                button: true,
-                selected: isSelected,
-                child: FilterChip(
-                  label: Text(dayName),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((
+                day,
+              ) {
+                final dayName = _getDayDisplayName(day);
+                final isSelected = _currentFrequency.days[day] == 1;
+                return Semantics(
+                  label:
+                      '$dayName${isSelected ? ', selected' : ', not selected'}',
+                  hint: isSelected
+                      ? 'Tap to remove from selected days'
+                      : 'Tap to add to selected days',
+                  button: true,
                   selected: isSelected,
-                  onSelected: (selected) => _onCustomDayChanged(day, selected),
-                  backgroundColor: Colors.grey[100],
-                  selectedColor: Colors.blue[100],
-                  checkmarkColor: Colors.blue,
-                ),
-              );
-            }).toList(),
-          ),
+                  child: FilterChip(
+                    label: Text(dayName),
+                    selected: isSelected,
+                    onSelected: (selected) =>
+                        _onCustomDayChanged(day, selected, context),
+                    backgroundColor: Colors.grey[100],
+                    selectedColor: Colors.blue[100],
+                    checkmarkColor: Colors.blue,
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         ],
-      ],
       ),
     );
   }
@@ -197,19 +254,43 @@ class FrequencyData {
     switch (frequencyType) {
       case Frequency.everyDay:
         return FrequencyData(frequencyType, {
-          'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1
+          'mon': 1,
+          'tue': 1,
+          'wed': 1,
+          'thu': 1,
+          'fri': 1,
+          'sat': 1,
+          'sun': 1,
         });
       case Frequency.workdays:
         return FrequencyData(frequencyType, {
-          'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 0, 'sun': 0
+          'mon': 1,
+          'tue': 1,
+          'wed': 1,
+          'thu': 1,
+          'fri': 1,
+          'sat': 0,
+          'sun': 0,
         });
       case Frequency.weekend:
         return FrequencyData(frequencyType, {
-          'mon': 0, 'tue': 0, 'wed': 0, 'thu': 0, 'fri': 0, 'sat': 1, 'sun': 1
+          'mon': 0,
+          'tue': 0,
+          'wed': 0,
+          'thu': 0,
+          'fri': 0,
+          'sat': 1,
+          'sun': 1,
         });
       case Frequency.custom:
         return FrequencyData(frequencyType, {
-          'mon': 0, 'tue': 0, 'wed': 0, 'thu': 0, 'fri': 0, 'sat': 0, 'sun': 0
+          'mon': 0,
+          'tue': 0,
+          'wed': 0,
+          'thu': 0,
+          'fri': 0,
+          'sat': 0,
+          'sun': 0,
         });
     }
   }

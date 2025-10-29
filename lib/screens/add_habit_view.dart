@@ -412,13 +412,19 @@ class _AddHabitViewState extends State<AddHabitView> {
                         children: [
                           // Frequency Selection
                           _buildSectionTitle('Frequency'),
-                          FrequencySelector(
-                            frequencyData: _controller.frequencyData,
-                            onFrequencyChanged: (freq) {
-                              setState(() {
-                                _controller.onFrequencyChanged(freq);
-                                _updatePreview();
-                              });
+                          Builder(
+                            builder: (context) {
+                              final appState = context.read<AppState>();
+                              return FrequencySelector(
+                                frequencyData: _controller.frequencyData,
+                                isProActive: appState.isProSubscriptionActive,
+                                onFrequencyChanged: (freq) {
+                                  setState(() {
+                                    _controller.onFrequencyChanged(freq);
+                                    _updatePreview();
+                                  });
+                                },
+                              );
                             },
                           ),
                           const SizedBox(height: 24),
@@ -471,35 +477,94 @@ class _AddHabitViewState extends State<AddHabitView> {
 
                           // Reminder Settings
                           _buildSectionTitle('Reminders'),
-                          SwitchListTile(
-                            title: const Text('Enable Daily Reminders'),
-                            value: _controller.enableReminders,
-                            onChanged: (value) => setState(
-                              () => _controller.enableReminders = value,
-                            ),
+                          Builder(
+                            builder: (context) {
+                              final appState = context.read<AppState>();
+                              final isProActive =
+                                  appState.isProSubscriptionActive;
+
+                              return SwitchListTile(
+                                title: const Text('Enable Daily Reminders'),
+                                value: _controller.enableReminders,
+                                onChanged: (value) {
+                                  // Check PRO subscription
+                                  if (!isProActive) {
+                                    // Show PRO upgrade dialog
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => ProUpgradeDialog(
+                                        title: 'Daily Reminders',
+                                        message:
+                                            'Unlock daily reminders with PRO! Get notified to complete your habits at your preferred time.',
+                                        onUpgrade: () {
+                                          // TODO: Implement actual upgrade flow
+                                        },
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  // PRO is active - allow toggle
+                                  setState(() {
+                                    _controller.enableReminders = value;
+                                    if (!value) {
+                                      _controller.reminderTime = null;
+                                    }
+                                    _updatePreview();
+                                  });
+                                },
+                              );
+                            },
                           ),
 
                           if (_controller.enableReminders) ...[
                             const SizedBox(height: 16),
-                            ListTile(
-                              title: const Text('Reminder Time'),
-                              subtitle: Text(
-                                _controller.reminderTime?.format(context) ??
-                                    'Not set',
-                              ),
-                              trailing: const Icon(Icons.access_time),
-                              onTap: () async {
-                                final time = await showTimePicker(
-                                  context: context,
-                                  initialTime:
-                                      _controller.reminderTime ??
-                                      TimeOfDay.now(),
+                            Builder(
+                              builder: (context) {
+                                final appState = context.read<AppState>();
+                                final isProActive =
+                                    appState.isProSubscriptionActive;
+
+                                return ListTile(
+                                  title: const Text('Reminder Time'),
+                                  subtitle: Text(
+                                    _controller.reminderTime?.format(context) ??
+                                        'Not set',
+                                  ),
+                                  trailing: const Icon(Icons.access_time),
+                                  onTap: () {
+                                    // Check PRO subscription
+                                    if (!isProActive) {
+                                      // Show PRO upgrade dialog
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => ProUpgradeDialog(
+                                          title: 'Daily Reminders',
+                                          message:
+                                              'Unlock daily reminders with PRO! Get notified to complete your habits at your preferred time.',
+                                          onUpgrade: () {
+                                            // TODO: Implement actual upgrade flow
+                                          },
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    // PRO is active - show time picker
+                                    showTimePicker(
+                                      context: context,
+                                      initialTime:
+                                          _controller.reminderTime ??
+                                          TimeOfDay.now(),
+                                    ).then((time) {
+                                      if (time != null) {
+                                        setState(
+                                          () => _controller.reminderTime = time,
+                                        );
+                                      }
+                                    });
+                                  },
                                 );
-                                if (time != null) {
-                                  setState(
-                                    () => _controller.reminderTime = time,
-                                  );
-                                }
                               },
                             ),
                           ],
