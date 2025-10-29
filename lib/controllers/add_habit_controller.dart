@@ -38,7 +38,7 @@ import '../services/haptic_feedback_service.dart';
 ///   appState: appState,
 /// );
 /// ```
-/// 
+///
 /// Note: Initial color selection should be handled by the view using
 /// `onColorChanged()` method after the controller is constructed.
 class AddHabitController {
@@ -49,7 +49,9 @@ class AddHabitController {
   // Form state
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-  final TextEditingController targetGoalController = TextEditingController(text: '1');
+  final TextEditingController targetGoalController = TextEditingController(
+    text: '1',
+  );
 
   String selectedIconName = 'local_fire_department';
   int selectedLightColor = 0xFFEF4444; // Default to Coral Red (first color)
@@ -94,6 +96,38 @@ class AddHabitController {
   void onFrequencyChanged(FrequencyData newFrequencyData) {
     frequencyData = newFrequencyData;
     _clearError();
+  }
+
+  /// Builds a preview Habit object from current form state
+  ///
+  /// Used for real-time preview in the UI before saving.
+  /// Returns a Habit instance with current form values, defaulting to
+  /// placeholder values when fields are empty or invalid.
+  Habit buildPreviewHabit() {
+    // Get current values, with safe defaults
+    final name = nameController.text.trim().isEmpty
+        ? 'Habit Name'
+        : nameController.text.trim();
+    final description = descriptionController.text.trim();
+
+    // Parse target goal safely
+    final goalText = targetGoalController.text.trim();
+    final goal = int.tryParse(goalText) ?? 1;
+    final safeGoal = goal <= 0 ? 1 : (goal > 1000 ? 1000 : goal);
+
+    return Habit.createWithUuid(
+      name: name,
+      description: description,
+      lightColorValue: selectedLightColor,
+      darkColorValue: selectedDarkColor,
+      iconName: selectedIconName,
+      frequencyDays: frequencyData.days,
+      targetGoal: safeGoal,
+      allowExceedGoal: allowExceedGoal,
+      // No reminders for preview - keep it simple
+      enableReminders: false,
+      reminderTime: null,
+    );
   }
 
   /// Validate the form data
@@ -152,9 +186,11 @@ class AddHabitController {
   /// Check for duplicate habits
   bool _isDuplicateHabit() {
     final normalizedName = nameController.text.toLowerCase().trim();
-    return existingHabits.any((habit) =>
-        habit.name.toLowerCase().trim() == normalizedName &&
-        habit.iconName == selectedIconName);
+    return existingHabits.any(
+      (habit) =>
+          habit.name.toLowerCase().trim() == normalizedName &&
+          habit.iconName == selectedIconName,
+    );
   }
 
   /// Save the habit
@@ -171,7 +207,7 @@ class AddHabitController {
       isLoading = true;
 
       final habit = Habit.createWithUuid(
-        name: nameController.text.trim().length > 40 
+        name: nameController.text.trim().length > 40
             ? nameController.text.trim().substring(0, 40)
             : nameController.text.trim(),
         description: descriptionController.text.trim().length > 200
@@ -198,7 +234,6 @@ class AddHabitController {
 
       onHabitAdded(habit);
       HapticFeedbackService.light();
-
     } catch (e) {
       errorMessage = 'Failed to create habit: $e';
       HapticFeedbackService.error();

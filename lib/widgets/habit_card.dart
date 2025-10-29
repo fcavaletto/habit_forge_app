@@ -28,7 +28,7 @@ class SmartCompletionButton extends StatefulWidget {
   static const double _defaultIconSize = 24.0;
   static const double _emptyAlpha = 0.1;
   static const double _completedAlpha = 1.0;
-  
+
   // Progress ring constants
   static const double _progressRingSize = 48.0;
   static const double _progressStrokeWidth = 8.0;
@@ -36,20 +36,20 @@ class SmartCompletionButton extends StatefulWidget {
   static const double _segmentAlpha = 1;
   static const double _emptySegmentAlpha = 0.4;
   static const int _maxSegmentedGoal = 12;
-  
+
   // Dynamic gap size formula constants
   static const double _baseGapSize = 9.2;
   static const double _gapSizeReductionFactor = 0.6;
 
   /// The habit this button represents
   final Habit habit;
-  
+
   /// Callback when completion count should be incremented
   final VoidCallback? onIncrement;
-  
+
   /// Callback when completion count should be decremented (reset)
   final VoidCallback? onDecrement;
-  
+
   /// Callback when custom completion modal should be opened (for allowExceedGoal habits)
   final VoidCallback? onCustomCompletion;
 
@@ -75,7 +75,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   bool _wasCompleted = false;
   bool _isBursting = false;
   bool _wasTappedByUser = false; // New flag to track user tap
-  
+
   // Store completed state for overlay
   int? _burstOverlayCount;
   Color? _burstOverlayColor;
@@ -87,49 +87,44 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-    
+
     // Create three-phase animation
     _pulseAnimation = TweenSequence<double>([
       // Phase 1: Grow to 1.1x
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.08)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.08,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 50.0,
       ),
       // Phase 2: Hold at 1.1x
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.08),
-        weight: 10.0,
-      ),
+      TweenSequenceItem(tween: ConstantTween<double>(1.08), weight: 10.0),
       // Phase 3: Shrink to 1.0x
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.08, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: 1.08,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 40.0,
       ),
     ]).animate(_pulseController);
-    
+
     // New burst animation
     _burstController = AnimationController(
       duration: const Duration(milliseconds: 700),
       vsync: this,
     );
-    
+
     _burstScaleAnimation = Tween<double>(
       begin: 1.0,
       end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _burstController,
-      curve: Curves.easeOut,
-    ));
-    
+    ).animate(CurvedAnimation(parent: _burstController, curve: Curves.easeOut));
+
     _burstOpacityAnimation = Tween<double>(
       begin: 1.0,
       end: 0,
-    ).animate(CurvedAnimation(
-      parent: _burstController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _burstController, curve: Curves.easeOut));
   }
 
   @override
@@ -142,8 +137,8 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   /// Get the habit color based on current theme brightness
   Color _getHabitColor(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    return brightness == Brightness.light 
-        ? Color(widget.habit.lightColorValue) 
+    return brightness == Brightness.light
+        ? Color(widget.habit.lightColorValue)
         : Color(widget.habit.darkColorValue);
   }
 
@@ -159,14 +154,19 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       width: SmartCompletionButton._buttonSize,
       height: SmartCompletionButton._buttonSize,
       decoration: BoxDecoration(
-        shape: (isCompleted || widget.habit.targetGoal == 1) ? BoxShape.rectangle : BoxShape.circle,
-        borderRadius: (isCompleted || widget.habit.targetGoal == 1) ? BorderRadius.circular(8.0) : null,
+        shape: (isCompleted || widget.habit.targetGoal == 1)
+            ? BoxShape.rectangle
+            : BoxShape.circle,
+        borderRadius: (isCompleted || widget.habit.targetGoal == 1)
+            ? BorderRadius.circular(8.0)
+            : null,
         color: _getButtonColor(habitColor, buttonState),
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          if (widget.habit.targetGoal > 1 && buttonState != ButtonState.completed) ...[
+          if (widget.habit.targetGoal > 1 &&
+              buttonState != ButtonState.completed) ...[
             SizedBox.expand(
               child: _buildProgressIndicator(todayCount, habitColor, context),
             ),
@@ -174,8 +174,10 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
           Icon(
             _getButtonIcon(buttonState),
             color: Theme.of(context).brightness == Brightness.light
-              ? isCompleted ? Colors.white : habitColor.darken(0.1)
-              : Colors.white.withValues(alpha: 0.8),
+                ? isCompleted
+                      ? Colors.white
+                      : habitColor.darken(0.1)
+                : Colors.white.withValues(alpha: 0.8),
             size: _getIconSize(buttonState),
           ),
         ],
@@ -194,10 +196,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     return AnimatedBuilder(
       animation: _pulseAnimation,
       builder: (context, child) {
-        return Transform.scale(
-          scale: _pulseAnimation.value,
-          child: child,
-        );
+        return Transform.scale(scale: _pulseAnimation.value, child: child);
       },
       child: _buildButtonContainer(
         habitColor: habitColor,
@@ -228,11 +227,14 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
           isCompleted: isCompleted,
           context: context,
         ),
-        
+
         // 2. Bursting completed button overlay (stored state)
         if (_burstOverlayColor != null && _burstOverlayCount != null)
           AnimatedBuilder(
-            animation: Listenable.merge([_burstScaleAnimation, _burstOpacityAnimation]),
+            animation: Listenable.merge([
+              _burstScaleAnimation,
+              _burstOpacityAnimation,
+            ]),
             builder: (context, child) {
               return Opacity(
                 opacity: _burstOpacityAnimation.value,
@@ -257,8 +259,12 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   @override
   Widget build(BuildContext context) {
     // Get current completion state
-    final todayCount = widget.habit.getCompletionCount(VirtualDateService().currentDate);
-    final isCompleted = widget.habit.isGoalAchieved(VirtualDateService().currentDate);
+    final todayCount = widget.habit.getCompletionCount(
+      VirtualDateService().currentDate,
+    );
+    final isCompleted = widget.habit.isGoalAchieved(
+      VirtualDateService().currentDate,
+    );
     final habitColor = _getHabitColor(context);
 
     // Determine button state based on completion
@@ -276,21 +282,57 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       _wasCompleted = false;
     }
 
+    // Disable interaction for preview mode (when all callbacks are null)
+    final isPreview =
+        widget.onIncrement == null &&
+        widget.onDecrement == null &&
+        widget.onCustomCompletion == null;
+
     return Semantics(
       label: _getAccessibilityLabel(todayCount, isCompleted),
       hint: _getAccessibilityHint(todayCount, isCompleted),
-      button: true,
-      child: GestureDetector(
-        onTap: () => _handleButtonPress(todayCount, isCompleted),
-        child: _isBursting
-            ? _buildBurstingWithOverlay(context, habitColor, todayCount, isCompleted, buttonState)
-            : _buildNormalButton(context, habitColor, todayCount, isCompleted, buttonState),
-      ),
+      button: !isPreview, // Disable button semantics in preview
+      child: isPreview
+          ? IgnorePointer(
+              child: _isBursting
+                  ? _buildBurstingWithOverlay(
+                      context,
+                      habitColor,
+                      todayCount,
+                      isCompleted,
+                      buttonState,
+                    )
+                  : _buildNormalButton(
+                      context,
+                      habitColor,
+                      todayCount,
+                      isCompleted,
+                      buttonState,
+                    ),
+            )
+          : GestureDetector(
+              onTap: () => _handleButtonPress(todayCount, isCompleted),
+              child: _isBursting
+                  ? _buildBurstingWithOverlay(
+                      context,
+                      habitColor,
+                      todayCount,
+                      isCompleted,
+                      buttonState,
+                    )
+                  : _buildNormalButton(
+                      context,
+                      habitColor,
+                      todayCount,
+                      isCompleted,
+                      buttonState,
+                    ),
+            ),
     );
   }
 
   /// Determines the current button state based on completion count and goal achievement.
-  /// 
+  ///
   /// Returns:
   /// - [ButtonState.empty] when no completions today
   /// - [ButtonState.completed] when goal is fully achieved
@@ -302,26 +344,29 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   }
 
   /// Returns the button background color with appropriate transparency.
-  /// 
+  ///
   /// Completed buttons are fully opaque, while empty/in-progress buttons
   /// are semi-transparent to indicate they're interactive.
   /// For habits with goal = 1, use lighter hue when not completed, full color when completed.
   Color _getButtonColor(Color habitColor, ButtonState state) {
     // Special case: when goal is 1, use lighter hue if not completed, full color if completed
     if (widget.habit.targetGoal == 1) {
-      final alpha = (state == ButtonState.completed) ? SmartCompletionButton._completedAlpha : SmartCompletionButton._emptyAlpha;
+      final alpha = (state == ButtonState.completed)
+          ? SmartCompletionButton._completedAlpha
+          : SmartCompletionButton._emptyAlpha;
       return habitColor.withValues(alpha: alpha);
     }
-    
+
     // Original logic for goals > 1
-    final alpha = (state == ButtonState.empty || state == ButtonState.inProgress) 
-        ? SmartCompletionButton._emptyAlpha 
+    final alpha =
+        (state == ButtonState.empty || state == ButtonState.inProgress)
+        ? SmartCompletionButton._emptyAlpha
         : SmartCompletionButton._completedAlpha;
     return habitColor.withValues(alpha: alpha);
   }
 
   /// Returns the appropriate icon for the current button state.
-  /// 
+  ///
   /// - For habits with goal = 1: Always shows check icon (tick)
   /// - For habits with goal > 1:
   ///   - Empty/In Progress: Add icon (Icons.add)
@@ -331,7 +376,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     if (widget.habit.targetGoal == 1) {
       return Icons.check;
     }
-    
+
     // Original logic for goals > 1
     switch (state) {
       case ButtonState.empty:
@@ -343,14 +388,16 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   }
 
   /// Returns the appropriate icon size for the current button state.
-  /// 
+  ///
   /// Completed buttons use a larger icon to emphasize the achievement.
   double _getIconSize(ButtonState state) {
-    return state == ButtonState.completed ? SmartCompletionButton._completedIconSize : SmartCompletionButton._defaultIconSize;
+    return state == ButtonState.completed
+        ? SmartCompletionButton._completedIconSize
+        : SmartCompletionButton._defaultIconSize;
   }
 
   /// Generates an accessibility label describing the current completion state.
-  /// 
+  ///
   /// Provides screen readers with context about:
   /// - The habit name
   /// - Current completion count vs goal
@@ -359,7 +406,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     if (widget.habit.allowExceedGoal) {
       return '${widget.habit.name}: $todayCount completions - tap to set custom count';
     }
-    
+
     if (todayCount == 0) {
       return 'Add first completion for ${widget.habit.name}';
     }
@@ -370,13 +417,13 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   }
 
   /// Generates an accessibility hint explaining what will happen when tapped.
-  /// 
+  ///
   /// Provides additional context for screen readers about the button's action.
   String _getAccessibilityHint(int todayCount, bool isCompleted) {
     if (widget.habit.allowExceedGoal) {
       return 'Tap to open custom completion dialog';
     }
-    
+
     if (todayCount == 0) {
       return 'Tap to add your first completion today';
     }
@@ -387,7 +434,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   }
 
   /// Handles button press based on current state
-  /// 
+  ///
   /// Behavior:
   /// - Empty state: Calls [onIncrement] to mark first completion
   /// - Completed state: Calls [onDecrement] to reset (burst animation)
@@ -407,17 +454,17 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       } else if (isCompleted) {
         // Store completed state for overlay
         final habitColor = _getHabitColor(context);
-        
+
         setState(() {
           _burstOverlayCount = todayCount;
           _burstOverlayColor = habitColor;
           _isBursting = true;
         });
-        
+
         // Immediately change the data state
         HapticFeedbackService.selection();
         widget.onDecrement?.call();
-        
+
         // Start burst overlay animation
         _burstController.forward(from: 0.0).then((_) {
           setState(() {
@@ -450,31 +497,41 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   }
 
   /// Calculates the dynamic gap size based on the habit's goal.
-  /// 
+  ///
   /// Uses the formula: GapSize = 9.2 - 0.6 * HabitGoal
   /// This ensures that:
   /// - Habits with smaller goals have larger gaps (more visual separation)
   /// - Habits with larger goals have smaller gaps (more segments visible)
   /// - The gap size scales appropriately with the number of segments
   double _calculateDynamicGapSize() {
-    return SmartCompletionButton._baseGapSize - (SmartCompletionButton._gapSizeReductionFactor * widget.habit.targetGoal);
+    return SmartCompletionButton._baseGapSize -
+        (SmartCompletionButton._gapSizeReductionFactor *
+            widget.habit.targetGoal);
   }
 
   /// Builds the appropriate progress indicator based on goal size.
-  /// 
+  ///
   /// For goals ≤ 12: Uses [SegmentedProgressRing] with individual segments
   /// For goals > 12: Uses [CircularProgressIndicator] for smooth progress
-  /// 
+  ///
   /// The segmented ring provides clear visual feedback for smaller goals,
   /// while the smooth indicator is more appropriate for larger goals where
   /// individual segments would be too small to be meaningful.
-  Widget _buildProgressIndicator(int todayCount, Color habitColor, BuildContext context) {
+  Widget _buildProgressIndicator(
+    int todayCount,
+    Color habitColor,
+    BuildContext context,
+  ) {
     if (widget.habit.targetGoal <= SmartCompletionButton._maxSegmentedGoal) {
       return SegmentedProgressRing(
         completed: todayCount,
         goal: widget.habit.targetGoal,
-        segmentColor: habitColor.withValues(alpha: SmartCompletionButton._segmentAlpha),
-        emptyColor: habitColor.withValues(alpha: SmartCompletionButton._emptySegmentAlpha),
+        segmentColor: habitColor.withValues(
+          alpha: SmartCompletionButton._segmentAlpha,
+        ),
+        emptyColor: habitColor.withValues(
+          alpha: SmartCompletionButton._emptySegmentAlpha,
+        ),
         backgroundColor: Theme.of(context).colorScheme.surface,
         strokeWidth: SmartCompletionButton._progressStrokeWidth,
         size: SmartCompletionButton._progressRingSize,
@@ -494,15 +551,15 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
 }
 
 /// Represents the different states of the completion button.
-/// 
+///
 /// These states determine the button's appearance, behavior, and accessibility labels.
 enum ButtonState {
   /// No completions today - shows add icon, semi-transparent background
   empty,
-  
+
   /// Some completions but goal not achieved - shows add icon, semi-transparent background
   inProgress,
-  
+
   /// Goal fully achieved - shows check icon, fully opaque background
   completed,
 }
@@ -574,8 +631,8 @@ class HabitCard extends StatelessWidget {
   /// Get the habit color based on current theme brightness
   Color _getHabitColor(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    return brightness == Brightness.light 
-        ? Color(habit.lightColorValue) 
+    return brightness == Brightness.light
+        ? Color(habit.lightColorValue)
         : Color(habit.darkColorValue);
   }
 
@@ -586,13 +643,18 @@ class HabitCard extends StatelessWidget {
     final habitColor = _getHabitColor(context);
 
     // Create accessibility labels - memoized for performance
-    final todayCount = habit.getCompletionCount(VirtualDateService().currentDate);
-    final completionStatus = todayCount > 0 ? '$todayCount completion${todayCount != 1 ? 's' : ''}' : 'not completed';
-    final accessibilityLabel = '${habit.name}. ${habit.description}. Today: $completionStatus.';
+    final todayCount = habit.getCompletionCount(
+      VirtualDateService().currentDate,
+    );
+    final completionStatus = todayCount > 0
+        ? '$todayCount completion${todayCount != 1 ? 's' : ''}'
+        : 'not completed';
+    final accessibilityLabel =
+        '${habit.name}. ${habit.description}. Today: $completionStatus.';
 
     // Theme-based border width
     final borderWidth = Theme.of(context).brightness == Brightness.light
-        ? 1.0  // Light theme: more prominent borders
+        ? 1.0 // Light theme: more prominent borders
         : 0.5; // Dark theme: subtle borders
 
     return Container(
@@ -619,7 +681,8 @@ class HabitCard extends StatelessWidget {
           button: true,
           child: InkWell(
             // Short tap shows context menu, long press handled by ReorderableListView
-            onTap: () => _showContextMenu(context),
+            // Only make tappable if callback is provided (for preview mode)
+            onTap: onTap != null ? () => _showContextMenu(context) : null,
             // Rounded corners for modern Material 3 design
             borderRadius: BorderRadius.circular(11.0),
             focusColor: habitColor.withValues(alpha: 0.2),
@@ -628,173 +691,183 @@ class HabitCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                // Top row: Icon and action buttons
-                Row(
-                  children: [
-                    // Habit icon with themed background
-                    Semantics(
-                      label: 'Habit icon',
-                      excludeSemantics: true,
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: habitColor.withValues(alpha: 0),
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(
-                            color: habitColor,
-                            width: 1
+                  // Top row: Icon and action buttons
+                  Row(
+                    children: [
+                      // Habit icon with themed background
+                      Semantics(
+                        label: 'Habit icon',
+                        excludeSemantics: true,
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: habitColor.withValues(alpha: 0),
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(color: habitColor, width: 1),
                           ),
-                        ),
-                        child: Icon(
-                          habit.iconName.toIconData,
-                          color: habitColor,
-                          size: 25,
+                          child: Icon(
+                            habit.iconName.toIconData,
+                            color: habitColor,
+                            size: 25,
+                          ),
                         ),
                       ),
-                    ),
 
-                    const Spacer(), // Push buttons to the right
-
-                    // Action buttons row
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Stats button
-                        Semantics(
-                          label: 'View ${habit.name} statistics',
-                          hint: 'Opens detailed statistics for this habit',
-                          button: true,
-                          child: InkWell(
-                            onTap: onStats ?? () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => StatsScreen(habit: habit),
-                                ),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(24),
-                            child: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.bar_chart,
-                                color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Smart completion button
-                        SmartCompletionButton(
-                          habit: habit,
-                          onIncrement: onIncrement,
-                          onDecrement: onDecrement,
-                          onCustomCompletion: onCustomCompletion,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                // Habit details
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Habit text content
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const Spacer(), // Push buttons to the right
+                      // Action buttons row
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Habit name
-                          Text(
-                            habit.name,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-
-                          // Only show description and spacing if description is not empty
-                          if (habit.description.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            
-                            // Habit description
-                            Text(
-                              habit.description,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                                fontSize: 11,
+                          // Stats button
+                          Semantics(
+                            label: 'View ${habit.name} statistics',
+                            hint: 'Opens detailed statistics for this habit',
+                            button:
+                                onStats != null, // Disable semantics in preview
+                            child: InkWell(
+                              // Disable interaction in preview mode
+                              onTap: onStats != null
+                                  ? (onStats ??
+                                        () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  StatsScreen(habit: habit),
+                                            ),
+                                          );
+                                        })
+                                  : null,
+                              borderRadius: BorderRadius.circular(24),
+                              child: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.bar_chart,
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  size: 24,
+                                ),
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
+                          ),
+                          const SizedBox(width: 6),
+                          // Smart completion button
+                          SmartCompletionButton(
+                            habit: habit,
+                            onIncrement: onIncrement,
+                            onDecrement: onDecrement,
+                            onCustomCompletion: onCustomCompletion,
+                          ),
                         ],
                       ),
-                    ),
+                    ],
+                  ),
 
-                    const SizedBox(width: 8),
-                  ],
-                ),
+                  const SizedBox(height: 8),
 
-              const SizedBox(height: 8),
-
-              // Progress chart - Compact version with completion intensity
-              SizedBox(
-                height: 32, // Smaller height
-                child: Row(
-                  children: List.generate(7, (index) {
-                    final date = VirtualDateService().currentDate.subtract(Duration(days: 6 - index));
-                    final count = habit.getCompletionCount(date);
-                    final intensity = count > 0 ? (count / habit.targetGoal).clamp(0.0, 1.0) : 0.0; // Use actual goal for visualization
-
-                    return Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                        decoration: BoxDecoration(
-                          color: count > 0
-                              ? habitColor.withValues(alpha: intensity)
-                              : habitColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(1),
-                        ),
-                        child: habit.isGoalAchieved(date)
-                            ? const Icon(
-                                Icons.check,
-                                size: 10,
-                                color: Colors.white,
-                              )
-                            : count > 0
-                            ? Center(
-                                child: Text(
-                                  count.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
+                  // Habit details
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Habit text content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Habit name
+                            Text(
+                              habit.name,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
                                     fontWeight: FontWeight.w600,
+                                    fontSize: 16,
                                   ),
-                                ),
-                              )
-                            : null,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+
+                            // Only show description and spacing if description is not empty
+                            if (habit.description.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+
+                              // Habit description
+                              Text(
+                                habit.description,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontSize: 11,
+                                    ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                    );
-                  }),
-                ),
+
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Progress chart - Compact version with completion intensity
+                  SizedBox(
+                    height: 32, // Smaller height
+                    child: Row(
+                      children: List.generate(7, (index) {
+                        final date = VirtualDateService().currentDate.subtract(
+                          Duration(days: 6 - index),
+                        );
+                        final count = habit.getCompletionCount(date);
+                        final intensity = count > 0
+                            ? (count / habit.targetGoal).clamp(0.0, 1.0)
+                            : 0.0; // Use actual goal for visualization
+
+                        return Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                            decoration: BoxDecoration(
+                              color: count > 0
+                                  ? habitColor.withValues(alpha: intensity)
+                                  : habitColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                            child: habit.isGoalAchieved(date)
+                                ? const Icon(
+                                    Icons.check,
+                                    size: 10,
+                                    color: Colors.white,
+                                  )
+                                : count > 0
+                                ? Center(
+                                    child: Text(
+                                      count.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
-    ),
       ),
     );
   }
@@ -833,16 +906,18 @@ class HabitCard extends StatelessWidget {
                         children: [
                           Text(
                             habit.name,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                           if (habit.description.isNotEmpty)
                             Text(
                               habit.description,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -888,9 +963,7 @@ class HabitCard extends StatelessWidget {
                 ),
                 title: Text(
                   'Delete Habit',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 subtitle: const Text('Permanently remove'),
                 onTap: () {
@@ -906,8 +979,6 @@ class HabitCard extends StatelessWidget {
       },
     );
   }
-
-
 }
 
 /// A more detailed habit card with 4-week grid chart for expanded view
@@ -915,17 +986,13 @@ class DetailedHabitCard extends StatelessWidget {
   final Habit habit;
   final VoidCallback? onClose;
 
-  const DetailedHabitCard({
-    super.key,
-    required this.habit,
-    this.onClose,
-  });
+  const DetailedHabitCard({super.key, required this.habit, this.onClose});
 
   /// Get the habit color based on current theme brightness
   Color _getHabitColor(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    return brightness == Brightness.light 
-        ? Color(habit.lightColorValue) 
+    return brightness == Brightness.light
+        ? Color(habit.lightColorValue)
         : Color(habit.darkColorValue);
   }
 
@@ -935,8 +1002,8 @@ class DetailedHabitCard extends StatelessWidget {
     final habitColor = _getHabitColor(context);
 
     // Theme-based border width
-    final borderWidth = Theme.of(context).brightness == Brightness.light 
-        ? 0.8  // Light theme: subtle borders
+    final borderWidth = Theme.of(context).brightness == Brightness.light
+        ? 0.8 // Light theme: subtle borders
         : 1.2; // Dark theme: more prominent borders
 
     return Container(
@@ -959,136 +1026,142 @@ class DetailedHabitCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(11.0),
         ),
         child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with icon, title, and close button
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: habitColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    habit.iconName.toIconData,
-                    color: habitColor,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        habit.name,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (habit.description.isNotEmpty)
-                        Text(
-                          habit.description,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (onClose != null)
-                  IconButton(
-                    onPressed: onClose,
-                    icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Statistics
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildStatItem(
-                  context,
-                  'Current Streak',
-                  '${habit.currentStreak} days',
-                  habitColor,
-                ),
-                _buildStatItem(
-                  context,
-                  'Total Completions',
-                  habit.totalCompletions.toString(),
-                  habitColor,
-                ),
-                _buildStatItem(
-                  context,
-                  'Completion Rate',
-                  '${(habit.completionRate * 100).round()}%',
-                  habitColor,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // 4-week grid chart
-            Text(
-              'Last 4 Weeks',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            SizedBox(
-              height: 160,
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  crossAxisSpacing: 4,
-                  mainAxisSpacing: 4,
-                ),
-                itemCount: 28,
-                itemBuilder: (context, index) {
-                  final weekIndex = index ~/ 7;
-                  final dayIndex = index % 7;
-                  final completed = habit.last4Weeks[weekIndex][dayIndex];
-
-                  return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with icon, title, and close button
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: completed
-                          ? habitColor
-                          : habitColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
+                      color: habitColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: completed
-                        ? const Icon(
-                            Icons.check,
-                            size: 14,
-                            color: Colors.white,
-                          )
-                        : null,
-                  );
-                },
+                    child: Icon(
+                      habit.iconName.toIconData,
+                      color: habitColor,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          habit.name,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        if (habit.description.isNotEmpty)
+                          Text(
+                            habit.description,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: colorScheme.onSurfaceVariant),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (onClose != null)
+                    IconButton(
+                      onPressed: onClose,
+                      icon: Icon(
+                        Icons.close,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
               ),
-            ),
 
-            const SizedBox(height: 24),
-          ],
-        ),
+              const SizedBox(height: 24),
+
+              // Statistics
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildStatItem(
+                    context,
+                    'Current Streak',
+                    '${habit.currentStreak} days',
+                    habitColor,
+                  ),
+                  _buildStatItem(
+                    context,
+                    'Total Completions',
+                    habit.totalCompletions.toString(),
+                    habitColor,
+                  ),
+                  _buildStatItem(
+                    context,
+                    'Completion Rate',
+                    '${(habit.completionRate * 100).round()}%',
+                    habitColor,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // 4-week grid chart
+              Text(
+                'Last 4 Weeks',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 12),
+
+              SizedBox(
+                height: 160,
+                child: GridView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
+                  ),
+                  itemCount: 28,
+                  itemBuilder: (context, index) {
+                    final weekIndex = index ~/ 7;
+                    final dayIndex = index % 7;
+                    final completed = habit.last4Weeks[weekIndex][dayIndex];
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: completed
+                            ? habitColor
+                            : habitColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: completed
+                          ? const Icon(
+                              Icons.check,
+                              size: 14,
+                              color: Colors.white,
+                            )
+                          : null,
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStatItem(BuildContext context, String label, String value, Color color) {
+  Widget _buildStatItem(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+  ) {
     return Column(
       children: [
         Text(
@@ -1108,5 +1181,4 @@ class DetailedHabitCard extends StatelessWidget {
       ],
     );
   }
-
 }
