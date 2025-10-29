@@ -436,40 +436,63 @@ class _AddHabitViewState extends State<AddHabitView> {
                           const SizedBox(height: 24),
 
                           // Allow Exceed Goal
-                          SwitchListTile(
-                            title: const Text(
-                              'Allow completions beyond Target Goal',
-                            ),
-                            subtitle: const Text(
-                              'Track completions even after the goal is met',
-                            ),
-                            value: _controller.allowExceedGoal,
-                            onChanged: (value) {
+                          Builder(
+                            builder: (context) {
                               final appState = context.read<AppState>();
+                              final isProActive =
+                                  appState.isProSubscriptionActive;
 
-                              // Check PRO subscription before allowing toggle
-                              if (value && !appState.isProSubscriptionActive) {
-                                // Show PRO upgrade dialog
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => ProUpgradeDialog(
-                                    title: 'Allow Exceed Goal',
-                                    message:
-                                        'Unlock advanced tracking with PRO! Upgrade to allow completions beyond your daily target goal.',
-                                    onUpgrade: () {
-                                      // For now, do nothing when "Upgrade to Pro" is tapped
-                                      // TODO: Implement actual upgrade flow
-                                    },
-                                  ),
-                                );
-                                return;
-                              }
+                              return ListTile(
+                                title: const Text(
+                                  'Allow completions beyond Target Goal',
+                                ),
+                                subtitle: const Text(
+                                  'Track completions even after the goal is met',
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (!isProActive) ...[
+                                      Icon(
+                                        Icons.lock,
+                                        size: 18,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Switch(
+                                      value: _controller.allowExceedGoal,
+                                      onChanged: (value) {
+                                        // Check PRO subscription before allowing toggle
+                                        if (value && !isProActive) {
+                                          // Show PRO upgrade dialog
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => ProUpgradeDialog(
+                                              title: 'Allow Exceed Goal',
+                                              message:
+                                                  'Unlock advanced tracking with PRO! Upgrade to allow completions beyond your daily target goal.',
+                                              onUpgrade: () {
+                                                // For now, do nothing when "Upgrade to Pro" is tapped
+                                                // TODO: Implement actual upgrade flow
+                                              },
+                                            ),
+                                          );
+                                          return;
+                                        }
 
-                              // PRO is active or disabling - allow toggle
-                              setState(() {
-                                _controller.allowExceedGoal = value;
-                                _updatePreview();
-                              });
+                                        // PRO is active or disabling - allow toggle
+                                        setState(() {
+                                          _controller.allowExceedGoal = value;
+                                          _updatePreview();
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
                             },
                           ),
 
@@ -483,36 +506,53 @@ class _AddHabitViewState extends State<AddHabitView> {
                               final isProActive =
                                   appState.isProSubscriptionActive;
 
-                              return SwitchListTile(
+                              return ListTile(
                                 title: const Text('Enable Daily Reminders'),
-                                value: _controller.enableReminders,
-                                onChanged: (value) {
-                                  // Check PRO subscription
-                                  if (!isProActive) {
-                                    // Show PRO upgrade dialog
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => ProUpgradeDialog(
-                                        title: 'Daily Reminders',
-                                        message:
-                                            'Unlock daily reminders with PRO! Get notified to complete your habits at your preferred time.',
-                                        onUpgrade: () {
-                                          // TODO: Implement actual upgrade flow
-                                        },
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (!isProActive) ...[
+                                      Icon(
+                                        Icons.lock,
+                                        size: 18,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
-                                    );
-                                    return;
-                                  }
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Switch(
+                                      value: _controller.enableReminders,
+                                      onChanged: (value) {
+                                        // Check PRO subscription
+                                        if (!isProActive) {
+                                          // Show PRO upgrade dialog
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => ProUpgradeDialog(
+                                              title: 'Daily Reminders',
+                                              message:
+                                                  'Unlock daily reminders with PRO! Get notified to complete your habits at your preferred time.',
+                                              onUpgrade: () {
+                                                // TODO: Implement actual upgrade flow
+                                              },
+                                            ),
+                                          );
+                                          return;
+                                        }
 
-                                  // PRO is active - allow toggle
-                                  setState(() {
-                                    _controller.enableReminders = value;
-                                    if (!value) {
-                                      _controller.reminderTime = null;
-                                    }
-                                    _updatePreview();
-                                  });
-                                },
+                                        // PRO is active - allow toggle
+                                        setState(() {
+                                          _controller.enableReminders = value;
+                                          if (!value) {
+                                            _controller.reminderTime = null;
+                                          }
+                                          _updatePreview();
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
                               );
                             },
                           ),
