@@ -74,7 +74,8 @@ class HabitState extends ChangeNotifier {
   late TimeOfDay _selectedTime; // Selected time for completion timestamps
   bool _showAllHabits =
       false; // Whether to show all habits or just today's habits
-  bool _loadedFromCache = false; // Track if last load was from cache (to skip redundant refresh)
+  bool _loadedFromCache =
+      false; // Track if last load was from cache (to skip redundant refresh)
 
   HabitState(this._habitRepository, this._settingsRepository) {
     // Initialize DataAccessService with repository and cache
@@ -82,7 +83,7 @@ class HabitState extends ChangeNotifier {
       repository: _habitRepository,
       cache: _persistentCache,
     );
-    
+
     // Initialize with current date and time from global providers
     _selectedDate = VirtualDateService().currentDate;
     _selectedTime = VirtualTimeService().currentTime;
@@ -120,41 +121,41 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Get last 30 days completion data for all habits
-  /// 
+  ///
   /// Extracts the last 30 days of completion data from dashboard habits.
   /// This data is already loaded by the dashboard and can be reused by stats screen.
   Map<String, Map<DateTime, CompletionRecord>> getLast30DaysCompletions() {
     final result = <String, Map<DateTime, CompletionRecord>>{};
-    
+
     for (final habit in _habits) {
       // Extract last 30 days from habit.completions
       final last30Days = _extractLast30DaysFromCompletions(habit.completions);
       result[habit.id] = last30Days;
     }
-    
+
     return result;
   }
 
   /// Extract last 30 days of completion data from habit completions
-  /// 
+  ///
   /// Filters completion records to include only the last 30 days relative to current date.
   Map<DateTime, CompletionRecord> _extractLast30DaysFromCompletions(
-    Map<DateTime, CompletionRecord> completions
+    Map<DateTime, CompletionRecord> completions,
   ) {
     final today = VirtualDateService().currentDate;
     final last30Days = today.subtract(const Duration(days: 29));
-    
+
     return Map.fromEntries(
       completions.entries.where((entry) {
         final date = entry.key;
         return date.isAfter(last30Days.subtract(const Duration(days: 1))) &&
-               date.isBefore(today.add(const Duration(days: 1)));
-      })
+            date.isBefore(today.add(const Duration(days: 1)));
+      }),
     );
   }
 
   /// Invalidate cached data when date override changes
-  /// 
+  ///
   /// This ensures that stats screen gets fresh data when the user changes
   /// the date through the central date provider.
   void invalidateCachedData() {
@@ -192,30 +193,31 @@ class HabitState extends ChangeNotifier {
   Future<void> refreshDataSilently() async {
     try {
       debugPrint('🔄 Silently refreshing data from database...');
-      
+
       // Load fresh data using DataPreparationService (NO _isLoading = true)
-      final result = await ServiceFactory.dashboardDataService.getDashboardHabits(
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'silentRefresh',
-        ),
-      );
-      
+      final result = await ServiceFactory.dashboardDataService
+          .getDashboardHabits(
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'silentRefresh',
+            ),
+          );
+
       if (result.success && result.data != null) {
         // Update local state silently
         _habits = result.data!;
         _lastLoadTime = VirtualDateService().currentDate;
-        
+
         // Update persistent cache with fresh data
         await _persistentCache.saveHabits(_habits);
-        
+
         // Warm in-memory caches
         await _warmCompletionCache();
-      await _warmMetadataCache();
+        await _warmMetadataCache();
 
         // Notify listeners of updated data (smooth transition, no loading state)
-      notifyListeners();
-        
+        notifyListeners();
+
         debugPrint('✅ Silent refresh completed with ${_habits.length} habits');
       } else {
         debugPrint('⚠️ Silent refresh failed: ${result.errorMessage}');
@@ -239,22 +241,27 @@ class HabitState extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      debugPrint('📱 HabitProvider: Loading habits using DataPreparationService...');
-      
-      // Use DataPreparationService for optimized dashboard loading
-      final result = await ServiceFactory.dashboardDataService.getDashboardHabits(
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'loadDashboardHabits',
-        ),
+      debugPrint(
+        '📱 HabitProvider: Loading habits using DataPreparationService...',
       );
-      
+
+      // Use DataPreparationService for optimized dashboard loading
+      final result = await ServiceFactory.dashboardDataService
+          .getDashboardHabits(
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'loadDashboardHabits',
+            ),
+          );
+
       if (!result.success || result.data == null) {
-        throw Exception(result.errorMessage ?? 'Failed to load dashboard habits');
+        throw Exception(
+          result.errorMessage ?? 'Failed to load dashboard habits',
+        );
       }
-      
+
       // Update local state with prepared data
-      _habits = result.data!;  // Safe now - we checked for null above
+      _habits = result.data!; // Safe now - we checked for null above
 
       // Warm cache with completion data for current date
       await _warmCompletionCache();
@@ -272,26 +279,19 @@ class HabitState extends ChangeNotifier {
       );
     } catch (e) {
       _isLoading = false;
-      
-      // Check if this is a ServiceFactory initialization error - if so, fall back to old method temporarily
-      if (e.toString().contains('Service Factory not initialized')) {
-        debugPrint('⚠️ HabitProvider: ServiceFactory not ready, falling back to legacy load method');
-        _error = null;  // Clear error since we're retrying with fallback
-        
-        try {
-          // Fallback to dashboard loading method if ServiceFactory isn't ready yet
-          await _performDashboardLoad(forceRefresh);
-          return;
-        } catch (fallbackError) {
-          _error = 'Failed to load habits: $fallbackError';
-          debugPrint('❌ HabitProvider: Fallback load also failed: $fallbackError');
-        }
-      } else {
       _error = 'Failed to load habits for dashboard: $e';
-      }
-      
       notifyListeners();
       debugPrint('❌ HabitProvider: Failed to load habits for dashboard: $e');
+
+      // Log specific error details for debugging
+      if (e.toString().contains('Service Factory not initialized')) {
+        debugPrint(
+          '⚠️ ServiceFactory not initialized - this indicates an initialization order issue',
+        );
+        debugPrint(
+          '💡 ServiceFactory should be initialized in main() before HabitProvider.initialize()',
+        );
+      }
     }
   }
 
@@ -299,7 +299,7 @@ class HabitState extends ChangeNotifier {
   Future<HabitSaveResult> addHabit(Habit habit) async {
     try {
       debugPrint('🎯 [ADD_HABIT] Starting incremental habit creation');
-      
+
       // Step 1: Convert Habit to HabitData for the atomic service
       final habitData = HabitData(
         name: habit.name,
@@ -327,7 +327,7 @@ class HabitState extends ChangeNotifier {
       if (!result.success || result.data == null) {
         return HabitSaveResult.error(result.errorMessage ?? 'Unknown error');
       }
-      
+
       final newHabit = result.data!;
       debugPrint('✅ [ADD_HABIT] Habit created in database: ${newHabit.id}');
 
@@ -345,7 +345,7 @@ class HabitState extends ChangeNotifier {
         'darkColorValue': metadata.darkColorValue,
         'iconName': metadata.iconName,
         'createdAt': metadata.createdAt.toIso8601String(),
-        'reminderTime': metadata.reminderTime != null 
+        'reminderTime': metadata.reminderTime != null
             ? '${metadata.reminderTime!.hour}:${metadata.reminderTime!.minute}'
             : null,
         'enableReminders': metadata.enableReminders,
@@ -360,27 +360,36 @@ class HabitState extends ChangeNotifier {
 
       // Step 5: Load ONLY new habit's completions (last 30 days for dashboard)
       final today = VirtualDateService().currentDate;
-      final last30Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 29));
-      
-      debugPrint('🔍 [ADD_HABIT] Loading completions for new habit only (last 30 days)');
-      
-      final completionResult = await _dataAccessService.atomicDataService.getCompletions(
-        startDate: last30Days,
-        endDate: today,
-        habitIds: [newHabit.id], // ← ONLY the new habit!
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'loadNewHabitCompletions',
-        ),
+      final last30Days = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).subtract(const Duration(days: 29));
+
+      debugPrint(
+        '🔍 [ADD_HABIT] Loading completions for new habit only (last 30 days)',
       );
+
+      final completionResult = await _dataAccessService.atomicDataService
+          .getCompletions(
+            startDate: last30Days,
+            endDate: today,
+            habitIds: [newHabit.id], // ← ONLY the new habit!
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'loadNewHabitCompletions',
+            ),
+          );
 
       if (completionResult.success && completionResult.data != null) {
         final completions = completionResult.data![newHabit.id] ?? {};
-        
+
         // Update habit with completion data
-        final habitWithCompletions = newHabit.copyWith(completions: completions);
+        final habitWithCompletions = newHabit.copyWith(
+          completions: completions,
+        );
         _habits[0] = habitWithCompletions;
-        
+
         // Cache completions in persistent cache
         for (final entry in completions.entries) {
           await _persistentCache.updateCompletion(
@@ -389,27 +398,28 @@ class HabitState extends ChangeNotifier {
             entry.value.count,
           );
         }
-        
-        debugPrint('✅ [ADD_HABIT] Loaded ${completions.length} completion records for new habit');
+
+        debugPrint(
+          '✅ [ADD_HABIT] Loaded ${completions.length} completion records for new habit',
+        );
       }
 
       // Step 6: Update persistent cache incrementally
       try {
         await _persistentCache.updateHabit(_habits[0]);
         debugPrint('✅ [ADD_HABIT] Persistent cache updated');
-    } catch (e) {
+      } catch (e) {
         debugPrint('⚠️ [ADD_HABIT] Failed to update persistent cache: $e');
         // Non-fatal - app continues with in-memory data
       }
 
       // Step 7: Single notification (no cascade)
       notifyListeners();
-      
+
       debugPrint('🎯 [ADD_HABIT] Completed successfully - NO full reload!');
       debugPrint('📊 [ADD_HABIT] Total habits in state: ${_habits.length}');
-      
+
       return HabitSaveResult.success(_habits[0]);
-      
     } catch (e, stackTrace) {
       debugPrint('❌ [ADD_HABIT] Failed: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -476,7 +486,7 @@ class HabitState extends ChangeNotifier {
   ///
   /// This method handles the actual database operations after the optimistic UI update.
   /// If the database operation fails, it will rollback the UI changes.
-  /// 
+  ///
   /// Behavior depends on allowExceedGoal flag:
   /// - allowExceedGoal = false: Simple increment/decrement with reset functionality
   /// - allowExceedGoal = true: Uses LIFO approach for timestamp management
@@ -513,7 +523,7 @@ class HabitState extends ChangeNotifier {
       } else if (difference < 0) {
         // Remove completions using AtomicDataService
         final countToRemove = -difference;
-        
+
         if (originalHabit.allowExceedGoal) {
           // For exceedable habits: Use LIFO approach (remove newest timestamps)
           await _dataAccessService.atomicDataService.removeCompletions(
@@ -665,7 +675,7 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Sync custom completion operation to database in background
-  /// 
+  ///
   /// This method handles custom completion counts for habits with allowExceedGoal = true.
   /// It uses LIFO approach for timestamp management (remove newest timestamps first).
   Future<void> _syncCustomCompletionToDatabase(
@@ -734,9 +744,11 @@ class HabitState extends ChangeNotifier {
     try {
       // Get current completion count to determine how many to remove
       final currentCount = originalHabit.getCompletionCount(date);
-      
+
       if (currentCount <= 0) {
-        debugPrint('📝 No completions to reset for habit $habitId on ${date.toIso8601String().split('T')[0]}');
+        debugPrint(
+          '📝 No completions to reset for habit $habitId on ${date.toIso8601String().split('T')[0]}',
+        );
         return;
       }
 
@@ -951,63 +963,72 @@ class HabitState extends ChangeNotifier {
             case 'Last 7 Days':
               dateRange = DateRangeUtils.getLast7Days(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              final result = await _dataAccessService.atomicDataService.getHourlyCompletions(
-                habitId: habitId,
-                startDate: dateRange.start,
-                endDate: dateRange.end,
-                context: DataAccessContext(
-                  component: 'HabitProvider',
-                  operation: 'loadHourlyData',
-                  parameters: {'timeRange': timeRange, 'habitId': habitId},
-                ),
-              );
-              
+              final result = await _dataAccessService.atomicDataService
+                  .getHourlyCompletions(
+                    habitId: habitId,
+                    startDate: dateRange.start,
+                    endDate: dateRange.end,
+                    context: DataAccessContext(
+                      component: 'HabitProvider',
+                      operation: 'loadHourlyData',
+                      parameters: {'timeRange': timeRange, 'habitId': habitId},
+                    ),
+                  );
+
               if (result.success && result.data != null) {
                 hourlyCompletions = result.data!;
               } else {
-                debugPrint('❌ Failed to get hourly completions: ${result.errorMessage}');
+                debugPrint(
+                  '❌ Failed to get hourly completions: ${result.errorMessage}',
+                );
                 hourlyCompletions = <int, int>{};
               }
               break;
             case 'Last 30 Days':
               dateRange = DateRangeUtils.getLast30Days(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              final result = await _dataAccessService.atomicDataService.getHourlyCompletions(
-                habitId: habitId,
-                startDate: dateRange.start,
-                endDate: dateRange.end,
-                context: DataAccessContext(
-                  component: 'HabitProvider',
-                  operation: 'loadHourlyData',
-                  parameters: {'timeRange': timeRange, 'habitId': habitId},
-                ),
-              );
-              
+              final result = await _dataAccessService.atomicDataService
+                  .getHourlyCompletions(
+                    habitId: habitId,
+                    startDate: dateRange.start,
+                    endDate: dateRange.end,
+                    context: DataAccessContext(
+                      component: 'HabitProvider',
+                      operation: 'loadHourlyData',
+                      parameters: {'timeRange': timeRange, 'habitId': habitId},
+                    ),
+                  );
+
               if (result.success && result.data != null) {
                 hourlyCompletions = result.data!;
               } else {
-                debugPrint('❌ Failed to get hourly completions: ${result.errorMessage}');
+                debugPrint(
+                  '❌ Failed to get hourly completions: ${result.errorMessage}',
+                );
                 hourlyCompletions = <int, int>{};
               }
               break;
             case 'Total':
               dateRange = DateRangeUtils.getTotal(virtualDate);
               DateRangeUtils.validateDateRange(dateRange.start, dateRange.end);
-              final result = await _dataAccessService.atomicDataService.getHourlyCompletions(
-                habitId: habitId,
-                startDate: dateRange.start,
-                endDate: dateRange.end,
-                context: DataAccessContext(
-                  component: 'HabitProvider',
-                  operation: 'loadHourlyData',
-                  parameters: {'timeRange': timeRange, 'habitId': habitId},
-                ),
-              );
-              
+              final result = await _dataAccessService.atomicDataService
+                  .getHourlyCompletions(
+                    habitId: habitId,
+                    startDate: dateRange.start,
+                    endDate: dateRange.end,
+                    context: DataAccessContext(
+                      component: 'HabitProvider',
+                      operation: 'loadHourlyData',
+                      parameters: {'timeRange': timeRange, 'habitId': habitId},
+                    ),
+                  );
+
               if (result.success && result.data != null) {
                 hourlyCompletions = result.data!;
               } else {
-                debugPrint('❌ Failed to get hourly completions: ${result.errorMessage}');
+                debugPrint(
+                  '❌ Failed to get hourly completions: ${result.errorMessage}',
+                );
                 hourlyCompletions = <int, int>{};
               }
               break;
@@ -1044,23 +1065,25 @@ class HabitState extends ChangeNotifier {
   /// Archive a habit with optimistic UI update and rollback on failure
   Future<bool> archiveHabit(String habitId) async {
     debugPrint('🗄️ [ARCHIVE] Starting optimistic archive for habit $habitId');
-    
+
     // Find habit in local state
     final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
     if (habitIndex < 0) {
       debugPrint('❌ [ARCHIVE] Habit not found: $habitId');
       return false;
     }
-    
+
     final originalHabit = _habits[habitIndex];
-    
+
     try {
       // OPTIMISTIC UPDATE: Remove from UI immediately
       _habits.removeAt(habitIndex);
       notifyListeners(); // Instant UI update
-      
-      debugPrint('⚡ [ARCHIVE] Optimistic update: Removed habit $habitId from UI');
-      
+
+      debugPrint(
+        '⚡ [ARCHIVE] Optimistic update: Removed habit $habitId from UI',
+      );
+
       // BACKGROUND DATABASE SYNC: Archive in database
       final result = await _dataAccessService.atomicDataService.archiveHabit(
         habitId: habitId,
@@ -1073,7 +1096,7 @@ class HabitState extends ChangeNotifier {
       if (result.success) {
         // Update cache using selective method (no full rebuild)
         await _dataAccessService.cache.removeHabitFromMetadata(habitId);
-        
+
         // Update persistent cache (remove archived habit)
         try {
           await _persistentCache.removeHabit(habitId);
@@ -1081,25 +1104,24 @@ class HabitState extends ChangeNotifier {
         } catch (e) {
           debugPrint('⚠️ [ARCHIVE] Failed to update persistent cache: $e');
         }
-        
+
         debugPrint('✅ [ARCHIVE] Database sync successful for habit $habitId');
         return true;
       } else {
         // ROLLBACK: Database operation failed, restore habit
         debugPrint('❌ [ARCHIVE] Database sync failed, rolling back');
         _habits.insert(habitIndex, originalHabit);
-          notifyListeners();
-        
+        notifyListeners();
+
         _error = 'Failed to archive habit: ${result.errorMessage}';
         return false;
       }
-
     } catch (e) {
       // ROLLBACK: Exception occurred, restore habit
       debugPrint('❌ [ARCHIVE] Exception occurred, rolling back: $e');
       _habits.insert(habitIndex, originalHabit);
       notifyListeners();
-      
+
       _error = 'Failed to archive habit: $e';
       return false;
     }
@@ -1107,8 +1129,10 @@ class HabitState extends ChangeNotifier {
 
   /// Unarchive a habit with incremental update (no full reload)
   Future<bool> unarchiveHabit(String habitId) async {
-    debugPrint('📤 [UNARCHIVE] Starting incremental unarchive for habit $habitId');
-    
+    debugPrint(
+      '📤 [UNARCHIVE] Starting incremental unarchive for habit $habitId',
+    );
+
     try {
       // Step 1: Unarchive in database
       final result = await _dataAccessService.atomicDataService.unarchiveHabit(
@@ -1124,45 +1148,53 @@ class HabitState extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-      
+
       debugPrint('✅ [UNARCHIVE] Habit unarchived in database: $habitId');
 
       // Step 2: Fetch the unarchived habit's metadata
-      final metadataResult = await _dataAccessService.atomicDataService.getHabitMetadata(
-        habitIds: [habitId],
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'fetchUnarchivedHabitMetadata',
-        ),
-      );
-      
-      if (!metadataResult.success || metadataResult.data == null || metadataResult.data!.isEmpty) {
+      final metadataResult = await _dataAccessService.atomicDataService
+          .getHabitMetadata(
+            habitIds: [habitId],
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'fetchUnarchivedHabitMetadata',
+            ),
+          );
+
+      if (!metadataResult.success ||
+          metadataResult.data == null ||
+          metadataResult.data!.isEmpty) {
         _error = 'Failed to fetch unarchived habit metadata';
         notifyListeners();
         return false;
       }
-      
+
       final habitMetadata = metadataResult.data!.first;
 
       // Step 3: Load completions for the unarchived habit (last 30 days)
       final today = VirtualDateService().currentDate;
-      final last30Days = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 29));
-      
-      final completionResult = await _dataAccessService.atomicDataService.getCompletions(
-        startDate: last30Days,
-        endDate: today,
-        habitIds: [habitId],
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'loadUnarchivedHabitCompletions',
-        ),
-      );
+      final last30Days = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).subtract(const Duration(days: 29));
+
+      final completionResult = await _dataAccessService.atomicDataService
+          .getCompletions(
+            startDate: last30Days,
+            endDate: today,
+            habitIds: [habitId],
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'loadUnarchivedHabitCompletions',
+            ),
+          );
 
       Map<DateTime, CompletionRecord> completions = {};
       if (completionResult.success && completionResult.data != null) {
         completions = completionResult.data![habitId] ?? {};
       }
-      
+
       // Build full habit with metadata + completions
       final habitWithCompletions = Habit(
         id: habitMetadata.id,
@@ -1181,32 +1213,35 @@ class HabitState extends ChangeNotifier {
         targetGoal: habitMetadata.targetGoal,
         allowExceedGoal: habitMetadata.allowExceedGoal,
       );
-      
+
       // Step 4: Add to local state (incremental - no reload!)
       _habits.insert(0, habitWithCompletions);
-      
+
       // Step 5: Update cache using additive method
       final metadata = HabitMetadata.fromHabit(habitWithCompletions);
-      await _dataAccessService.cache.addHabitToMetadata(habitWithCompletions.id, {
-        'id': metadata.id,
-        'name': metadata.name,
-        'description': metadata.description,
-        'lightColorValue': metadata.lightColorValue,
-        'darkColorValue': metadata.darkColorValue,
-        'iconName': metadata.iconName,
-        'createdAt': metadata.createdAt.toIso8601String(),
-        'reminderTime': metadata.reminderTime != null 
-            ? '${metadata.reminderTime!.hour}:${metadata.reminderTime!.minute}'
-            : null,
-        'enableReminders': metadata.enableReminders,
-        'isArchived': metadata.isArchived,
-        'orderValue': metadata.orderValue,
-        'frequencyDays': metadata.frequencyDays,
-        'targetGoal': metadata.targetGoal,
-        'allowExceedGoal': metadata.allowExceedGoal,
-      });
+      await _dataAccessService.cache.addHabitToMetadata(
+        habitWithCompletions.id,
+        {
+          'id': metadata.id,
+          'name': metadata.name,
+          'description': metadata.description,
+          'lightColorValue': metadata.lightColorValue,
+          'darkColorValue': metadata.darkColorValue,
+          'iconName': metadata.iconName,
+          'createdAt': metadata.createdAt.toIso8601String(),
+          'reminderTime': metadata.reminderTime != null
+              ? '${metadata.reminderTime!.hour}:${metadata.reminderTime!.minute}'
+              : null,
+          'enableReminders': metadata.enableReminders,
+          'isArchived': metadata.isArchived,
+          'orderValue': metadata.orderValue,
+          'frequencyDays': metadata.frequencyDays,
+          'targetGoal': metadata.targetGoal,
+          'allowExceedGoal': metadata.allowExceedGoal,
+        },
+      );
       _metadataCache.cacheHabitMetadata(habitWithCompletions.id, metadata);
-      
+
       // Cache completions
       for (final entry in completions.entries) {
         await _dataAccessService.cache.cacheCompletion(
@@ -1215,24 +1250,25 @@ class HabitState extends ChangeNotifier {
           entry.value.count,
         );
       }
-      
-      debugPrint('✅ [UNARCHIVE] Habit added to local state with ${completions.length} completions');
+
+      debugPrint(
+        '✅ [UNARCHIVE] Habit added to local state with ${completions.length} completions',
+      );
 
       // Step 6: Update persistent cache incrementally
       try {
         await _persistentCache.updateHabit(habitWithCompletions);
         debugPrint('✅ [UNARCHIVE] Persistent cache updated');
-    } catch (e) {
+      } catch (e) {
         debugPrint('⚠️ [UNARCHIVE] Failed to update persistent cache: $e');
         // Non-fatal - app continues with in-memory data
       }
 
       // Step 7: Single notification
       notifyListeners();
-      
+
       debugPrint('🎯 [UNARCHIVE] Completed successfully - NO full reload!');
       return true;
-      
     } catch (e) {
       debugPrint('❌ [UNARCHIVE] Failed: $e');
       _error = 'Failed to unarchive habit: $e';
@@ -1244,23 +1280,25 @@ class HabitState extends ChangeNotifier {
   /// Delete a habit with optimistic UI update and rollback on failure
   Future<void> deleteHabit(String habitId) async {
     debugPrint('🗑️ [DELETE] Starting optimistic delete for habit $habitId');
-    
+
     // Find habit in local state
     final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
     if (habitIndex < 0) {
       debugPrint('❌ [DELETE] Habit not found: $habitId');
       return;
     }
-    
+
     final originalHabit = _habits[habitIndex];
-    
+
     try {
       // OPTIMISTIC UPDATE: Remove from UI immediately
       _habits.removeAt(habitIndex);
       notifyListeners(); // Instant UI update
-      
-      debugPrint('⚡ [DELETE] Optimistic update: Removed habit $habitId from UI');
-      
+
+      debugPrint(
+        '⚡ [DELETE] Optimistic update: Removed habit $habitId from UI',
+      );
+
       // BACKGROUND DATABASE SYNC: Delete from database
       final result = await _dataAccessService.atomicDataService.deleteHabit(
         habitId: habitId,
@@ -1282,42 +1320,43 @@ class HabitState extends ChangeNotifier {
         } catch (e) {
           debugPrint('⚠️ [DELETE] Failed to update persistent cache: $e');
         }
-        
+
         debugPrint('✅ [DELETE] Database sync successful for habit $habitId');
       } else {
         // ROLLBACK: Database operation failed, restore habit
         debugPrint('❌ [DELETE] Database sync failed, rolling back');
         _habits.insert(habitIndex, originalHabit);
         notifyListeners();
-        
+
         _error = 'Failed to delete habit: ${result.errorMessage}';
       }
-      
     } catch (e) {
       // ROLLBACK: Exception occurred, restore habit
       debugPrint('❌ [DELETE] Exception occurred, rolling back: $e');
       _habits.insert(habitIndex, originalHabit);
       notifyListeners();
-      
+
       _error = 'Failed to delete habit: $e';
     }
   }
 
-
   /// Get habits that need attention
   Future<List<Habit>> getHabitsNeedingAttention() async {
     try {
-      final result = await _dataAccessService.atomicDataService.getHabitsNeedingAttention(
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'getHabitsNeedingAttention',
-        ),
-      );
-      
+      final result = await _dataAccessService.atomicDataService
+          .getHabitsNeedingAttention(
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'getHabitsNeedingAttention',
+            ),
+          );
+
       if (result.success && result.data != null) {
         return result.data!;
       } else {
-        debugPrint('❌ Failed to get habits needing attention: ${result.errorMessage}');
+        debugPrint(
+          '❌ Failed to get habits needing attention: ${result.errorMessage}',
+        );
         return [];
       }
     } catch (e) {
@@ -1342,21 +1381,24 @@ class HabitState extends ChangeNotifier {
     String? excludeHabitId,
   }) async {
     try {
-      final result = await _dataAccessService.atomicDataService.hasDuplicateHabit(
-        name: name,
-        iconName: iconName,
-        excludeHabitId: excludeHabitId,
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'hasDuplicateHabit',
-          parameters: {'name': name, 'iconName': iconName},
-        ),
-      );
-      
+      final result = await _dataAccessService.atomicDataService
+          .hasDuplicateHabit(
+            name: name,
+            iconName: iconName,
+            excludeHabitId: excludeHabitId,
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'hasDuplicateHabit',
+              parameters: {'name': name, 'iconName': iconName},
+            ),
+          );
+
       if (result.success && result.data != null) {
         return result.data!;
       } else {
-        debugPrint('❌ Failed to check for duplicate habit: ${result.errorMessage}');
+        debugPrint(
+          '❌ Failed to check for duplicate habit: ${result.errorMessage}',
+        );
         return false;
       }
     } catch (e) {
@@ -1387,14 +1429,20 @@ class HabitState extends ChangeNotifier {
         context: DataAccessContext(
           component: 'HabitProvider',
           operation: 'canUpdateHabit',
-          parameters: {'habitId': habitId, 'newName': newName, 'newIconName': newIconName},
+          parameters: {
+            'habitId': habitId,
+            'newName': newName,
+            'newIconName': newIconName,
+          },
         ),
       );
-      
+
       if (result.success && result.data != null) {
         return result.data!;
       } else {
-        debugPrint('❌ Failed to check if habit can be updated: ${result.errorMessage}');
+        debugPrint(
+          '❌ Failed to check if habit can be updated: ${result.errorMessage}',
+        );
         return false;
       }
     } catch (e) {
@@ -1419,69 +1467,82 @@ class HabitState extends ChangeNotifier {
   }) async {
     try {
       debugPrint('📥 Starting sample habits import...');
-      
+
       // Generate sample habits
-      final sampleHabits = await SampleDataGeneratorService.generateSampleHabits(
-        numberOfHabits: numberOfHabits,
-        yearsOfData: 2,
-        onProgress: onProgress,
-      );
-      
+      final sampleHabits =
+          await SampleDataGeneratorService.generateSampleHabits(
+            numberOfHabits: numberOfHabits,
+            yearsOfData: 2,
+            onProgress: onProgress,
+          );
+
       debugPrint('🎲 Generated ${sampleHabits.length} sample habits');
-      
+
       // Import habits using atomic service
       int importedCount;
       if (clearExisting) {
-        final result = await _dataAccessService.atomicDataService.importSampleHabits(
-          sampleHabits: sampleHabits,
-          clearExisting: true,
-          context: DataAccessContext(
-            component: 'HabitProvider',
-            operation: 'importSampleHabits',
-            parameters: {'clearExisting': true, 'count': sampleHabits.length},
-          ),
-        );
-        
-        if (result.success && result.data != null) {
-          importedCount = result.data!;
-      } else {
-          debugPrint('❌ Failed to import sample habits: ${result.errorMessage}');
-          importedCount = 0;
-        }
-      } else {
-        final result = await _dataAccessService.atomicDataService.importSampleHabits(
-          sampleHabits: sampleHabits,
-          onProgress: (progress) {
-            // Convert int progress to the expected format
-            onProgress?.call('Importing habits', progress / 100.0);
-          },
-          context: DataAccessContext(
-            component: 'HabitProvider',
-            operation: 'importSampleHabits',
-            parameters: {'count': sampleHabits.length},
-          ),
-        );
-        
+        final result = await _dataAccessService.atomicDataService
+            .importSampleHabits(
+              sampleHabits: sampleHabits,
+              clearExisting: true,
+              context: DataAccessContext(
+                component: 'HabitProvider',
+                operation: 'importSampleHabits',
+                parameters: {
+                  'clearExisting': true,
+                  'count': sampleHabits.length,
+                },
+              ),
+            );
+
         if (result.success && result.data != null) {
           importedCount = result.data!;
         } else {
-          debugPrint('❌ Failed to import sample habits: ${result.errorMessage}');
+          debugPrint(
+            '❌ Failed to import sample habits: ${result.errorMessage}',
+          );
+          importedCount = 0;
+        }
+      } else {
+        final result = await _dataAccessService.atomicDataService
+            .importSampleHabits(
+              sampleHabits: sampleHabits,
+              onProgress: (progress) {
+                // Convert int progress to the expected format
+                onProgress?.call('Importing habits', progress / 100.0);
+              },
+              context: DataAccessContext(
+                component: 'HabitProvider',
+                operation: 'importSampleHabits',
+                parameters: {'count': sampleHabits.length},
+              ),
+            );
+
+        if (result.success && result.data != null) {
+          importedCount = result.data!;
+        } else {
+          debugPrint(
+            '❌ Failed to import sample habits: ${result.errorMessage}',
+          );
           importedCount = 0;
         }
       }
-      
+
       if (importedCount > 0) {
         // Reload habits to update local state
         await loadHabitsForDashboard(forceRefresh: true);
-        
+
         // Get and log statistics
-        final stats = SampleDataGeneratorService.getSampleDataStats(sampleHabits);
+        final stats = SampleDataGeneratorService.getSampleDataStats(
+          sampleHabits,
+        );
         debugPrint('📊 Sample data statistics: $stats');
       }
-      
-      debugPrint('✅ Sample habits import completed: $importedCount habits imported');
+
+      debugPrint(
+        '✅ Sample habits import completed: $importedCount habits imported',
+      );
       return importedCount;
-      
     } catch (e) {
       debugPrint('❌ Error importing sample habits: $e');
       _error = 'Failed to import sample habits: $e';
@@ -1512,19 +1573,18 @@ class HabitState extends ChangeNotifier {
     }
   }
 
-
   // NOTE: Old cache methods removed - now using additive cache updates
   // (_updateCacheAfterDatabaseOperation and _updateHabitInCache)
   // New approach: Use addHabitToMetadata, updateHabitInMetadata, removeHabitFromMetadata
   // for surgical cache updates instead of rebuilding entire cache
 
   /// Log cache errors with context for debugging
-  /// 
+  ///
   /// Provides comprehensive error logging for troubleshooting cache issues.
   void _logCacheError(String operation, dynamic error, {String? habitId}) {
     final timestamp = DateTime.now().toIso8601String();
     final context = habitId != null ? ' (Habit: $habitId)' : '';
-    
+
     debugPrint('''
 ❌ CACHE ERROR LOG [$timestamp]
 Operation: $operation$context
@@ -1534,11 +1594,8 @@ Cache Service: ${_persistentCache.runtimeType}
     ''');
   }
 
-
-
-
   /// Get cache health statistics for monitoring
-  /// 
+  ///
   /// Provides comprehensive statistics about cache performance and health.
   Map<String, dynamic> getCacheHealthStats() {
     return {
@@ -1552,7 +1609,7 @@ Cache Service: ${_persistentCache.runtimeType}
   }
 
   /// Perform cache health check
-  /// 
+  ///
   /// This method performs a comprehensive health check of the cache system
   /// and reports any issues found.
   Future<Map<String, dynamic>> performCacheHealthCheck() async {
@@ -1584,9 +1641,10 @@ Cache Service: ${_persistentCache.runtimeType}
         healthReport['recommendations'].add('Load habits from database');
       }
 
-      debugPrint('🔍 Cache health check completed: ${healthReport['overallHealth']}');
+      debugPrint(
+        '🔍 Cache health check completed: ${healthReport['overallHealth']}',
+      );
       return healthReport;
-
     } catch (e) {
       healthReport['overallHealth'] = 'error';
       healthReport['issues'].add('Health check failed: $e');
@@ -1596,19 +1654,18 @@ Cache Service: ${_persistentCache.runtimeType}
   }
 
   /// Recover from cache issues
-  /// 
+  ///
   /// This method attempts to recover from various cache issues and restore
   /// normal operation.
   Future<bool> recoverFromCacheIssues() async {
     try {
       debugPrint('🔄 Attempting cache recovery...');
-      
+
       // Reload habits from database (loadHabits handles caching internally)
       await loadHabitsForDashboard(forceRefresh: true);
-      
+
       debugPrint('✅ Cache recovery completed successfully');
       return true;
-      
     } catch (e) {
       debugPrint('❌ Cache recovery failed: $e');
       _logCacheError('recoverFromCacheIssues', e);
@@ -1622,7 +1679,7 @@ class HabitProvider extends HabitState {
   final SqliteHabitRepository _repository;
 
   HabitProvider(super.habitRepository, super.settingsRepository)
-      : _repository = habitRepository;
+    : _repository = habitRepository;
 
   // Factory method for easy creation with SQLite repository
   factory HabitProvider.create() {
@@ -1635,7 +1692,9 @@ class HabitProvider extends HabitState {
   // Initialize the provider with persistent cache and enhanced error handling
   Future<void> initialize() async {
     try {
-      debugPrint('🚀 Starting HabitProvider initialization with persistent cache...');
+      debugPrint(
+        '🚀 Starting HabitProvider initialization with persistent cache...',
+      );
 
       // Initialize persistent cache service
       await _persistentCache.initialize();
@@ -1644,16 +1703,16 @@ class HabitProvider extends HabitState {
       if (await _persistentCache.hasValidCache()) {
         debugPrint('📱 Loading habits from persistent cache...');
         final cachedHabits = await _persistentCache.loadHabits();
-        
+
         if (cachedHabits.isNotEmpty) {
           _habits = cachedHabits;
           _isLoading = false;
           _lastLoadTime = VirtualDateService().currentDate;
           _loadedFromCache = true; // Mark as loaded from cache
           notifyListeners();
-          
+
           debugPrint('✅ Loaded ${_habits.length} habits from persistent cache');
-          
+
           return;
         }
       }
@@ -1694,7 +1753,9 @@ class HabitProvider extends HabitState {
       if (_habits.isNotEmpty) {
         try {
           await _persistentCache.saveDashboardHabits(_habits);
-          debugPrint('✅ Saved ${_habits.length} dashboard-optimized habits to persistent cache');
+          debugPrint(
+            '✅ Saved ${_habits.length} dashboard-optimized habits to persistent cache',
+          );
         } catch (e) {
           debugPrint('⚠️ Failed to save habits to persistent cache: $e');
           // Don't fail initialization if cache save fails
@@ -1733,14 +1794,13 @@ class HabitProvider extends HabitState {
 
       // Don't rethrow - continue with empty state
       debugPrint('🔄 Continuing with empty habit list');
-      
+
       // Ensure we have a valid state even if initialization fails
       _isLoading = false;
       _habits = [];
       notifyListeners();
     }
   }
-
 
   /// Performs habit loading with recovery mechanisms
   Future<void> _performLoadWithRecovery(bool showLoading) async {
@@ -1786,7 +1846,6 @@ class HabitProvider extends HabitState {
     }
   }
 
-
   /// Enter sorting mode for habit reordering
   void enterSortingMode() {
     _isSortingMode = true;
@@ -1824,10 +1883,10 @@ class HabitProvider extends HabitState {
           parameters: {'draggedId': draggedId, 'newPosition': newPosition},
         ),
       );
-      
+
       if (result.success) {
         debugPrint('✅ Successfully reordered habit $draggedId in database');
-        
+
         // Update persistent cache with new order
         try {
           await _persistentCache.saveHabits(_habits);
@@ -1846,18 +1905,21 @@ class HabitProvider extends HabitState {
       if (_reorderCount >= 10) {
         // Normalize every 10 reorders using atomic service
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
-        final result = await _dataAccessService.atomicDataService.normalizeOrderValues(
-          context: DataAccessContext(
-            component: 'HabitProvider',
-            operation: 'normalizeOrderValues',
-            parameters: {'reorderCount': _reorderCount},
-          ),
-        );
-        
+        final result = await _dataAccessService.atomicDataService
+            .normalizeOrderValues(
+              context: DataAccessContext(
+                component: 'HabitProvider',
+                operation: 'normalizeOrderValues',
+                parameters: {'reorderCount': _reorderCount},
+              ),
+            );
+
         if (result.success) {
           debugPrint('✅ Successfully normalized order values');
         } else {
-          debugPrint('❌ Failed to normalize order values: ${result.errorMessage}');
+          debugPrint(
+            '❌ Failed to normalize order values: ${result.errorMessage}',
+          );
         }
         _reorderCount = 0;
         // Reload habits to get normalized order values
@@ -1880,7 +1942,7 @@ class HabitProvider extends HabitState {
   ) async {
     try {
       debugPrint(
-        '🔄 Reordering habit $draggedId to position $newPosition in filtered context'
+        '🔄 Reordering habit $draggedId to position $newPosition in filtered context',
       );
 
       // Optimistic update - move habit in local list immediately
@@ -1889,40 +1951,48 @@ class HabitProvider extends HabitState {
       _habits.insert(newPosition, draggedHabit);
 
       debugPrint(
-        '🔄 Optimistically reordered habit $draggedId to position $newPosition in context'
+        '🔄 Optimistically reordered habit $draggedId to position $newPosition in context',
       );
       notifyListeners();
 
       // Perform actual reordering in database with context using atomic service
-      final result = await _dataAccessService.atomicDataService.reorderHabitsInContext(
-        draggedId: draggedId,
-        newPosition: newPosition,
-        visibleHabitIds: visibleHabitIds,
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'reorderHabitsInContext',
-          parameters: {'draggedId': draggedId, 'newPosition': newPosition, 'visibleCount': visibleHabitIds.length},
-        ),
-      );
-      
+      final result = await _dataAccessService.atomicDataService
+          .reorderHabitsInContext(
+            draggedId: draggedId,
+            newPosition: newPosition,
+            visibleHabitIds: visibleHabitIds,
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'reorderHabitsInContext',
+              parameters: {
+                'draggedId': draggedId,
+                'newPosition': newPosition,
+                'visibleCount': visibleHabitIds.length,
+              },
+            ),
+          );
+
       if (result.success) {
-        debugPrint('✅ Successfully reordered habit $draggedId in database with context');
-        
+        debugPrint(
+          '✅ Successfully reordered habit $draggedId in database with context',
+        );
+
         // NEW: Reload updated orderValues from DB for visible habits
         try {
           // Edge case: Skip if no visible habits
           if (visibleHabitIds.isEmpty) {
             debugPrint('📭 No visible habits to reload orderValues for');
           } else {
-            final metadataResult = await _dataAccessService.atomicDataService.getHabitMetadata(
-              habitIds: visibleHabitIds,
-              includeArchived: false,
-              context: DataAccessContext(
-                component: 'HabitProvider',
-                operation: 'reloadOrderValuesAfterReorder',
-                parameters: {'visibleCount': visibleHabitIds.length},
-              ),
-            );
+            final metadataResult = await _dataAccessService.atomicDataService
+                .getHabitMetadata(
+                  habitIds: visibleHabitIds,
+                  includeArchived: false,
+                  context: DataAccessContext(
+                    component: 'HabitProvider',
+                    operation: 'reloadOrderValuesAfterReorder',
+                    parameters: {'visibleCount': visibleHabitIds.length},
+                  ),
+                );
 
             if (metadataResult.success && metadataResult.data != null) {
               final updatedMetadata = metadataResult.data!;
@@ -1939,11 +2009,17 @@ class HabitProvider extends HabitState {
               }
 
               // Re-sort local list by updated orderValues (should match optimistic order)
-              _habits.sort((a, b) => (b.orderValue ?? 0.0).compareTo(a.orderValue ?? 0.0));
+              _habits.sort(
+                (a, b) => (b.orderValue ?? 0.0).compareTo(a.orderValue ?? 0.0),
+              );
 
-              debugPrint('✅ Reloaded and applied orderValues for ${updatedMetadata.length} habits');
+              debugPrint(
+                '✅ Reloaded and applied orderValues for ${updatedMetadata.length} habits',
+              );
             } else {
-              throw Exception('Failed to reload orderValues: ${metadataResult.errorMessage}');
+              throw Exception(
+                'Failed to reload orderValues: ${metadataResult.errorMessage}',
+              );
             }
           }
         } catch (e) {
@@ -1954,13 +2030,17 @@ class HabitProvider extends HabitState {
             final newOrderValue = (total - i) * 1000.0;
             _habits[i] = _habits[i].copyWith(orderValue: newOrderValue);
           }
-          debugPrint('🔄 Fallback: Locally calculated orderValues for $total habits');
+          debugPrint(
+            '🔄 Fallback: Locally calculated orderValues for $total habits',
+          );
         }
-        
+
         // Update persistent cache with new order (now with synced orderValues)
         try {
           await _persistentCache.saveHabits(_habits);
-          debugPrint('✅ Updated persistent cache with new habit order (context)');
+          debugPrint(
+            '✅ Updated persistent cache with new habit order (context)',
+          );
         } catch (e) {
           debugPrint('⚠️ Failed to update persistent cache: $e');
           // Non-fatal - app continues with correct in-memory order
@@ -1975,18 +2055,21 @@ class HabitProvider extends HabitState {
       if (_reorderCount >= 10) {
         // Normalize every 10 reorders using atomic service
         debugPrint('🔄 Normalizing order values after $_reorderCount reorders');
-        final result = await _dataAccessService.atomicDataService.normalizeOrderValues(
-          context: DataAccessContext(
-            component: 'HabitProvider',
-            operation: 'normalizeOrderValues',
-            parameters: {'reorderCount': _reorderCount},
-          ),
-        );
+        final result = await _dataAccessService.atomicDataService
+            .normalizeOrderValues(
+              context: DataAccessContext(
+                component: 'HabitProvider',
+                operation: 'normalizeOrderValues',
+                parameters: {'reorderCount': _reorderCount},
+              ),
+            );
 
         if (result.success) {
           debugPrint('✅ Successfully normalized order values');
         } else {
-          debugPrint('❌ Failed to normalize order values: ${result.errorMessage}');
+          debugPrint(
+            '❌ Failed to normalize order values: ${result.errorMessage}',
+          );
         }
         _reorderCount = 0;
         // Reload habits to get normalized order values (use dashboard-optimized loading)
@@ -2005,22 +2088,26 @@ class HabitProvider extends HabitState {
   Future<void> updateSelectedDate(DateTime newDate) async {
     if (_selectedDate != newDate) {
       final wasInOverrideMode = VirtualDateService().isVirtualMode;
-      
+
       debugPrint('🔍 Date transition debug:');
       debugPrint('  - Current _selectedDate: ${_formatDate(_selectedDate)}');
       debugPrint('  - New date: ${_formatDate(newDate)}');
       debugPrint('  - wasInOverrideMode: $wasInOverrideMode');
-      
+
       // Update the virtual date service first
       await VirtualDateService().setVirtualDate(newDate);
       final isNowInOverrideMode = VirtualDateService().isVirtualMode;
-      
-      debugPrint('  - isNowInOverrideMode (after virtual date update): $isNowInOverrideMode');
-      
+
+      debugPrint(
+        '  - isNowInOverrideMode (after virtual date update): $isNowInOverrideMode',
+      );
+
       // NEW: Simple cache invalidation logic based on override mode changes
       if (!wasInOverrideMode && isNowInOverrideMode) {
         // Entering override mode - invalidate cache and reload data
-        debugPrint('🗑️ Entering date override mode - invalidating persistent cache');
+        debugPrint(
+          '🗑️ Entering date override mode - invalidating persistent cache',
+        );
         try {
           await _persistentCache.invalidateAllCompletions();
           debugPrint('✅ Cleared persistent cache');
@@ -2033,17 +2120,21 @@ class HabitProvider extends HabitState {
         await refreshDataSilently();
       } else if (wasInOverrideMode && !isNowInOverrideMode) {
         // Exiting override mode - allow cache recreation
-        debugPrint('🔄 Exiting date override mode - cache will be recreated on next interaction');
+        debugPrint(
+          '🔄 Exiting date override mode - cache will be recreated on next interaction',
+        );
         // Don't recreate cache here - let Dashboard interactions handle it
       } else if (wasInOverrideMode && isNowInOverrideMode) {
         // Date changed within override mode - invalidate cached data and reload
-        debugPrint('🗑️ Date changed within override mode - invalidating cached data');
+        debugPrint(
+          '🗑️ Date changed within override mode - invalidating cached data',
+        );
         invalidateCachedData();
         // CRITICAL: Reload habits from database for new virtual date
         debugPrint('🔄 Reloading habits from database for new virtual date');
         await refreshDataSilently();
       }
-      
+
       _selectedDate = newDate;
 
       notifyListeners();

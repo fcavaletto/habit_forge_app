@@ -194,7 +194,7 @@ flutter build apk --debug
 
 ### Debug Mode
 Enable debug logging in `lib/main.dart`:
-```dart
+```dart'
 debugPrint('Debug message here');
 ```
 
