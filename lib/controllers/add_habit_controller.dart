@@ -98,6 +98,30 @@ class AddHabitController {
     _clearError();
   }
 
+  /// Increment target goal by 1 (max 1000)
+  void incrementTargetGoal() {
+    final current = int.tryParse(targetGoalController.text.trim()) ?? 1;
+    final newValue = (current + 1).clamp(1, 1000);
+    targetGoalController.text = newValue.toString();
+    targetGoal = newValue;
+    _clearError();
+  }
+
+  /// Decrement target goal by 1 (min 1)
+  void decrementTargetGoal() {
+    final current = int.tryParse(targetGoalController.text.trim()) ?? 1;
+    final newValue = (current - 1).clamp(1, 1000);
+    targetGoalController.text = newValue.toString();
+    targetGoal = newValue;
+    _clearError();
+  }
+
+  /// Get current target goal value for button state checks
+  int getCurrentTargetGoal() {
+    final current = int.tryParse(targetGoalController.text.trim()) ?? 1;
+    return current.clamp(1, 1000);
+  }
+
   /// Builds a preview Habit object from current form state
   ///
   /// Used for real-time preview in the UI before saving.
