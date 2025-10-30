@@ -14,8 +14,8 @@ class StreakSettingsProvider extends ChangeNotifier {
   static const String _settingKey = 'active_days_streak_enabled';
 
   /// Whether streak calculation should consider only active days
-  /// Default: false (calculate streaks for all days)
-  bool _isActiveDaysStreakEnabled = false;
+  /// Default: true (Active Days Only)
+  bool _isActiveDaysStreakEnabled = true;
 
   StreakSettingsProvider(this._settingsRepository);
 
@@ -67,15 +67,15 @@ class StreakSettingsProvider extends ChangeNotifier {
       debugPrint('🔥 Loading streak calculation setting from storage...');
       final settingValue = await _settingsRepository.getSettingWithDefault(
         _settingKey,
-        'false', // Default to all days for backward compatibility
+        'true', // Default to Active Days Only
       );
 
       _isActiveDaysStreakEnabled = settingValue.toLowerCase() == 'true';
       debugPrint('🔥 Streak calculation setting loaded: $streakCalculationMode');
     } catch (e) {
       debugPrint('❌ Error loading streak calculation setting: $e');
-      // Fallback to default (all days)
-      _isActiveDaysStreakEnabled = false;
+      // Fallback to default (Active Days Only)
+      _isActiveDaysStreakEnabled = true;
     }
   }
 
@@ -108,7 +108,7 @@ class StreakSettingsProvider extends ChangeNotifier {
   /// 
   /// Useful for testing or if user wants to restore defaults
   Future<void> resetToDefaults() async {
-    setActiveDaysStreakEnabled(false);
+    setActiveDaysStreakEnabled(true);
     await _saveSetting();
     debugPrint('🔥 Streak calculation settings reset to defaults');
   }
