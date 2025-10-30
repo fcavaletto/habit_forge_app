@@ -559,7 +559,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 context: context,
                                 builder: (context) => const ProUpgradeDialog(
                                   title: 'Time Override',
-                                  message: 'Unlock the time override on your dashboard with PRO. Get precise control over displayed time.',
+                                  message: 'Unlock the time override on your dashboard with PRO. Useful if you want to override the app\'s time while recording completions.',
                                 ),
                               );
                               return;
