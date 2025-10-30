@@ -641,7 +641,7 @@ class _StatsScreenState extends State<StatsScreen> {
               width: AppConstants.iconSizeLarge,
               height: AppConstants.iconSizeLarge,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                color: Colors.black.withAlpha(0),
                 borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
               ),
               child: Icon(
