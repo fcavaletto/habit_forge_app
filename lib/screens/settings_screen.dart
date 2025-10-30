@@ -4,6 +4,7 @@ import '../providers/app_state_provider.dart';
 import '../widgets/safe_scrollable_wrapper.dart';
 import '../widgets/import_progress_dialog.dart';
 import 'archive_screen.dart';
+import '../widgets/dialogs/pro_upgrade_dialog.dart';
 
 /// Settings Screen - Comprehensive app configuration interface
 ///
@@ -518,6 +519,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: Consumer<AppState>(
               builder: (context, appState, child) {
+                final isProActive = appState.isProSubscriptionActive;
                 return Row(
                   children: [
                     Expanded(
@@ -538,11 +540,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
-                    Switch(
-                      value: appState.showTimeOverride,
-                      onChanged: (value) async {
-                        await appState.saveTimeOverrideSetting(value);
-                      },
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!isProActive) ...[
+                          Icon(
+                            Icons.lock,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Switch(
+                          value: appState.showTimeOverride,
+                          onChanged: (value) async {
+                            if (value && !isProActive) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => const ProUpgradeDialog(
+                                  title: 'Time Override',
+                                  message: 'Unlock the time override on your dashboard with PRO. Get precise control over displayed time.',
+                                ),
+                              );
+                              return;
+                            }
+                            await appState.saveTimeOverrideSetting(value);
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 );
