@@ -11,7 +11,7 @@ class ProSubscriptionProvider extends ChangeNotifier {
   static const String _settingKey = 'pro_subscription';
 
   /// Whether PRO subscription is active
-  bool _isProSubscriptionActive = true; // Default to active
+  bool _isProSubscriptionActive = false; // Default to inactive
 
   ProSubscriptionProvider(this._settingsRepository);
 
@@ -34,15 +34,15 @@ class ProSubscriptionProvider extends ChangeNotifier {
       debugPrint('💎 Loading PRO subscription setting from storage...');
       final settingValue = await _settingsRepository.getSettingWithDefault(
         _settingKey,
-        'true', // Default to active
+        'false', // Default to inactive
       );
 
       _isProSubscriptionActive = settingValue.toLowerCase() == 'true';
       debugPrint('💎 PRO subscription setting loaded: $_isProSubscriptionActive');
     } catch (e) {
       debugPrint('❌ Error loading PRO subscription setting: $e');
-      // Fallback to default (active)
-      _isProSubscriptionActive = true;
+      // Fallback to default (inactive)
+      _isProSubscriptionActive = false;
     }
   }
 
