@@ -36,93 +36,79 @@ class IconSelector extends StatelessWidget {
     required this.onIconSelected,
   });
 
-  static const List<String> availableIcons = [
-    // Row 1: Essential & Core Habits (18 icons)
-    'local_fire_department',
-    'fitness_center',
-    'local_drink',
-    'book',
-    'bed',
-    'restaurant',
-    'directions_run',
-    'school',
-    'work',
-    'favorite',
-    'music_note',
-    'self_improvement',
-    'spa',
-    'sports_soccer',
-    'palette',
-    'code',
-    'create',
-    'lightbulb',
-    
-    // Row 2: Health & Wellness (18 icons)
-    'nature',
-    'pets',
-    'timer',
-    'phone',
-    'home',
-    'volunteer_activism',
-    'local_hospital',
-    'medication',
-    'monitor_heart',
-    'psychology',
-    'healing',
-    'masks',
-    'sanitizer',
-    'vaccines',
-    'restaurant_menu',
-    'cake',
-    'local_pizza',
-    'no_food',
-    
-    // Row 3: Learning & Productivity (18 icons)
-    'water_drop',
-    'air',
-    'thermostat',
-    'ac_unit',
-    'library_books',
-    'handyman',
-    'account_balance',
-    'language',
-    'translate',
-    'savings',
-    'science',
-    'biotech',
-    'camera_alt',
-    'security',
-    'headphones',
-    'smartphone',
-    'email',
-    'chat',
-    
-    // Row 4: Lifestyle & Activities (18 icons)
-    'video_call',
-    'wifi',
-    'directions_car',
-    'directions_bike',
-    'hiking',
-    'flight',
-    'eco',
-    'recycling',
-    'solar_power',
-    'wind_power',
-    'movie',
-    'theater_comedy',
-    'games',
-    'sports_tennis',
-    'casino',
-    'celebration',
-    'cookie',
-    'local_dining',
+  /// Themed groups for faster scanning (6 groups × 8 icons = 48 total)
+  static const Map<String, List<String>> availableIconGroups = {
+    'Core & Self': [
+      'local_fire_department',
+      'favorite',
+      'self_improvement',
+      'lightbulb',
+      'palette',
+      'music_note',
+      'book',
+      'bed',
+    ],
+    'Health & Fitness': [
+      'fitness_center',
+      'directions_run',
+      'hiking',
+      'sports_soccer',
+      'sports_tennis',
+      'monitor_heart',
+      'spa',
+      'nature',
+    ],
+    'Mindfulness & Wellness': [
+      'psychology',
+      'volunteer_activism',
+      'pets',
+      'eco',
+      'recycling',
+      'healing',
+      'water_drop',
+      'timer',
+    ],
+    'Learning & Productivity': [
+      'school',
+      'library_books',
+      'code',
+      'create',
+      'science',
+      'language',
+      'translate',
+      'security',
+    ],
+    'Home & Life Admin': [
+      'home',
+      'handyman',
+      'work',
+      'account_balance',
+      'savings',
+      'camera_alt',
+      'directions_car',
+      'flight',
+    ],
+    'Food & Social': [
+      'local_drink',
+      'local_dining',
+      'no_food',
+      'restaurant',
+      'celebration',
+      'theater_comedy',
+      'games',
+      'movie',
+    ],
+  };
+
+  /// Flattened list for any callers relying on the full set
+  static List<String> get availableIcons => [
+    for (final group in availableIconGroups.values) ...group,
   ];
 
   @override
   Widget build(BuildContext context) {
-    const totalIcons = 72; // Total number of icons
-    const rows = 4; // Always 4 rows
-    
+    final totalIcons = availableIcons.length; // 48 icons
+    const rows = 4; // fixed rows
     return Semantics(
       label: 'Icon selection',
       hint: 'Choose an icon for your habit. Swipe horizontally to see more icons.',
@@ -130,14 +116,12 @@ class IconSelector extends StatelessWidget {
     );
   }
 
+  /// Builds the scrollable grid of icons
   Widget _buildIconGrid(BuildContext context, int totalIcons, int rows) {
-    // Wrap LayoutBuilder with RepaintBoundary to isolate rebuilds
     return RepaintBoundary(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Calculate layout parameters based on available width
           final layout = _calculateLayout(constraints.maxWidth);
-          
           return _buildAdaptiveIconGrid(context, totalIcons, rows, layout);
         },
       ),
@@ -149,48 +133,50 @@ class IconSelector extends StatelessWidget {
     // Define constants
     const spacing = 12.0;
     const minIconSize = 40.0;
-    const totalColumns = 18; // 72 icons / 4 rows = 18 columns
+    const totalColumns = 12; // 48 icons / 4 rows = 12 columns
     const targetVisibleColumns = 6.35; // 6 full + 0.35 partial
-    
+
     // Determine if we're in portrait mode (heuristic: width < 600)
     final isPortrait = availableWidth < 600;
-    
+
     double iconSize;
     double visibleColumns;
     double scrollableWidth;
-    
+
     if (isPortrait) {
       // Portrait: Show exactly 6.35 columns (6 full + 0.35 partial)
       // Formula: availableWidth = (6 * (iconSize + spacing)) + (0.35 * iconSize) + spacing
       // Solving for iconSize: iconSize = (availableWidth - spacing * 7) / 6.35
       iconSize = (availableWidth - (spacing * 7)) / targetVisibleColumns;
-      
+
       // Apply minimum size constraint
       iconSize = math.max(iconSize, minIconSize);
-      
+
       // Calculate how many columns are actually visible
       visibleColumns = (availableWidth - spacing) / (iconSize + spacing);
-      
+
       // Calculate scrollable width for all columns
       scrollableWidth = (iconSize + spacing) * totalColumns;
     } else {
       // Landscape: Show more columns but still allow scrolling
       // Show approximately 8-10 columns visible, rest scrollable
       const targetVisibleColumns = 8.5; // 8 full + 0.5 partial
-      
+
       // Calculate icon size based on visible columns
-      iconSize = (availableWidth - (spacing * (targetVisibleColumns.floor() + 1))) / targetVisibleColumns;
-      
+      iconSize =
+          (availableWidth - (spacing * (targetVisibleColumns.floor() + 1))) /
+          targetVisibleColumns;
+
       // Apply minimum size constraint
       iconSize = math.max(iconSize, minIconSize);
-      
+
       // Calculate how many columns are actually visible
       visibleColumns = (availableWidth - spacing) / (iconSize + spacing);
-      
+
       // Calculate scrollable width for all columns
       scrollableWidth = (iconSize + spacing) * totalColumns;
     }
-    
+
     return _IconLayoutParams(
       iconSize: iconSize,
       visibleColumns: visibleColumns,
@@ -218,17 +204,20 @@ class IconSelector extends StatelessWidget {
           child: Column(
             children: List.generate(rows, (rowIndex) {
               return Padding(
-                padding: EdgeInsets.only(bottom: rowIndex < rows - 1 ? layout.spacing : 0),
+                padding: EdgeInsets.only(
+                  bottom: rowIndex < rows - 1 ? layout.spacing : 0,
+                ),
                 child: Row(
                   children: List.generate(layout.totalColumns, (colIndex) {
                     // Calculate the actual icon index for this position
-                    final iconIndex = (rowIndex * layout.totalColumns) + colIndex;
-                    
+                    final iconIndex =
+                        (rowIndex * layout.totalColumns) + colIndex;
+
                     // Check if this icon index is within our total icons
                     if (iconIndex >= totalIcons) {
                       return const SizedBox.shrink();
                     }
-                    
+
                     return _buildIconButton(
                       context,
                       availableIcons[iconIndex],
@@ -246,7 +235,13 @@ class IconSelector extends StatelessWidget {
     );
   }
 
-  Widget _buildIconButton(BuildContext context, String iconName, int index, double size, double rightSpacing) {
+  Widget _buildIconButton(
+    BuildContext context,
+    String iconName,
+    int index,
+    double size,
+    double rightSpacing,
+  ) {
     final isSelected = iconName == selectedIconName;
     final iconLabel = iconName.replaceAll('_', ' ');
 
@@ -256,7 +251,9 @@ class IconSelector extends StatelessWidget {
         padding: EdgeInsets.only(right: rightSpacing),
         child: Semantics(
           label: '$iconLabel icon${isSelected ? ', selected' : ''}',
-          hint: isSelected ? 'Currently selected icon' : 'Tap to select this icon',
+          hint: isSelected
+              ? 'Currently selected icon'
+              : 'Tap to select this icon',
           button: true,
           selected: isSelected,
           child: GestureDetector(
@@ -279,7 +276,7 @@ class IconSelector extends StatelessWidget {
                             color: Colors.blue.withValues(alpha: 0.3),
                             spreadRadius: 2,
                             blurRadius: 4,
-                          )
+                          ),
                         ]
                       : null,
                 ),
@@ -295,5 +292,4 @@ class IconSelector extends StatelessWidget {
       ),
     );
   }
-
 }

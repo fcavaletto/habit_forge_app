@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 /// This is the SINGLE SOURCE OF TRUTH for all icon mappings
 class IconUtils {
   /// Convert icon name string to IconData
-  /// This method handles all 72 icons used in the app
+  /// This method handles all registered icon names used in the app
   static IconData getIconData(String iconName) {
     switch (iconName) {
       // Row 1: Essential & Core Habits
@@ -44,7 +44,7 @@ class IconUtils {
         return Icons.create;
       case 'lightbulb':
         return Icons.lightbulb;
-      
+
       // Row 2: Health & Wellness
       case 'nature':
         return Icons.nature;
@@ -82,7 +82,7 @@ class IconUtils {
         return Icons.local_pizza;
       case 'no_food':
         return Icons.no_food;
-      
+
       // Row 3: Learning & Productivity
       case 'water_drop':
         return Icons.water_drop;
@@ -120,7 +120,7 @@ class IconUtils {
         return Icons.email;
       case 'chat':
         return Icons.chat;
-      
+
       // Row 4: Lifestyle & Activities
       case 'video_call':
         return Icons.video_call;
@@ -158,13 +158,14 @@ class IconUtils {
         return Icons.cookie;
       case 'local_dining':
         return Icons.local_dining;
-      
+
       // Backward compatibility for default icon name
       case 'check_circle':
         return Icons.local_fire_department; // Map old default to fire icon
-      
+
       default:
-        return Icons.local_fire_department; // Default to fire icon for HabitForge theme
+        return Icons
+            .local_fire_department; // Default to fire icon for HabitForge theme
     }
   }
 }
