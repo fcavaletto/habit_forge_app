@@ -468,15 +468,7 @@ class _DashboardViewState extends State<DashboardView>
             return showTimeOverride ? const SizedBox(height: 12) : const SizedBox.shrink();
           },
         ),
-        // Habit filter dropdown - Use Selector to only rebuild when filter changes
-        Selector<AppState, bool>(
-          selector: (context, appState) => appState.habitProvider.isShowingAllHabits,
-          builder: (context, isShowingAll, child) {
-            final appState = context.read<AppState>();
-            return _buildHabitFilterDropdown(appState);
-          },
-        ),
-        const SizedBox(height: 8),
+        // Habit filter moved to Settings; progress bar follows time selector
         // Progress bar is now always visible
         LinearProgressIndicator(
           value: completionRate,
@@ -1002,81 +994,7 @@ class _DashboardViewState extends State<DashboardView>
     }
   }
 
-  /// Build habit filter dropdown (Today's Habits vs All Habits)
-  Widget _buildHabitFilterDropdown(AppState appState) {
-    final isShowingAllHabits = appState.habitProvider.isShowingAllHabits;
-    
-    // Theme-based border width
-    final borderWidth = Theme.of(context).brightness == Brightness.light 
-        ? 1.0  // Light theme: more prominent borders
-        : 0.5; // Dark theme: subtle borders
-    
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
-            Theme.of(context).colorScheme.outline.withValues(alpha: 1.0),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Container(
-        margin: EdgeInsets.all(borderWidth),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(11.0),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Icon(
-            Icons.view_list,
-            size: 20,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Habit Filter',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-          DropdownButton<String>(
-            value: isShowingAllHabits ? 'all' : 'today',
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                appState.habitProvider.setShowAllHabits(newValue == 'all');
-              }
-            },
-            underline: Container(), // Remove default underline
-            icon: Icon(
-              Icons.arrow_drop_down,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: 'today',
-                child: Text('Today\'s Habits'),
-              ),
-              DropdownMenuItem(
-                value: 'all',
-                child: Text('All Habits'),
-              ),
-            ],
-          ),
-        ],
-      ),
-        ),
-      ),
-    );
-  }
+  // Habit filter UI has been moved to Settings screen
 }
 
 /// Wrapper widget that implements true selective rebuilds for individual habit cards
