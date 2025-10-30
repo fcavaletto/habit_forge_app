@@ -73,7 +73,7 @@ class HabitState extends ChangeNotifier {
   late DateTime _selectedDate; // Selected date for filtering
   late TimeOfDay _selectedTime; // Selected time for completion timestamps
   bool _showAllHabits =
-      false; // Whether to show all habits or just today's habits
+      true; // Whether to show all habits or just today's habits (default: all)
   bool _loadedFromCache =
       false; // Track if last load was from cache (to skip redundant refresh)
 
@@ -2172,7 +2172,7 @@ class HabitProvider extends HabitState {
       debugPrint('📊 Loading habit filter setting from storage...');
       final settingValue = await _settingsRepository.getSettingWithDefault(
         'habit_filter_mode',
-        'today', // Default to Today's Habits
+        'all', // Default to All Habits
       );
 
       _showAllHabits = settingValue == 'all';
@@ -2181,8 +2181,8 @@ class HabitProvider extends HabitState {
       );
     } catch (e) {
       debugPrint('❌ Error loading habit filter setting: $e');
-      // Fallback to default (Today's Habits)
-      _showAllHabits = false;
+      // Fallback to default (All Habits)
+      _showAllHabits = true;
     }
   }
 
