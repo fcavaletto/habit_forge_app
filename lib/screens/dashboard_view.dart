@@ -63,7 +63,7 @@ class DashboardView extends StatefulWidget {
   State<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardViewState extends State<DashboardView> 
+class _DashboardViewState extends State<DashboardView>
     with WidgetsBindingObserver {
   late DashboardController _controller;
   late AppState _appState;
@@ -90,25 +90,37 @@ class _DashboardViewState extends State<DashboardView>
   /// Timer is synchronized to update exactly when the system minute changes
   void _startClockTimer() {
     _clockTimer?.cancel();
-    
+
     // Calculate delay until the next minute boundary
     final now = DateTime.now();
-    final nextMinute = DateTime(now.year, now.month, now.day, now.hour, now.minute + 1);
+    final nextMinute = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute + 1,
+    );
     final delay = nextMinute.difference(now);
-    
-    debugPrint('🕐 Clock timer: Next update in ${delay.inSeconds} seconds (at ${nextMinute.hour}:${nextMinute.minute.toString().padLeft(2, '0')})');
-    
+
+    debugPrint(
+      '🕐 Clock timer: Next update in ${delay.inSeconds} seconds (at ${nextMinute.hour}:${nextMinute.minute.toString().padLeft(2, '0')})',
+    );
+
     // First timer: wait until the next minute boundary
     Timer(delay, () {
-      if (mounted && !_appState.isTimeOverridden && _appState.showTimeOverride) {
+      if (mounted &&
+          !_appState.isTimeOverridden &&
+          _appState.showTimeOverride) {
         setState(() {
           // Force rebuild to update the clock display
         });
       }
-      
+
       // Then start the regular minute timer
       _clockTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-        if (mounted && !_appState.isTimeOverridden && _appState.showTimeOverride) {
+        if (mounted &&
+            !_appState.isTimeOverridden &&
+            _appState.showTimeOverride) {
           setState(() {
             // Force rebuild to update the clock display
           });
@@ -121,10 +133,11 @@ class _DashboardViewState extends State<DashboardView>
   void _restartClockTimer() {
     _startClockTimer();
   }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     switch (state) {
       case AppLifecycleState.resumed:
         _onAppResumed();
@@ -146,7 +159,7 @@ class _DashboardViewState extends State<DashboardView>
 
   void _onAppResumed() {
     final now = VirtualDateService().currentDate;
-    
+
     // Skip refresh during initial app startup (when _lastResumeTime is null)
     // Only refresh when app is actually resumed from background
     if (_lastResumeTime == null) {
@@ -154,18 +167,18 @@ class _DashboardViewState extends State<DashboardView>
       _lastResumeTime = now;
       return;
     }
-    
+
     // Check if data needs refresh based on time elapsed or new day
     final shouldRefresh = DataFreshness.shouldRefreshOnResume(_lastResumeTime!);
-    
+
     debugPrint('🔄 Dashboard: App resumed, shouldRefresh: $shouldRefresh');
-    
+
     // Only refresh if data is stale to avoid unnecessary operations
     if (shouldRefresh) {
       debugPrint('🔄 Dashboard: Triggering data refresh');
       _refreshData();
     }
-    
+
     // Update resume timestamp for future freshness checks
     _lastResumeTime = now;
   }
@@ -201,7 +214,8 @@ class _DashboardViewState extends State<DashboardView>
   Widget build(BuildContext context) {
     // Use Selector to only rebuild when filtered habits count changes
     return Selector<AppState, int>(
-      selector: (context, appState) => appState.habitProvider.filteredHabits.length,
+      selector: (context, appState) =>
+          appState.habitProvider.filteredHabits.length,
       builder: (context, filteredCount, child) {
         final appState = context.read<AppState>();
         return Semantics(
@@ -262,10 +276,10 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   /// Optimized body builder that minimizes rebuilds
-  /// 
+  ///
   /// This method uses selective consumers to avoid rebuilding
   /// the entire dashboard when only specific parts change.
-  /// 
+  ///
   /// Note: No loading spinner is shown because data is preloaded before
   /// the UI is rendered. Dashboard always has data ready.
   Widget _buildOptimizedBody(AppState appState) {
@@ -274,14 +288,22 @@ class _DashboardViewState extends State<DashboardView>
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) {
         final filteredHabits = habitProvider.filteredHabits;
-        debugPrint('🔄 Optimized DashboardView building with ${filteredHabits.length} filtered habits');
+        final hasAnyHabits = habitProvider.habits.isNotEmpty;
+        debugPrint(
+          '🔄 Optimized DashboardView building with ${filteredHabits.length} filtered habits',
+        );
 
         // No loading spinner - data is preloaded before UI shows
         // Background refresh happens silently without loading states
 
         if (filteredHabits.isEmpty) {
-          debugPrint('📭 No habits found for selected date, showing empty state');
-          return _buildEmptyState(isFiltered: true);
+          debugPrint(
+            '📭 No habits found for selected date, showing empty state',
+          );
+          return _buildEmptyState(
+            hasAnyHabits: hasAnyHabits,
+            appState: appState,
+          );
         }
 
         debugPrint('📊 Building habits list with selective rebuilds');
@@ -291,56 +313,98 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   /// Builds empty state UI when no habits are found
-  /// 
-  /// Displays appropriate messaging and sample habit creation options
-  /// for both filtered and unfiltered empty states.
-  Widget _buildEmptyState({bool isFiltered = false}) {
+  ///
+  /// Displays appropriate messaging based on whether any habits exist:
+  /// - If hasAnyHabits is true: shows "no habits visible" message with date selector
+  /// - If hasAnyHabits is false: shows "no habits exist" message for new users
+  Widget _buildEmptyState({
+    required bool hasAnyHabits,
+    required AppState appState,
+  }) {
     return SafeScrollableWrapper(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.defaultPadding),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isFiltered ? Icons.calendar_today : Icons.track_changes,
-                size: 80,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: AppConstants.defaultPadding),
-              Text(
-                isFiltered ? 'No habits scheduled for today' : 'Welcome to Habit Forge!',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
+      child: Column(
+        children: [
+          // Show date selector when habits exist but none visible for selected date
+          if (hasAnyHabits) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 0),
+              child: _buildDateSelector(appState),
+            ),
+            const SizedBox(height: AppConstants.defaultPadding),
+          ],
+          // Empty state content
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      hasAnyHabits ? Icons.calendar_today : Icons.track_changes,
+                      size: 80,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: AppConstants.defaultPadding),
+                    Text(
+                      hasAnyHabits
+                          ? 'No habits scheduled for this date'
+                          : 'You have no habits yet',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      hasAnyHabits
+                          ? 'Pick a different date or create a habit for today.'
+                          : 'Create your first habit to start tracking your progress.',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppConstants.defaultPadding * 2),
+                    if (hasAnyHabits) ...[
+                      // Show create habit button when habits exist but none visible
+                      FilledButton.icon(
+                        onPressed: _showAddHabitDialog,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Create Habit'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppConstants.defaultPadding * 2,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      // Show sample habits button for new users
+                      FilledButton.icon(
+                        onPressed: () => _controller.addSampleHabits(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Sample Habits'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppConstants.defaultPadding * 2,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
-              Text(
-                isFiltered 
-                  ? 'No habits are scheduled to be completed on the selected date. Try selecting a different date or create habits for this day.'
-                  : 'Build lasting habits with daily tracking and progress visualization.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppConstants.defaultPadding * 2),
-              FilledButton.icon(
-                onPressed: () => _controller.addSampleHabits(context),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Sample Habits'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppConstants.defaultPadding * 2,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -355,9 +419,7 @@ class _DashboardViewState extends State<DashboardView>
             10, // right padding
             0, // bottom padding
           ),
-          sliver: SliverToBoxAdapter(
-            child: _buildHeader(habits),
-          ),
+          sliver: SliverToBoxAdapter(child: _buildHeader(habits)),
         ),
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -390,7 +452,7 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   /// Builds a habit card with true selective rebuilds
-  /// 
+  ///
   /// This method uses Selector<HabitProvider, Habit> to listen only to changes
   /// in the specific habit data, rather than rebuilding when any habit changes.
   /// This provides significant performance improvements by only rebuilding
@@ -414,7 +476,7 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   /// Builds the dashboard header with habit statistics
-  /// 
+  ///
   /// Displays completion counts, progress indicators, and summary
   /// information for the current habit list.
   Widget _buildHeader(List<Habit> habits) {
@@ -422,9 +484,9 @@ class _DashboardViewState extends State<DashboardView>
     final appState = Provider.of<AppState>(context, listen: false);
     final selectedDate = appState.habitProvider.selectedDate;
     final isShowingAllHabits = appState.habitProvider.isShowingAllHabits;
-    
+
     // Calculate completion count and rate based on filter mode
-    final completedCount = isShowingAllHabits 
+    final completedCount = isShowingAllHabits
         ? _controller.getCompletedCountForAllHabits()
         : _controller.getCompletedCountForDate(selectedDate);
     final completionRate = isShowingAllHabits
@@ -465,14 +527,18 @@ class _DashboardViewState extends State<DashboardView>
         Selector<AppState, bool>(
           selector: (context, appState) => appState.showTimeOverride,
           builder: (context, showTimeOverride, child) {
-            return showTimeOverride ? const SizedBox(height: 12) : const SizedBox.shrink();
+            return showTimeOverride
+                ? const SizedBox(height: 12)
+                : const SizedBox.shrink();
           },
         ),
         // Habit filter moved to Settings; progress bar follows time selector
         // Progress bar is now always visible
         LinearProgressIndicator(
           value: completionRate,
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          backgroundColor: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest,
           valueColor: AlwaysStoppedAnimation<Color>(
             Theme.of(context).colorScheme.primary,
           ),
@@ -489,8 +555,6 @@ class _DashboardViewState extends State<DashboardView>
       ],
     );
   }
-
-
 
   void _showSettings() {
     Navigator.of(context).push(
@@ -554,7 +618,7 @@ class _DashboardViewState extends State<DashboardView>
   Future<void> _onCompletionButtonPress(Habit habit) async {
     final today = VirtualDateService().currentDate;
     final isCompleted = habit.isGoalAchieved(today);
-    
+
     if (isCompleted) {
       // Habit is completed - reset all completions
       await _onResetAllCompletions(habit);
@@ -568,7 +632,7 @@ class _DashboardViewState extends State<DashboardView>
   Future<void> _onCustomCompletion(Habit habit) async {
     final today = VirtualDateService().currentDate;
     final currentCount = habit.getCompletionCount(today);
-    
+
     await showCustomCompletionModal(
       context: context,
       habitName: habit.name,
@@ -607,11 +671,11 @@ class _DashboardViewState extends State<DashboardView>
     // Get fresh habit data from the provider to ensure we have the latest completions
     final appState = Provider.of<AppState>(context, listen: false);
     final freshHabit = appState.habitProvider.getHabitById(habit.id) ?? habit;
-    
+
     // Extract last 30 days data from dashboard to pass to stats screen
     final last30DaysData = appState.habitProvider.getLast30DaysCompletions();
     final habitLast30Days = last30DaysData[habit.id] ?? {};
-    
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => StatsScreen(
@@ -636,12 +700,13 @@ class _DashboardViewState extends State<DashboardView>
       final appState = context.read<AppState>();
       final colorScheme = Theme.of(context).colorScheme;
       final random = math.Random();
-      
+
       // Create 20 habits, one for each color in the palette
       for (int i = 0; i < 20; i++) {
-        final colorPair = colorScheme.habitColorPairs[19-i];
-        final randomIcon = IconSelector.availableIcons[random.nextInt(IconSelector.availableIcons.length)];
-        
+        final colorPair = colorScheme.habitColorPairs[19 - i];
+        final randomIcon = IconSelector
+            .availableIcons[random.nextInt(IconSelector.availableIcons.length)];
+
         final habit = Habit.createWithUuid(
           name: 'Title: color #${19 - i + 1}',
           description: 'Test habit with color ${19 - i + 1}',
@@ -651,19 +716,25 @@ class _DashboardViewState extends State<DashboardView>
           reminderTime: null,
           enableReminders: false,
           frequencyDays: const {
-            'mon': 1, 'tue': 1, 'wed': 1, 'thu': 1, 'fri': 1, 'sat': 1, 'sun': 1
+            'mon': 1,
+            'tue': 1,
+            'wed': 1,
+            'thu': 1,
+            'fri': 1,
+            'sat': 1,
+            'sun': 1,
           }, // Every day
-          targetGoal: 20-i,
+          targetGoal: 20 - i,
           allowExceedGoal: false,
         );
-        
+
         // Add the habit to the app state
         await appState.habitProvider.addHabit(habit);
       }
-      
+
       // Refresh the dashboard to show the new habits
       _controller.loadHabitsForDashboard();
-      
+
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -674,7 +745,6 @@ class _DashboardViewState extends State<DashboardView>
           ),
         );
       }
-      
     } catch (e) {
       debugPrint('❌ Failed to create test habits: $e');
       if (mounted) {
@@ -692,12 +762,16 @@ class _DashboardViewState extends State<DashboardView>
   /// Reorder habits with filtering context
   void _reorderHabits(String draggedId, int newPosition) {
     final appState = Provider.of<AppState>(context, listen: false);
-    
+
     // Get visible habit IDs for filtering context
     final visibleHabitIds = appState.habitProvider.getVisibleHabitIds();
-    
+
     // Use the new filtering-aware reordering method
-    appState.habitProvider.reorderHabitsInContext(draggedId, newPosition, visibleHabitIds);
+    appState.habitProvider.reorderHabitsInContext(
+      draggedId,
+      newPosition,
+      visibleHabitIds,
+    );
   }
 
   /// Build the date selector widget
@@ -706,14 +780,14 @@ class _DashboardViewState extends State<DashboardView>
     final isDateOverridden = appState.isDateOverridden;
 
     // Theme-based border width
-    final borderWidth = Theme.of(context).brightness == Brightness.light 
-        ? 1.0  // Light theme: more prominent borders
+    final borderWidth = Theme.of(context).brightness == Brightness.light
+        ? 1.0 // Light theme: more prominent borders
         : 0.5; // Dark theme: subtle borders
-    
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDateOverridden 
+          colors: isDateOverridden
               ? [
                   Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
                   Theme.of(context).colorScheme.error.withValues(alpha: 1.0),
@@ -730,76 +804,84 @@ class _DashboardViewState extends State<DashboardView>
       child: Container(
         margin: EdgeInsets.all(isDateOverridden ? 1.5 : borderWidth),
         decoration: BoxDecoration(
-          color: isDateOverridden 
-              ? (Theme.of(context).brightness == Brightness.light 
-                  ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
-                  : Theme.of(context).colorScheme.surfaceContainerHighest) // No background color change in dark mode
+          color: isDateOverridden
+              ? (Theme.of(context).brightness == Brightness.light
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.errorContainer.withValues(alpha: 1)
+                    : Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest) // No background color change in dark mode
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11.0),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Icon(
-            Icons.calendar_today,
-            size: 20,
-            color: isDateOverridden 
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isDateOverridden ? 'Date set to:' : 'Today',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isDateOverridden 
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _formatDate(selectedDate),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: isDateOverridden 
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
-            if (isDateOverridden) ...[
-              // Reset button (outlined style to stand out)
-              OutlinedButton(
-                onPressed: () => appState.resetDateOverride(),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                  side: BorderSide(color: Theme.of(context).colorScheme.error),
-                  minimumSize: const Size(80, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                child: const Text(' RESET DATE '),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: 20,
+                color: isDateOverridden
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.primary,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isDateOverridden ? 'Date set to:' : 'Today',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDateOverridden
+                            ? Theme.of(context).colorScheme.error
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatDate(selectedDate),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isDateOverridden
+                            ? Theme.of(context).colorScheme.error
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isDateOverridden) ...[
+                // Reset button (outlined style to stand out)
+                OutlinedButton(
+                  onPressed: () => appState.resetDateOverride(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    minimumSize: const Size(80, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: const Text(' RESET DATE '),
+                ),
+                const SizedBox(width: 6),
+              ],
+              IconButton(
+                onPressed: () => _showDatePicker(appState),
+                icon: Icon(
+                  Icons.edit,
+                  color: isDateOverridden
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.primary,
+                ),
+                tooltip: 'Select Date',
+              ),
             ],
-          IconButton(
-            onPressed: () => _showDatePicker(appState),
-            icon: Icon(
-              Icons.edit,
-              color: isDateOverridden 
-                  ? Theme.of(context).colorScheme.error
-                  : Theme.of(context).colorScheme.primary,
-            ),
-            tooltip: 'Select Date',
           ),
-        ],
-      ),
         ),
       ),
     );
@@ -810,14 +892,14 @@ class _DashboardViewState extends State<DashboardView>
     final isTimeOverridden = appState.isTimeOverridden;
 
     // Theme-based border width
-    final borderWidth = Theme.of(context).brightness == Brightness.light 
-        ? 1.0  // Light theme: more prominent borders
+    final borderWidth = Theme.of(context).brightness == Brightness.light
+        ? 1.0 // Light theme: more prominent borders
         : 0.5; // Dark theme: subtle borders
-    
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isTimeOverridden 
+          colors: isTimeOverridden
               ? [
                   Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
                   Theme.of(context).colorScheme.error.withValues(alpha: 1.0),
@@ -834,95 +916,115 @@ class _DashboardViewState extends State<DashboardView>
       child: Container(
         margin: EdgeInsets.all(isTimeOverridden ? 1.5 : borderWidth),
         decoration: BoxDecoration(
-          color: isTimeOverridden 
-              ? (Theme.of(context).brightness == Brightness.light 
-                  ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 1)
-                  : Theme.of(context).colorScheme.surfaceContainerHighest) // No background color change in dark mode
+          color: isTimeOverridden
+              ? (Theme.of(context).brightness == Brightness.light
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.errorContainer.withValues(alpha: 1)
+                    : Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest) // No background color change in dark mode
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11.0),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Icon(
-            Icons.access_time,
-            size: 20,
-            color: isTimeOverridden 
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isTimeOverridden ? 'Time set at:' : 'Current Time',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isTimeOverridden 
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                isTimeOverridden
-                    ? Text(
-                        _formatTime(appState.currentTime),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      )
-                    : CurrentTimeClock(
-                        isTimeOverridden: isTimeOverridden,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-              ],
-            ),
-          ),
-          if (isTimeOverridden) ...[
-            // Turn Off button (outlined style to stand out)
-            OutlinedButton(
-              onPressed: () => appState.resetTimeOverride(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-                side: BorderSide(color: Theme.of(context).colorScheme.error),
-                minimumSize: const Size(80, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Icon(
+                Icons.access_time,
+                size: 20,
+                color: isTimeOverridden
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.primary,
               ),
-              child: const Text(' RESET TIME '),
-            ),
-            const SizedBox(width: 6),
-          ],
-          // Edit button
-          IconButton(
-            onPressed: () => _showTimePicker(appState),
-            icon: Icon(
-              Icons.edit,
-              color: isTimeOverridden 
-                  ? Theme.of(context).colorScheme.error
-                  : Theme.of(context).colorScheme.primary,
-            ),
-            tooltip: isTimeOverridden ? 'Change Override Time' : 'Set Time Override',
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isTimeOverridden ? 'Time set at:' : 'Current Time',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isTimeOverridden
+                            ? Theme.of(context).colorScheme.error
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    isTimeOverridden
+                        ? Text(
+                            _formatTime(appState.currentTime),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                          )
+                        : CurrentTimeClock(
+                            isTimeOverridden: isTimeOverridden,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
+                          ),
+                  ],
+                ),
+              ),
+              if (isTimeOverridden) ...[
+                // Turn Off button (outlined style to stand out)
+                OutlinedButton(
+                  onPressed: () => appState.resetTimeOverride(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    minimumSize: const Size(80, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: const Text(' RESET TIME '),
+                ),
+                const SizedBox(width: 6),
+              ],
+              // Edit button
+              IconButton(
+                onPressed: () => _showTimePicker(appState),
+                icon: Icon(
+                  Icons.edit,
+                  color: isTimeOverridden
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.primary,
+                ),
+                tooltip: isTimeOverridden
+                    ? 'Change Override Time'
+                    : 'Set Time Override',
+              ),
+            ],
           ),
-        ],
-      ),
         ),
       ),
     );
   }
 
   /// Get completion message based on habit goals
-  String _getCompletionMessage(double completionRate, int completedCount, int totalHabits) {
+  String _getCompletionMessage(
+    double completionRate,
+    int completedCount,
+    int totalHabits,
+  ) {
     final percentage = (completionRate * 100).round();
-    
+
     // Check if any habits have goals greater than 1
-    final hasMultiGoalHabits = _appState.habits.any((habit) => habit.targetGoal > 1);
-    
+    final hasMultiGoalHabits = _appState.habits.any(
+      (habit) => habit.targetGoal > 1,
+    );
+
     if (hasMultiGoalHabits) {
       return '$completedCount of $totalHabits habits fully completed ($percentage%)';
     } else {
@@ -934,8 +1036,20 @@ class _DashboardViewState extends State<DashboardView>
   String _formatDate(DateTime date) {
     // Simply show the actual date in a readable format
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
   }
 
@@ -998,7 +1112,7 @@ class _DashboardViewState extends State<DashboardView>
 }
 
 /// Wrapper widget that implements true selective rebuilds for individual habit cards
-/// 
+///
 /// This widget uses a custom approach to only rebuild when the specific habit
 /// data changes, avoiding unnecessary rebuilds of other habit cards.
 class _HabitCardWrapper extends StatefulWidget {
@@ -1040,31 +1154,36 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
     return Consumer<HabitProvider>(
       builder: (context, habitProvider, child) {
         final currentDate = habitProvider.selectedDate;
-        
+
         // Get the updated habit object from provider instead of using stale widget.habit
         final updatedHabit = habitProvider.habits.firstWhere(
           (h) => h.id == widget.habit.id,
           orElse: () => widget.habit, // Fallback to widget.habit if not found
         );
-        
+
         // Get completion count directly from cache without FutureBuilder
-        final currentCompletionCount = habitProvider.getCachedCompletionCountSync(widget.habit.id, currentDate) ?? 
+        final currentCompletionCount =
+            habitProvider.getCachedCompletionCountSync(
+              widget.habit.id,
+              currentDate,
+            ) ??
             updatedHabit.getCompletionCount(currentDate);
-        
+
         // Check if this specific habit actually changed
-        final hasChanged = !_isInitialized ||
+        final hasChanged =
+            !_isInitialized ||
             _cachedCompletionCount != currentCompletionCount ||
             _cachedDate != currentDate;
-        
+
         if (!hasChanged) {
           return child!; // Return cached widget
         }
-        
+
         // Update cache
         _cachedCompletionCount = currentCompletionCount;
         _cachedDate = currentDate;
         _isInitialized = true;
-        
+
         return HabitCard(
           key: ValueKey(widget.habit.id),
           habit: updatedHabit, // Use updated habit object
