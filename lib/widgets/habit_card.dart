@@ -522,11 +522,12 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     Color habitColor,
     BuildContext context,
   ) {
-    // Clamp completed count to goal when allowExceedGoal is false
-    // This handles cases where goal is reduced in edit mode and completion count exceeds new goal
-    final displayCount = widget.habit.allowExceedGoal
-        ? todayCount
-        : todayCount.clamp(0, widget.habit.targetGoal);
+    // Clamp completed count to goal for display purposes
+    // This handles cases where:
+    // 1. Goal is reduced in edit mode and completion count exceeds new goal
+    // 2. allowExceedGoal is true but SegmentedProgressRing can only display up to goal
+    // Even if allowExceedGoal is true, we clamp for visual display since the ring can't show more than goal
+    final displayCount = todayCount.clamp(0, widget.habit.targetGoal);
 
     // Ensure targetGoal is valid to prevent invalid SegmentedProgressRing
     final validGoal = widget.habit.targetGoal > 0 ? widget.habit.targetGoal : 1;
@@ -554,17 +555,13 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
           ? widget.habit.targetGoal
           : 1;
 
-      // Clamp progress value to prevent overflow issues
-      // For allowExceedGoal=true, still clamp to reasonable display range (max 2.0 = 200%)
-      final progressValue = widget.habit.allowExceedGoal
-          ? ((todayCount / validGoal).clamp(0.0, 2.0))
-          : (displayCount / validGoal).clamp(0.0, 1.0);
+      // Calculate progress value - clamp completed count to goal for display
+      // CircularProgressIndicator expects 0.0-1.0, but we calculate from displayCount
+      // which is already clamped to goal
+      final progressValue = (displayCount / validGoal).clamp(0.0, 1.0);
 
       return CircularProgressIndicator(
-        value: progressValue.clamp(
-          0.0,
-          1.0,
-        ), // CircularProgressIndicator expects 0.0-1.0
+        value: progressValue, // Already clamped to 0.0-1.0
         strokeWidth: 4,
         valueColor: AlwaysStoppedAnimation(habitColor.withValues(alpha: 0.8)),
         backgroundColor: habitColor.withValues(alpha: 0.2),

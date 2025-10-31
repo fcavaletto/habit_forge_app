@@ -568,6 +568,16 @@ class HabitState extends ChangeNotifier {
     try {
       debugPrint('🔄 [UPDATE_GOALS] Updating past completion goals for habit $habitId to $newGoal');
 
+      // Find the habit in local state
+      final habitIndex = _habits.indexWhere((h) => h.id == habitId);
+      if (habitIndex < 0) {
+        debugPrint('❌ [UPDATE_GOALS] Habit not found in local state: $habitId');
+        throw Exception('Habit not found in local state: $habitId');
+      }
+
+      final originalHabit = _habits[habitIndex];
+
+      // Step 1: Update database records
       final result = await _dataAccessService.atomicDataService.updatePastCompletionGoals(
         habitId: habitId,
         newGoal: newGoal,
@@ -578,15 +588,65 @@ class HabitState extends ChangeNotifier {
         ),
       );
 
-      if (result.success && result.data != null) {
-        // Invalidate completion cache for this habit
-        _completionCache.invalidateHabit(habitId);
-        debugPrint('✅ [UPDATE_GOALS] Updated ${result.data} completion records');
-        return result.data!;
-      } else {
+      if (!result.success || result.data == null) {
         debugPrint('❌ [UPDATE_GOALS] Failed to update past completion goals: ${result.errorMessage}');
         throw Exception(result.errorMessage ?? 'Unknown error');
       }
+
+      debugPrint('✅ [UPDATE_GOALS] Updated ${result.data} completion records in database');
+
+      // Step 2: Invalidate completion cache
+      _completionCache.invalidateHabit(habitId);
+
+      // Step 3: Reload completions from database with updated goalAtCompletion values
+      debugPrint('🔄 [UPDATE_GOALS] Reloading completions from database...');
+      
+      // Use a wide date range to load all historical completions
+      final startDate = DateTime(2020); // Very early date to get full history
+      final endDate = VirtualDateService().currentDate.add(const Duration(days: 365)); // Future date to ensure we get everything
+      
+      final completionsResult = await _dataAccessService.atomicDataService.getCompletions(
+        habitIds: [habitId],
+        startDate: startDate,
+        endDate: endDate,
+        convertToLocal: false,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'updatePastCompletionGoals_reload',
+          parameters: {'habitId': habitId},
+        ),
+      );
+
+      if (!completionsResult.success || completionsResult.data == null) {
+        debugPrint('⚠️ [UPDATE_GOALS] Failed to reload completions, using cached data: ${completionsResult.errorMessage}');
+        // Non-fatal - UI will update on next full reload
+        notifyListeners();
+        return result.data!;
+      }
+
+      final updatedCompletions = completionsResult.data![habitId] ?? <DateTime, CompletionRecord>{};
+      debugPrint('✅ [UPDATE_GOALS] Reloaded ${updatedCompletions.length} completion records with updated goals');
+
+      // Step 4: Update in-memory habit with fresh completions
+      final updatedHabit = originalHabit.copyWith(
+        completions: updatedCompletions,
+      );
+      _habits[habitIndex] = updatedHabit;
+
+      // Step 5: Update persistent cache with correct data
+      try {
+        await _persistentCache.updateHabit(updatedHabit);
+        debugPrint('✅ [UPDATE_GOALS] Updated persistent cache with fresh completions');
+      } catch (e) {
+        debugPrint('⚠️ [UPDATE_GOALS] Failed to update persistent cache: $e');
+        // Non-fatal - app continues with in-memory data
+      }
+
+      // Step 6: Notify listeners to refresh UI
+      notifyListeners();
+
+      debugPrint('✅ [UPDATE_GOALS] Completed successfully: ${result.data} records updated, UI refreshed');
+      return result.data!;
     } catch (e) {
       debugPrint('❌ [UPDATE_GOALS] Error updating past completion goals: $e');
       rethrow;
