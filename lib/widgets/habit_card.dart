@@ -638,6 +638,11 @@ class HabitCard extends StatefulWidget {
   /// Callback when stats should be viewed
   final VoidCallback? onStats;
 
+  /// Whether to show the collapse/expand button
+  /// When false (default), collapse button is shown and state is persisted
+  /// When true, card is always collapsed and button is hidden (for preview/edit mode)
+  final bool hideCollapseButton;
+
   const HabitCard({
     super.key,
     required this.habit,
@@ -651,6 +656,7 @@ class HabitCard extends StatefulWidget {
     this.onDelete,
     this.onEdit,
     this.onStats,
+    this.hideCollapseButton = false,
   });
 
   @override
@@ -665,11 +671,20 @@ class _HabitCardState extends State<HabitCard> {
   @override
   void initState() {
     super.initState();
-    _settingsRepository = SettingsRepository(DatabaseService());
-    _loadCollapseState();
+    // If collapse button is hidden (preview/edit mode), always collapsed
+    if (widget.hideCollapseButton) {
+      _isCollapsed = true;
+      _isCollapseStateLoaded = true;
+    } else {
+      _settingsRepository = SettingsRepository(DatabaseService());
+      _loadCollapseState();
+    }
   }
 
   Future<void> _loadCollapseState() async {
+    // Don't load state if button is hidden
+    if (widget.hideCollapseButton) return;
+    
     try {
       final isCollapsed = await _settingsRepository.getHabitCardCollapsed(widget.habit.id);
       if (mounted) {
@@ -690,6 +705,9 @@ class _HabitCardState extends State<HabitCard> {
   }
 
   Future<void> _toggleCollapse() async {
+    // Don't allow toggling if button is hidden
+    if (widget.hideCollapseButton) return;
+    
     setState(() {
       _isCollapsed = !_isCollapsed;
     });
@@ -986,8 +1004,8 @@ class _HabitCardState extends State<HabitCard> {
                               },
                             ),
                           ),
-                          // Collapse/expand button
-                          if (_isCollapseStateLoaded)
+                          // Collapse/expand button (hidden in preview/edit mode)
+                          if (_isCollapseStateLoaded && !widget.hideCollapseButton)
                             Center(
                               child: InkWell(
                                 onTap: _toggleCollapse,

@@ -220,6 +220,8 @@ class _AddHabitViewState extends State<AddHabitView> {
                           onArchive: null,
                           onDelete: null,
                           onStats: null,
+                          // Hide collapse button and always show collapsed in preview/edit mode
+                          hideCollapseButton: true,
                         ),
                       ),
                     )
