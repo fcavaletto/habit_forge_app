@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:habit_forge_app/utils/color_extensions.dart';
 import '../models/habit.dart';
 import '../utils/icon_utils.dart';
 import '../screens/stats_screen.dart';
 import '../services/virtual_date_service.dart';
 import '../services/haptic_feedback_service.dart';
+import '../utils/week_utils.dart';
+import '../repositories/settings_repository.dart';
+import '../services/database_service.dart';
+import '../providers/app_state_provider.dart';
 import 'segmented_progress_ring.dart';
 
 /// Smart completion button that adapts its appearance and behavior
@@ -599,7 +604,7 @@ enum ButtonState {
 ///
 /// The card uses the habit's assigned color from the theme palette
 /// and provides visual feedback for all user interactions.
-class HabitCard extends StatelessWidget {
+class HabitCard extends StatefulWidget {
   /// The habit data to display in this card
   final Habit habit;
 
@@ -648,12 +653,59 @@ class HabitCard extends StatelessWidget {
     this.onStats,
   });
 
+  @override
+  State<HabitCard> createState() => _HabitCardState();
+}
+
+class _HabitCardState extends State<HabitCard> {
+  bool _isCollapsed = true; // Default to collapsed
+  bool _isCollapseStateLoaded = false;
+  late SettingsRepository _settingsRepository;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsRepository = SettingsRepository(DatabaseService());
+    _loadCollapseState();
+  }
+
+  Future<void> _loadCollapseState() async {
+    try {
+      final isCollapsed = await _settingsRepository.getHabitCardCollapsed(widget.habit.id);
+      if (mounted) {
+        setState(() {
+          _isCollapsed = isCollapsed;
+          _isCollapseStateLoaded = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading collapse state: $e');
+      if (mounted) {
+        setState(() {
+          _isCollapsed = true; // Default to collapsed on error
+          _isCollapseStateLoaded = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleCollapse() async {
+    setState(() {
+      _isCollapsed = !_isCollapsed;
+    });
+    try {
+      await _settingsRepository.saveHabitCardCollapsed(widget.habit.id, _isCollapsed);
+    } catch (e) {
+      debugPrint('❌ Error saving collapse state: $e');
+    }
+  }
+
   /// Get the habit color based on current theme brightness
   Color _getHabitColor(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     return brightness == Brightness.light
-        ? Color(habit.lightColorValue)
-        : Color(habit.darkColorValue);
+        ? Color(widget.habit.lightColorValue)
+        : Color(widget.habit.darkColorValue);
   }
 
   @override
@@ -663,14 +715,14 @@ class HabitCard extends StatelessWidget {
     final habitColor = _getHabitColor(context);
 
     // Create accessibility labels - memoized for performance
-    final todayCount = habit.getCompletionCount(
+    final todayCount = widget.habit.getCompletionCount(
       VirtualDateService().currentDate,
     );
     final completionStatus = todayCount > 0
         ? '$todayCount completion${todayCount != 1 ? 's' : ''}'
         : 'not completed';
     final accessibilityLabel =
-        '${habit.name}. ${habit.description}. Today: $completionStatus.';
+        '${widget.habit.name}. ${widget.habit.description}. Today: $completionStatus.';
 
     // Theme-based border width
     final borderWidth = Theme.of(context).brightness == Brightness.light
@@ -702,7 +754,7 @@ class HabitCard extends StatelessWidget {
           child: InkWell(
             // Short tap shows context menu, long press handled by ReorderableListView
             // Only make tappable if callback is provided (for preview mode)
-            onTap: onTap != null ? () => _showContextMenu(context) : null,
+            onTap: widget.onTap != null ? () => _showContextMenu(context) : null,
             // Rounded corners for modern Material 3 design
             borderRadius: BorderRadius.circular(11.0),
             focusColor: habitColor.withValues(alpha: 0.2),
@@ -726,8 +778,8 @@ class HabitCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(9),
                             border: Border.all(color: habitColor, width: 1),
                           ),
-                          child: Icon(
-                            habit.iconName.toIconData,
+                            child: Icon(
+                            widget.habit.iconName.toIconData,
                             color: habitColor,
                             size: 25,
                           ),
@@ -741,19 +793,19 @@ class HabitCard extends StatelessWidget {
                         children: [
                           // Stats button
                           Semantics(
-                            label: 'View ${habit.name} statistics',
+                            label: 'View ${widget.habit.name} statistics',
                             hint: 'Opens detailed statistics for this habit',
                             button:
-                                onStats != null, // Disable semantics in preview
+                                widget.onStats != null, // Disable semantics in preview
                             child: InkWell(
                               // Disable interaction in preview mode
-                              onTap: onStats != null
-                                  ? (onStats ??
+                              onTap: widget.onStats != null
+                                  ? (widget.onStats ??
                                         () {
                                           Navigator.of(context).push(
                                             MaterialPageRoute(
                                               builder: (context) =>
-                                                  StatsScreen(habit: habit),
+                                                  StatsScreen(habit: widget.habit),
                                             ),
                                           );
                                         })
@@ -779,10 +831,10 @@ class HabitCard extends StatelessWidget {
                           const SizedBox(width: 6),
                           // Smart completion button
                           SmartCompletionButton(
-                            habit: habit,
-                            onIncrement: onIncrement,
-                            onDecrement: onDecrement,
-                            onCustomCompletion: onCustomCompletion,
+                            habit: widget.habit,
+                            onIncrement: widget.onIncrement,
+                            onDecrement: widget.onDecrement,
+                            onCustomCompletion: widget.onCustomCompletion,
                           ),
                         ],
                       ),
@@ -802,7 +854,7 @@ class HabitCard extends StatelessWidget {
                           children: [
                             // Habit name
                             Text(
-                              habit.name,
+                              widget.habit.name,
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(
                                     fontWeight: FontWeight.w600,
@@ -813,12 +865,12 @@ class HabitCard extends StatelessWidget {
                             ),
 
                             // Only show description and spacing if description is not empty
-                            if (habit.description.isNotEmpty) ...[
+                            if (widget.habit.description.isNotEmpty) ...[
                               const SizedBox(height: 2),
 
                               // Habit description
                               Text(
-                                habit.description,
+                                widget.habit.description,
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
@@ -838,58 +890,126 @@ class HabitCard extends StatelessWidget {
 
                   const SizedBox(height: 8),
 
-                  // Progress chart - Compact version with completion intensity
-                  SizedBox(
-                    height: 32, // Smaller height
-                    child: Row(
-                      children: List.generate(7, (index) {
-                        final date = VirtualDateService().currentDate.subtract(
-                          Duration(days: 6 - index),
-                        );
-                        final count = habit.getCompletionCount(date);
-                        // Use goal at completion for that date, not current goal
-                        // This ensures "Keep Past" option preserves original color intensity
-                        final goalAtCompletion = habit.getGoalAtCompletion(date);
-                        final intensity = count > 0
-                            ? (count / goalAtCompletion).clamp(0.0, 1.0)
-                            : 0.0;
+                  // 4-week progress grid with day labels and collapse functionality
+                  Consumer<AppState>(
+                    builder: (context, appState, child) {
+                      final weekStartsOnMonday = appState.weekStartsOnMonday;
+                      final currentDate = VirtualDateService().currentDate;
+                      final weeksData = WeekUtils.getWeeksData(
+                        currentDate,
+                        weekStartsOnMonday,
+                        numberOfWeeks: 4,
+                      );
+                      final dayLabels = WeekUtils.getDayLabels(weekStartsOnMonday);
 
-                        return Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                            decoration: BoxDecoration(
-                              color: count > 0
-                                  ? habitColor.withValues(alpha: intensity)
-                                  : habitColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(1),
-                            ),
-                            child: habit.isGoalAchieved(date)
-                                ? const Icon(
-                                    Icons.check,
-                                    size: 10,
-                                    color: Colors.white,
-                                  )
-                                : count > 0
-                                ? Center(
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        count.toString(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.w600,
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Day labels row
+                          Row(
+                            children: dayLabels.map((label) {
+                              return Expanded(
+                                child: Center(
+                                  child: Text(
+                                    label,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  )
-                                : null,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        );
-                      }),
-                    ),
+                          const SizedBox(height: 4),
+                          // 4-week grid
+                          Column(
+                            children: List.generate(
+                              _isCollapsed ? 1 : 4,
+                              (weekIndex) {
+                                final weekDates = weeksData[weekIndex];
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: weekIndex < (_isCollapsed ? 0 : 3) ? 2 : 0,
+                                  ),
+                                  child: Row(
+                                    children: List.generate(7, (dayIndex) {
+                                      final date = weekDates[dayIndex];
+                                      final count = widget.habit.getCompletionCount(date);
+                                      // Use goal at completion for that date, not current goal
+                                      // This ensures "Keep Past" option preserves original color intensity
+                                      final goalAtCompletion = widget.habit.getGoalAtCompletion(date);
+                                      final intensity = count > 0
+                                          ? (count / goalAtCompletion).clamp(0.0, 1.0)
+                                          : 0.0;
+
+                                      return Expanded(
+                                        child: Container(
+                                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color: count > 0
+                                                ? habitColor.withValues(alpha: intensity)
+                                                : habitColor.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(1),
+                                          ),
+                                          child: widget.habit.isGoalAchieved(date)
+                                              ? const Icon(
+                                                  Icons.check,
+                                                  size: 10,
+                                                  color: Colors.white,
+                                                )
+                                              : count > 0
+                                                  ? Center(
+                                                      child: FittedBox(
+                                                        fit: BoxFit.scaleDown,
+                                                        child: Text(
+                                                          count.toString(),
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 8,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : null,
+                                        ),
+                                      );
+                                    }),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          // Collapse/expand button
+                          if (_isCollapseStateLoaded)
+                            Center(
+                              child: InkWell(
+                                onTap: _toggleCollapse,
+                                borderRadius: BorderRadius.circular(16),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: Icon(
+                                    _isCollapsed
+                                        ? Icons.keyboard_arrow_down
+                                        : Icons.keyboard_arrow_up,
+                                    size: 20,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -922,7 +1042,7 @@ class HabitCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        habit.iconName.toIconData,
+                        widget.habit.iconName.toIconData,
                         color: _getHabitColor(context),
                         size: 20,
                       ),
@@ -933,13 +1053,13 @@ class HabitCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            habit.name,
+                            widget.habit.name,
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w600),
                           ),
-                          if (habit.description.isNotEmpty)
+                          if (widget.habit.description.isNotEmpty)
                             Text(
-                              habit.description,
+                              widget.habit.description,
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     color: Theme.of(
@@ -970,7 +1090,7 @@ class HabitCard extends StatelessWidget {
                 title: const Text('Edit Habit'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  onEdit?.call();
+                  widget.onEdit?.call();
                 },
               ),
 
@@ -980,7 +1100,7 @@ class HabitCard extends StatelessWidget {
                 subtitle: const Text('Hide from main view'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  onArchive?.call();
+                  widget.onArchive?.call();
                 },
               ),
 
@@ -996,7 +1116,7 @@ class HabitCard extends StatelessWidget {
                 subtitle: const Text('Permanently remove'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  onDelete?.call();
+                  widget.onDelete?.call();
                 },
               ),
 

@@ -193,6 +193,9 @@ class AppState extends ChangeNotifier {
   bool _showTimeOverride = false;
   bool get showTimeOverride => _showTimeOverride;
 
+  bool _weekStartsOnMonday = true; // Default: Monday
+  bool get weekStartsOnMonday => _weekStartsOnMonday;
+
   // Combined loading state
   bool get isLoading =>
       _habitProvider.isLoading || _notificationProvider.isLoading;
@@ -285,6 +288,7 @@ class AppState extends ChangeNotifier {
           _proSubscriptionProvider.loadProSubscriptionSetting(),
           _streakSettingsProvider.loadStreakSetting(),
           loadTimeOverrideSetting(),
+          loadWeekStartDaySetting(),
           _dateProvider.initialize(), // Initialize DateProvider (no longer needs settings repo)
         ]).timeout(
           const Duration(seconds: 8), // Reduced from 15 seconds
@@ -363,6 +367,30 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error saving time override setting: $e');
+    }
+  }
+
+  /// Load week start day setting from storage
+  Future<void> loadWeekStartDaySetting() async {
+    try {
+      _weekStartsOnMonday = await _settingsRepository.getWeekStartDay();
+      debugPrint('📅 Loaded week start day setting: ${_weekStartsOnMonday ? "Monday" : "Sunday"}');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error loading week start day setting: $e');
+      _weekStartsOnMonday = true; // Default to Monday on error
+    }
+  }
+
+  /// Save week start day setting to storage
+  Future<void> saveWeekStartDaySetting(bool isMonday) async {
+    try {
+      await _settingsRepository.saveWeekStartDay(isMonday);
+      _weekStartsOnMonday = isMonday;
+      debugPrint('📅 Saved week start day setting: ${isMonday ? "Monday" : "Sunday"}');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error saving week start day setting: $e');
     }
   }
 
@@ -576,6 +604,7 @@ class AppStateProvider extends AppState {
       await _habitProvider.initialize();
       await _themeProvider.loadThemeMode();
       await loadTimeOverrideSetting();
+      await loadWeekStartDaySetting();
       _isInitialized = true;
       notifyListeners();
     } catch (e) {

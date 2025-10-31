@@ -125,4 +125,34 @@ class SettingsRepository {
     final value = await getSettingWithDefault('show_time_override', 'false');
     return value.toLowerCase() == 'true';
   }
+
+  /// Save week start day preference
+  /// @param isMonday If true, week starts on Monday; if false, on Sunday
+  Future<bool> saveWeekStartDay(bool isMonday) async {
+    return await saveSetting('week_starts_on_monday', isMonday.toString());
+  }
+
+  /// Get week start day preference
+  /// @return true if week starts on Monday (default), false if Sunday
+  Future<bool> getWeekStartDay() async {
+    final value = await getSettingWithDefault('week_starts_on_monday', 'true');
+    return value.toLowerCase() == 'true';
+  }
+
+  /// Save collapsed state for a specific habit card
+  /// @param habitId The habit ID
+  /// @param isCollapsed Whether the card is collapsed
+  Future<bool> saveHabitCardCollapsed(String habitId, bool isCollapsed) async {
+    final key = 'habit_card_collapsed_$habitId';
+    return await saveSetting(key, isCollapsed.toString());
+  }
+
+  /// Get collapsed state for a specific habit card
+  /// @param habitId The habit ID
+  /// @return true if collapsed, false if expanded (default: true - collapsed)
+  Future<bool> getHabitCardCollapsed(String habitId) async {
+    final key = 'habit_card_collapsed_$habitId';
+    final value = await getSettingWithDefault(key, 'true');
+    return value.toLowerCase() == 'true';
+  }
 }
