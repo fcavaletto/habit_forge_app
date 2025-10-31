@@ -335,8 +335,8 @@ class _DashboardViewState extends State<DashboardView>
           // Empty state content
           Expanded(
             child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppConstants.defaultPadding),
+              child: FractionallySizedBox(
+                widthFactor: 0.7,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
