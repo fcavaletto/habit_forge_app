@@ -110,48 +110,119 @@ class SqliteHabitRepository {
     try {
       debugPrint('💾 Saving habit to SQLite: ${habit.name}');
       
+      // Check if this is an update or new habit
+      final isUpdate = await habitExists(habit.id);
+      
       // Check for duplicates using name + icon combination
-      final hasDuplicate = await hasDuplicateHabit(habit.name, habit.iconName);
+      // Exclude current habit ID when updating
+      final hasDuplicate = await hasDuplicateHabit(
+        habit.name,
+        habit.iconName,
+        excludeHabitId: isUpdate ? habit.id : null,
+      );
       if (hasDuplicate) {
         debugPrint('💾 Found duplicate habit with same name and icon');
         return HabitSaveResult.duplicate(habit.name);
       }
       
-      // Save new habit
-      await _databaseService.transaction((txn) async {
-        // Insert habit
-        await txn.insert('habit_metadata', _habitToRow(habit));
-        
-        // Insert ordering record (new habit_metadata go to top)
-        final topOrder = await _getNextTopOrderValue(txn);
-        await txn.insert('habit_display_order', {
-          'habit_id': habit.id,
-          'order_value': topOrder,
-          'created_at': TimezoneUtils.getCurrentTimestampString(),
+      if (isUpdate) {
+        // Update existing habit
+        await _databaseService.transaction((txn) async {
+          // Update habit metadata (preserve created_at and order)
+          final rowData = _habitToRow(habit);
+          // Don't update created_at on updates
+          rowData.remove('created_at');
+          await txn.update(
+            'habit_metadata',
+            rowData,
+            where: 'id = ?',
+            whereArgs: [habit.id],
+          );
+          
+          // Handle reminder updates
+          // First, check if reminder exists
+          final existingReminder = await txn.query(
+            'habit_reminders',
+            where: 'habit_id = ?',
+            whereArgs: [habit.id],
+          );
+          
+          if (habit.enableReminders && habit.reminderTime != null) {
+            // Update or insert reminder
+            if (existingReminder.isNotEmpty) {
+              await txn.update(
+                'habit_reminders',
+                {
+                  'reminder_time_hour': habit.reminderTime!.hour,
+                  'reminder_time_minute': habit.reminderTime!.minute,
+                  'enable_reminders': 1,
+                },
+                where: 'habit_id = ?',
+                whereArgs: [habit.id],
+              );
+            } else {
+              await txn.insert('habit_reminders', {
+                'habit_id': habit.id,
+                'reminder_time_hour': habit.reminderTime!.hour,
+                'reminder_time_minute': habit.reminderTime!.minute,
+                'enable_reminders': 1,
+              });
+            }
+          } else {
+            // Remove reminder if disabled
+            if (existingReminder.isNotEmpty) {
+              await txn.delete(
+                'habit_reminders',
+                where: 'habit_id = ?',
+                whereArgs: [habit.id],
+              );
+            }
+          }
+          
+          // Note: We don't update completion records here as they should be
+          // updated separately via updatePastCompletionGoals() if needed.
+          // Completions are only inserted here for new habits.
         });
         
-        // Insert reminder if enabled
-        if (habit.enableReminders && habit.reminderTime != null) {
-          await txn.insert('habit_reminders', {
+        debugPrint('💾 Habit updated successfully in SQLite');
+      } else {
+        // Save new habit
+        await _databaseService.transaction((txn) async {
+          // Insert habit
+          await txn.insert('habit_metadata', _habitToRow(habit));
+          
+          // Insert ordering record (new habit_metadata go to top)
+          final topOrder = await _getNextTopOrderValue(txn);
+          await txn.insert('habit_display_order', {
             'habit_id': habit.id,
-            'reminder_time_hour': habit.reminderTime!.hour,
-            'reminder_time_minute': habit.reminderTime!.minute,
-            'enable_reminders': 1,
+            'order_value': topOrder,
+            'created_at': TimezoneUtils.getCurrentTimestampString(),
           });
-        }
+          
+          // Insert reminder if enabled
+          if (habit.enableReminders && habit.reminderTime != null) {
+            await txn.insert('habit_reminders', {
+              'habit_id': habit.id,
+              'reminder_time_hour': habit.reminderTime!.hour,
+              'reminder_time_minute': habit.reminderTime!.minute,
+              'enable_reminders': 1,
+            });
+          }
+          
+          // Insert completion records
+          for (final entry in habit.completions.entries) {
+            await txn.insert('daily_completions', {
+              'habit_id': habit.id,
+              'completion_date': TimezoneUtils.toDateString(entry.key),
+              'completion_count': entry.value.count,
+              'goal_at_completion': entry.value.goalAtCompletion,
+            });
+          }
+        });
         
-        // Insert completion records
-        for (final entry in habit.completions.entries) {
-          await txn.insert('daily_completions', {
-            'habit_id': habit.id,
-            'completion_date': TimezoneUtils.toDateString(entry.key),
-            'completion_count': entry.value.count,
-            'goal_at_completion': entry.value.goalAtCompletion,
-          });
-        }
-      });
+        debugPrint('💾 Habit saved successfully to SQLite');
+      }
       
-      debugPrint('💾 Habit saved successfully to SQLite');
       return HabitSaveResult.success(habit);
     } catch (e) {
       debugPrint('❌ Error saving habit: $e');
@@ -706,6 +777,52 @@ class SqliteHabitRepository {
   /// @return true if the update is safe (no duplicates), false otherwise
   Future<bool> canUpdateHabit(String habitId, String newName, String newIconName) async {
     return !await hasDuplicateHabit(newName, newIconName, excludeHabitId: habitId);
+  }
+
+  /// Update goal_at_completion for all past completion records of a habit
+  ///
+  /// This method updates all daily_completions records for a habit to use the new
+  /// target goal. This affects how past completions are evaluated for streaks and
+  /// completion rates. Use this when the user wants to retroactively apply a new
+  /// target goal to all past completions.
+  ///
+  /// @param habitId The ID of the habit to update
+  /// @param newGoal The new target goal value to apply to all completion records
+  /// @return Number of completion records updated
+  Future<int> updatePastCompletionGoals(String habitId, int newGoal) async {
+    try {
+      debugPrint('🔄 Updating past completion goals for habit $habitId to $newGoal');
+      
+      final db = await _databaseService.database;
+      
+      // Get count of records that will be updated
+      final countResult = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM daily_completions WHERE habit_id = ?',
+        [habitId],
+      );
+      final recordCount = (countResult.first['count'] as int?) ?? 0;
+      
+      if (recordCount == 0) {
+        debugPrint('⚠️ No completion records found for habit $habitId');
+        return 0;
+      }
+      
+      // Update all completion records in a single transaction
+      await _databaseService.transaction((txn) async {
+        await txn.update(
+          'daily_completions',
+          {'goal_at_completion': newGoal},
+          where: 'habit_id = ?',
+          whereArgs: [habitId],
+        );
+      });
+      
+      debugPrint('✅ Updated $recordCount completion records with new goal $newGoal');
+      return recordCount;
+    } catch (e) {
+      debugPrint('❌ Error updating past completion goals: $e');
+      rethrow;
+    }
   }
 
   /// Get hourly completion distribution for a specific date range

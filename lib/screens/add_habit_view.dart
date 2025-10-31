@@ -20,12 +20,16 @@ import '../theme.dart';
 /// form widgets for a clean, maintainable structure.
 class AddHabitView extends StatefulWidget {
   final Function(Habit) onHabitAdded;
+  final Function(Habit)? onHabitUpdated;
   final List<Habit> existingHabits;
+  final Habit? habitToEdit;
 
   const AddHabitView({
     super.key,
     required this.onHabitAdded,
+    this.onHabitUpdated,
     required this.existingHabits,
+    this.habitToEdit,
   });
 
   @override
@@ -43,10 +47,18 @@ class _AddHabitViewState extends State<AddHabitView> {
   void initState() {
     super.initState();
     final appState = context.read<AppState>();
+    
+    // Filter out the habit being edited from existing habits for duplicate check
+    final filteredHabits = widget.habitToEdit != null
+        ? widget.existingHabits.where((h) => h.id != widget.habitToEdit!.id).toList()
+        : widget.existingHabits;
+    
     _controller = AddHabitController(
       onHabitAdded: widget.onHabitAdded,
-      existingHabits: widget.existingHabits,
+      onHabitUpdated: widget.onHabitUpdated,
+      existingHabits: filteredHabits,
       appState: appState,
+      existingHabit: widget.habitToEdit,
     );
     _scrollController = ScrollController();
 
@@ -66,8 +78,8 @@ class _AddHabitViewState extends State<AddHabitView> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Initialize random color selection once per screen open
-    if (!_didInitColors) {
+    // Initialize random color selection once per screen open (only for create mode)
+    if (!_didInitColors && !_controller.isEditMode) {
       final colorScheme = Theme.of(context).colorScheme;
       final random = math.Random();
       final randomIndex = random.nextInt(20); // 0-19 (20 predefined colors)
@@ -94,7 +106,7 @@ class _AddHabitViewState extends State<AddHabitView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add New Habit'),
+        title: Text(_controller.isEditMode ? 'Edit Habit' : 'Add New Habit'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
@@ -317,7 +329,7 @@ class _AddHabitViewState extends State<AddHabitView> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Create Habit'),
+                    : Text(_controller.isEditMode ? 'Save Changes' : 'Create Habit'),
               ),
             ),
 
@@ -725,7 +737,7 @@ class _AddHabitViewState extends State<AddHabitView> {
   }
 
   Future<void> _saveHabit(BuildContext context) async {
-    await _controller.saveHabit();
+    await _controller.saveHabit(context: context);
 
     if (_controller.errorMessage == null) {
       // Success - close the screen

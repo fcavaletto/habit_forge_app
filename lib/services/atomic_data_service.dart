@@ -1224,6 +1224,52 @@ class AtomicDataService implements IAtomicDataService {
     }
   }
 
+  /// Update goal_at_completion for all past completion records of a habit
+  ///
+  /// This method updates all daily_completions records for a habit to use the new
+  /// target goal. This affects how past completions are evaluated for streaks and
+  /// completion rates.
+  ///
+  /// @param habitId The ID of the habit to update
+  /// @param newGoal The new target goal value to apply to all completion records
+  /// @param context Data access context for tracking
+  /// @return DataAccessResult with number of records updated
+  Future<DataAccessResult<int>> updatePastCompletionGoals({
+    required String habitId,
+    required int newGoal,
+    required DataAccessContext context,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      debugPrint('🔍 [ATOMIC] updatePastCompletionGoals called: ${context.component}.${context.operation}');
+
+      // Update past completion goals via repository
+      final recordCount = await _repository.updatePastCompletionGoals(habitId, newGoal);
+
+      // Invalidate completion cache for this habit
+      await _cache.invalidateCompletions(habitId);
+
+      stopwatch.stop();
+      debugPrint('✅ [ATOMIC] updatePastCompletionGoals completed: $recordCount records updated in ${stopwatch.elapsedMilliseconds}ms');
+
+      return DataAccessResult.success(
+        data: recordCount,
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint('❌ [ATOMIC] updatePastCompletionGoals failed after ${stopwatch.elapsedMilliseconds}ms: $e');
+
+      return DataAccessResult.failure(
+        errorMessage: 'Failed to update past completion goals: $e',
+        context: context,
+        executionTime: stopwatch.elapsed,
+      );
+    }
+  }
+
   Future<DataAccessResult<HabitMetadata>> processHabitMetadata({
     required Map<String, dynamic> row,
     required DataAccessContext context,

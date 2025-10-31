@@ -522,9 +522,15 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     Color habitColor,
     BuildContext context,
   ) {
+    // Clamp completed count to goal when allowExceedGoal is false
+    // This handles cases where goal is reduced in edit mode and completion count exceeds new goal
+    final displayCount = widget.habit.allowExceedGoal
+        ? todayCount
+        : todayCount.clamp(0, widget.habit.targetGoal);
+
     if (widget.habit.targetGoal <= SmartCompletionButton._maxSegmentedGoal) {
       return SegmentedProgressRing(
-        completed: todayCount,
+        completed: displayCount,
         goal: widget.habit.targetGoal,
         segmentColor: habitColor.withValues(
           alpha: SmartCompletionButton._segmentAlpha,
@@ -540,8 +546,13 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       );
     } else {
       // Fall back to smooth circular progress indicator for higher goals
+      // Clamp value to 1.0 for allowExceedGoal=false when count exceeds goal
+      final progressValue = widget.habit.allowExceedGoal
+          ? (todayCount / widget.habit.targetGoal)
+          : (displayCount / widget.habit.targetGoal).clamp(0.0, 1.0);
+      
       return CircularProgressIndicator(
-        value: todayCount / widget.habit.targetGoal,
+        value: progressValue,
         strokeWidth: 4,
         valueColor: AlwaysStoppedAnimation(habitColor.withValues(alpha: 0.8)),
         backgroundColor: habitColor.withValues(alpha: 0.2),

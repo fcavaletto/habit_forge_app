@@ -43,19 +43,30 @@ import 'add_habit_view.dart';
 /// - **Graceful Recovery**: Maintains form state during error conditions
 class AddHabitScreen extends StatelessWidget {
   final Function(Habit) onHabitAdded;
+  final Function(Habit)? onHabitUpdated;
   final List<Habit> existingHabits;
+  final Habit? habitToEdit;
 
   const AddHabitScreen({
     super.key,
     required this.onHabitAdded,
+    this.onHabitUpdated,
     required this.existingHabits,
+    this.habitToEdit,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Filter out habit being edited from existing habits list
+    final filteredHabits = habitToEdit != null
+        ? existingHabits.where((h) => h.id != habitToEdit!.id).toList()
+        : existingHabits;
+
     return AddHabitView(
       onHabitAdded: onHabitAdded,
-      existingHabits: existingHabits,
+      onHabitUpdated: onHabitUpdated,
+      existingHabits: filteredHabits,
+      habitToEdit: habitToEdit,
     );
   }
 }

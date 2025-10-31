@@ -467,7 +467,7 @@ class _DashboardViewState extends State<DashboardView>
         onIncrement: () => _onIncrementCompletion(habit),
         onDecrement: () => _onCompletionButtonPress(habit),
         onCustomCompletion: () => _onCustomCompletion(habit),
-        onEdit: () => _showHabitDetails(habit),
+        onEdit: () => _showEditHabit(habit),
         onArchive: () => _onArchiveHabit(habit),
         onDelete: () => _onDeleteHabit(habit),
         onStats: () => _showHabitStats(habit),
@@ -648,20 +648,22 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  void _showHabitDetails(Habit habit) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.8,
-        maxChildSize: 0.9,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          child: DetailedHabitCard(
-            habit: habit,
-            onClose: () => Navigator.of(context).pop(),
-          ),
+  void _showEditHabit(Habit habit) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    
+    // Get fresh habit data with completions
+    final freshHabit = appState.habitProvider.getHabitById(habit.id) ?? habit;
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AddHabitScreen(
+          habitToEdit: freshHabit,
+          existingHabits: appState.habitProvider.habits,
+          onHabitAdded: (_) {}, // Not used in edit mode
+          onHabitUpdated: (updatedHabit) {
+            // Habit was already updated in provider, just navigate back
+            // The provider will notify listeners and update the UI
+          },
         ),
       ),
     );

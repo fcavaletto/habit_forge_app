@@ -629,6 +629,36 @@ class PersistentCacheService implements ICachingService {
   }
 
   @override
+  Future<void> invalidateCompletions(String habitId) async {
+    await _ensureInitialized();
+    
+    // For persistent cache, invalidating completions means clearing all
+    // completion data for that habit in the cache. We reload, update, and save.
+    try {
+      final habits = await loadHabits();
+      final habitIndex = habits.indexWhere((h) => h.id == habitId);
+      
+      if (habitIndex >= 0) {
+        // Clear completions for this habit
+        final habit = habits[habitIndex];
+        final habitWithoutCompletions = habit.copyWith(
+          completions: <DateTime, CompletionRecord>{},
+        );
+        habits[habitIndex] = habitWithoutCompletions;
+        
+        // Save updated habits back to cache
+        await saveHabits(habits);
+        debugPrint('✅ [PERSISTENT] Invalidated completions for habit $habitId');
+      } else {
+        debugPrint('⚠️ [PERSISTENT] Habit $habitId not found in cache for invalidation');
+      }
+    } catch (e) {
+      debugPrint('❌ [PERSISTENT] Error invalidating completions for habit $habitId: $e');
+      // Non-fatal - cache will be refreshed on next load
+    }
+  }
+
+  @override
   Future<void> invalidateAllCompletions() async {
     await _ensureInitialized();
     // Clear the entire cache to invalidate all completions

@@ -427,6 +427,172 @@ class HabitState extends ChangeNotifier {
     }
   }
 
+  /// Update an existing habit with optimistic UI updates
+  ///
+  /// This method updates habit metadata (name, description, colors, icon, etc.)
+  /// with optimistic UI updates. If the database update fails, the UI is rolled back.
+  ///
+  /// @param habit The habit with updated metadata
+  /// @return HabitSaveResult indicating success or failure
+  Future<HabitSaveResult> updateHabit(Habit habit) async {
+    try {
+      debugPrint('🔄 [UPDATE_HABIT] Starting habit update for: ${habit.id}');
+
+      // Find habit in local state
+      final habitIndex = _habits.indexWhere((h) => h.id == habit.id);
+      if (habitIndex < 0) {
+        debugPrint('❌ [UPDATE_HABIT] Habit not found in local state: ${habit.id}');
+        return HabitSaveResult.error('Habit not found');
+      }
+
+      final originalHabit = _habits[habitIndex];
+
+      // OPTIMISTIC UI UPDATE: Update UI immediately
+      // Preserve completion data from original habit
+      final optimisticHabit = habit.copyWith(
+        completions: originalHabit.completions,
+      );
+      _habits[habitIndex] = optimisticHabit;
+      notifyListeners(); // Instant UI update
+
+      debugPrint('⚡ [UPDATE_HABIT] Optimistic update applied');
+
+      // BACKGROUND DATABASE SYNC: Perform database operations in background
+      try {
+        // Prepare update map for modifyHabit
+        final updates = <String, dynamic>{
+          'name': habit.name,
+          'description': habit.description,
+          'lightColorValue': habit.lightColorValue,
+          'darkColorValue': habit.darkColorValue,
+          'iconName': habit.iconName,
+          'reminderTime': habit.reminderTime,
+          'enableReminders': habit.enableReminders,
+          'frequencyDays': habit.frequencyDays,
+          'targetGoal': habit.targetGoal,
+          'allowExceedGoal': habit.allowExceedGoal,
+        };
+
+        // Update habit in database (atomic operation)
+        final result = await _dataAccessService.atomicDataService.modifyHabit(
+          habitId: habit.id,
+          updates: updates,
+          context: DataAccessContext(
+            component: 'HabitProvider',
+            operation: 'updateHabit',
+            parameters: {'habitId': habit.id, 'name': habit.name},
+          ),
+        );
+
+        if (!result.success || result.data == null) {
+          throw Exception(result.errorMessage ?? 'Unknown error');
+        }
+
+        final updatedHabitFromDb = result.data!;
+
+        // Merge database habit with preserved completions
+        final updatedHabit = updatedHabitFromDb.copyWith(
+          completions: originalHabit.completions,
+        );
+
+        // Update local state with data from database
+        _habits[habitIndex] = updatedHabit;
+
+        // Update cache using update method
+        final metadata = HabitMetadata.fromHabit(updatedHabit);
+        await _dataAccessService.cache.updateHabitInMetadata(habit.id, {
+          'id': metadata.id,
+          'name': metadata.name,
+          'description': metadata.description,
+          'lightColorValue': metadata.lightColorValue,
+          'darkColorValue': metadata.darkColorValue,
+          'iconName': metadata.iconName,
+          'createdAt': metadata.createdAt.toIso8601String(),
+          'reminderTime': metadata.reminderTime != null
+              ? '${metadata.reminderTime!.hour}:${metadata.reminderTime!.minute}'
+              : null,
+          'enableReminders': metadata.enableReminders,
+          'isArchived': metadata.isArchived,
+          'orderValue': metadata.orderValue,
+          'frequencyDays': metadata.frequencyDays,
+          'targetGoal': metadata.targetGoal,
+          'allowExceedGoal': metadata.allowExceedGoal,
+        });
+        _metadataCache.cacheHabitMetadata(habit.id, metadata);
+
+        // Invalidate completion cache if target goal changed
+        // Note: This will be handled when updating past completion goals
+        // For now, we preserve completions but goal change dialog will handle updates
+        if (originalHabit.targetGoal != habit.targetGoal) {
+          _completionCache.invalidateHabit(habit.id);
+          debugPrint('🔄 [UPDATE_HABIT] Invalidated completion cache (target goal changed)');
+        }
+
+        // Update persistent cache
+        try {
+          await _persistentCache.updateHabit(updatedHabit);
+          debugPrint('✅ [UPDATE_HABIT] Persistent cache updated');
+        } catch (e) {
+          debugPrint('⚠️ [UPDATE_HABIT] Failed to update persistent cache: $e');
+          // Non-fatal - app continues with in-memory data
+        }
+
+        // Notify listeners
+        notifyListeners();
+
+        debugPrint('✅ [UPDATE_HABIT] Habit updated successfully: ${habit.id}');
+        return HabitSaveResult.success(updatedHabit);
+      } catch (e) {
+        // ROLLBACK: Revert optimistic update on database failure
+        _habits[habitIndex] = originalHabit;
+        notifyListeners();
+        debugPrint('❌ [UPDATE_HABIT] Database update failed, rolled back: $e');
+        return HabitSaveResult.error('Failed to update habit: $e');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ [UPDATE_HABIT] Failed: $e');
+      debugPrint('Stack trace: $stackTrace');
+      return HabitSaveResult.error('Failed to update habit: $e');
+    }
+  }
+
+  /// Update past completion goals for a habit
+  ///
+  /// Updates all completion records for a habit to use the new target goal.
+  /// This affects how past completions are evaluated for streaks and completion rates.
+  ///
+  /// @param habitId The ID of the habit to update
+  /// @param newGoal The new target goal value to apply to all completion records
+  /// @return Number of records updated
+  Future<int> updatePastCompletionGoals(String habitId, int newGoal) async {
+    try {
+      debugPrint('🔄 [UPDATE_GOALS] Updating past completion goals for habit $habitId to $newGoal');
+
+      final result = await _dataAccessService.atomicDataService.updatePastCompletionGoals(
+        habitId: habitId,
+        newGoal: newGoal,
+        context: DataAccessContext(
+          component: 'HabitProvider',
+          operation: 'updatePastCompletionGoals',
+          parameters: {'habitId': habitId, 'newGoal': newGoal},
+        ),
+      );
+
+      if (result.success && result.data != null) {
+        // Invalidate completion cache for this habit
+        _completionCache.invalidateHabit(habitId);
+        debugPrint('✅ [UPDATE_GOALS] Updated ${result.data} completion records');
+        return result.data!;
+      } else {
+        debugPrint('❌ [UPDATE_GOALS] Failed to update past completion goals: ${result.errorMessage}');
+        throw Exception(result.errorMessage ?? 'Unknown error');
+      }
+    } catch (e) {
+      debugPrint('❌ [UPDATE_GOALS] Error updating past completion goals: $e');
+      rethrow;
+    }
+  }
+
   /// Update habit completion count with optimistic UI updates
   ///
   /// This method updates the UI immediately (optimistic) and then syncs

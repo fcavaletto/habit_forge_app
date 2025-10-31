@@ -33,6 +33,9 @@ abstract class ICachingService {
   /// Invalidate completion cache for a habit and date
   Future<void> invalidateCompletion(String habitId, DateTime date);
 
+  /// Invalidate all completion caches for a specific habit
+  Future<void> invalidateCompletions(String habitId);
+
   /// Invalidate all completion caches
   Future<void> invalidateAllCompletions();
   
@@ -166,6 +169,12 @@ class MemoryCachingService implements ICachingService {
       _completionCache[habitId]!.remove(normalizedDate);
       debugPrint('🗑️ Completion cache invalidated for habit $habitId on $normalizedDate');
     }
+  }
+
+  @override
+  Future<void> invalidateCompletions(String habitId) async {
+    _completionCache.remove(habitId);
+    debugPrint('🗑️ Completion cache invalidated for habit $habitId');
   }
 
   @override
