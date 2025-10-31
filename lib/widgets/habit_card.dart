@@ -847,9 +847,12 @@ class HabitCard extends StatelessWidget {
                           Duration(days: 6 - index),
                         );
                         final count = habit.getCompletionCount(date);
+                        // Use goal at completion for that date, not current goal
+                        // This ensures "Keep Past" option preserves original color intensity
+                        final goalAtCompletion = habit.getGoalAtCompletion(date);
                         final intensity = count > 0
-                            ? (count / habit.targetGoal).clamp(0.0, 1.0)
-                            : 0.0; // Use actual goal for visualization
+                            ? (count / goalAtCompletion).clamp(0.0, 1.0)
+                            : 0.0;
 
                         return Expanded(
                           child: Container(
