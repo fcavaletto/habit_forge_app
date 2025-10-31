@@ -528,10 +528,13 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
         ? todayCount
         : todayCount.clamp(0, widget.habit.targetGoal);
 
-    if (widget.habit.targetGoal <= SmartCompletionButton._maxSegmentedGoal) {
+    // Ensure targetGoal is valid to prevent invalid SegmentedProgressRing
+    final validGoal = widget.habit.targetGoal > 0 ? widget.habit.targetGoal : 1;
+
+    if (validGoal <= SmartCompletionButton._maxSegmentedGoal) {
       return SegmentedProgressRing(
         completed: displayCount,
-        goal: widget.habit.targetGoal,
+        goal: validGoal,
         segmentColor: habitColor.withValues(
           alpha: SmartCompletionButton._segmentAlpha,
         ),
@@ -546,13 +549,22 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       );
     } else {
       // Fall back to smooth circular progress indicator for higher goals
-      // Clamp value to 1.0 for allowExceedGoal=false when count exceeds goal
+      // Ensure targetGoal is valid to prevent division by zero or invalid calculations
+      final validGoal = widget.habit.targetGoal > 0
+          ? widget.habit.targetGoal
+          : 1;
+
+      // Clamp progress value to prevent overflow issues
+      // For allowExceedGoal=true, still clamp to reasonable display range (max 2.0 = 200%)
       final progressValue = widget.habit.allowExceedGoal
-          ? (todayCount / widget.habit.targetGoal)
-          : (displayCount / widget.habit.targetGoal).clamp(0.0, 1.0);
-      
+          ? ((todayCount / validGoal).clamp(0.0, 2.0))
+          : (displayCount / validGoal).clamp(0.0, 1.0);
+
       return CircularProgressIndicator(
-        value: progressValue,
+        value: progressValue.clamp(
+          0.0,
+          1.0,
+        ), // CircularProgressIndicator expects 0.0-1.0
         strokeWidth: 4,
         valueColor: AlwaysStoppedAnimation(habitColor.withValues(alpha: 0.8)),
         backgroundColor: habitColor.withValues(alpha: 0.2),
@@ -859,12 +871,17 @@ class HabitCard extends StatelessWidget {
                                   )
                                 : count > 0
                                 ? Center(
-                                    child: Text(
-                                      count.toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.w600,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        count.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   )

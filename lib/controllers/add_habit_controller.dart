@@ -227,6 +227,7 @@ class AddHabitController {
         allowExceedGoal: allowExceedGoal,
         enableReminders: enableReminders,
         reminderTime: reminderTime,
+        completions: <DateTime, CompletionRecord>{}, // Clear completions for preview
       );
     }
 
