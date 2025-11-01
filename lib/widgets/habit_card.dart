@@ -9,6 +9,7 @@ import '../utils/week_utils.dart';
 import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import 'segmented_progress_ring.dart';
+import 'outlined_icon.dart';
 
 /// Smart completion button that adapts its appearance and behavior
 /// based on the habit's goal and current completion state.
@@ -174,15 +175,27 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
               child: _buildProgressIndicator(todayCount, habitColor, context),
             ),
           ],
-          Icon(
-            _getButtonIcon(buttonState),
-            color: Theme.of(context).brightness == Brightness.light
-                ? isCompleted
+          (() {
+            final iconData = _getButtonIcon(buttonState);
+            final iconSize = _getIconSize(buttonState);
+            final isLight = Theme.of(context).brightness == Brightness.light;
+            if (iconData == Icons.check && isCompleted) {
+              return OutlinedIcon(
+                iconData,
+                size: iconSize,
+                fillColor: Colors.white,
+              );
+            }
+            return Icon(
+              iconData,
+              color: isLight
+                  ? isCompleted
                       ? Colors.white
                       : habitColor.darken(0.1)
-                : Colors.white.withValues(alpha: 0.8),
-            size: _getIconSize(buttonState),
-          ),
+                  : Colors.white.withValues(alpha: 0.8),
+              size: iconSize,
+            );
+          })(),
         ],
       ),
     );
