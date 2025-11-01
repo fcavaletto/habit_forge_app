@@ -795,7 +795,7 @@ class _HabitCardState extends State<HabitCard> {
             borderRadius: BorderRadius.circular(11.0),
             focusColor: habitColor.withValues(alpha: 0.2),
             child: Padding(
-              padding: const EdgeInsets.all(12), // Reduced padding
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 6), // Reduced padding
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1018,10 +1018,17 @@ class _HabitCardState extends State<HabitCard> {
                                           ),
                                         ),
                                         child: widget.habit.isGoalAchieved(date)
-                                            ? const Icon(
-                                                Icons.check,
-                                                size: 10,
-                                                color: Colors.white,
+                                            ? Center(
+                                                child: Stack(
+                                                  alignment: Alignment.center,
+                                                  children: const [
+                                                    Icon(
+                                                      Icons.check,
+                                                      size: 10,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ],
+                                                ),
                                               )
                                             : count > 0
                                             ? Center(
@@ -1052,21 +1059,24 @@ class _HabitCardState extends State<HabitCard> {
                           // Collapse/expand button (hidden in preview/edit mode)
                           if (_isCollapseStateLoaded &&
                               !widget.hideCollapseButton)
-                            Center(
-                              child: InkWell(
-                                onTap: _toggleCollapse,
-                                borderRadius: BorderRadius.circular(16),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  child: Icon(
-                                    _isCollapsed
-                                        ? Icons.keyboard_arrow_down
-                                        : Icons.keyboard_arrow_up,
-                                    size: 20,
-                                    color: colorScheme.onSurfaceVariant,
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Center(
+                                child: InkWell(
+                                  onTap: _toggleCollapse,
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 0,
+                                    ),
+                                    child: Icon(
+                                      _isCollapsed
+                                          ? Icons.keyboard_arrow_down
+                                          : Icons.keyboard_arrow_up,
+                                      size: 20,
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
                                   ),
                                 ),
                               ),
