@@ -283,31 +283,50 @@ class _DashboardViewState extends State<DashboardView>
   /// Note: No loading spinner is shown because data is preloaded before
   /// the UI is rendered. Dashboard always has data ready.
   Widget _buildOptimizedBody(AppState appState) {
-    // Use Consumer<HabitProvider> to listen only to habit list changes
-    // This prevents rebuilding when individual habit completions change
-    return Consumer<HabitProvider>(
-      builder: (context, habitProvider, child) {
-        final filteredHabits = habitProvider.filteredHabits;
-        final hasAnyHabits = habitProvider.habits.isNotEmpty;
-        debugPrint(
-          '🔄 Optimized DashboardView building with ${filteredHabits.length} filtered habits',
+    // Get week start preference using Selector to only rebuild when it changes
+    return Selector<AppState, bool>(
+      selector: (context, appState) => appState.weekStartsOnMonday,
+      builder: (context, weekStartsOnMonday, child) {
+        // Use Selector<HabitProvider, List<String>> to listen only to habit list changes
+        // This prevents rebuilding when individual habit completions change
+        return Selector<HabitProvider, List<String>>(
+          selector: (context, habitProvider) =>
+              habitProvider.filteredHabits.map((h) => h.id).toList(),
+          builder: (context, habitIds, child) {
+            final habitProvider = Provider.of<HabitProvider>(
+              context,
+              listen: false,
+            );
+            final filteredHabits = habitProvider.filteredHabits;
+            final hasAnyHabits = habitProvider.habits.isNotEmpty;
+            // Get current date from VirtualDateService (same for all cards)
+            final currentDate = VirtualDateService().currentDate;
+
+            debugPrint(
+              '🔄 Optimized DashboardView building with ${filteredHabits.length} filtered habits',
+            );
+
+            // No loading spinner - data is preloaded before UI shows
+            // Background refresh happens silently without loading states
+
+            if (filteredHabits.isEmpty) {
+              debugPrint(
+                '📭 No habits found for selected date, showing empty state',
+              );
+              return _buildEmptyState(
+                hasAnyHabits: hasAnyHabits,
+                appState: appState,
+              );
+            }
+
+            debugPrint('📊 Building habits list with selective rebuilds');
+            return _buildHabitsList(
+              filteredHabits,
+              weekStartsOnMonday,
+              currentDate,
+            );
+          },
         );
-
-        // No loading spinner - data is preloaded before UI shows
-        // Background refresh happens silently without loading states
-
-        if (filteredHabits.isEmpty) {
-          debugPrint(
-            '📭 No habits found for selected date, showing empty state',
-          );
-          return _buildEmptyState(
-            hasAnyHabits: hasAnyHabits,
-            appState: appState,
-          );
-        }
-
-        debugPrint('📊 Building habits list with selective rebuilds');
-        return _buildHabitsList(filteredHabits);
       },
     );
   }
@@ -409,7 +428,11 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  Widget _buildHabitsList(List<Habit> habits) {
+  Widget _buildHabitsList(
+    List<Habit> habits,
+    bool weekStartsOnMonday,
+    DateTime currentDate,
+  ) {
     return SafeCustomScrollView(
       slivers: [
         SliverPadding(
@@ -441,7 +464,11 @@ class _DashboardViewState extends State<DashboardView>
                 return Container(
                   key: ValueKey(habit.id),
                   margin: const EdgeInsets.only(bottom: 12),
-                  child: _buildSelectiveHabitCard(habit),
+                  child: _buildSelectiveHabitCard(
+                    habit,
+                    weekStartsOnMonday,
+                    currentDate,
+                  ),
                 );
               },
             ),
@@ -457,7 +484,11 @@ class _DashboardViewState extends State<DashboardView>
   /// in the specific habit data, rather than rebuilding when any habit changes.
   /// This provides significant performance improvements by only rebuilding
   /// the specific habit card that actually changed.
-  Widget _buildSelectiveHabitCard(Habit habit) {
+  Widget _buildSelectiveHabitCard(
+    Habit habit,
+    bool weekStartsOnMonday,
+    DateTime currentDate,
+  ) {
     // Use RepaintBoundary to isolate repaints and implement true selective rebuilds
     return RepaintBoundary(
       child: _HabitCardWrapper(
@@ -471,6 +502,8 @@ class _DashboardViewState extends State<DashboardView>
         onArchive: () => _onArchiveHabit(habit),
         onDelete: () => _onDeleteHabit(habit),
         onStats: () => _showHabitStats(habit),
+        weekStartsOnMonday: weekStartsOnMonday,
+        currentDate: currentDate,
       ),
     );
   }
@@ -650,10 +683,10 @@ class _DashboardViewState extends State<DashboardView>
 
   void _showEditHabit(Habit habit) {
     final appState = Provider.of<AppState>(context, listen: false);
-    
+
     // Get fresh habit data with completions
     final freshHabit = appState.habitProvider.getHabitById(habit.id) ?? habit;
-    
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => AddHabitScreen(
@@ -1128,6 +1161,8 @@ class _HabitCardWrapper extends StatefulWidget {
   final VoidCallback onArchive;
   final VoidCallback onDelete;
   final VoidCallback onStats;
+  final bool weekStartsOnMonday;
+  final DateTime currentDate;
 
   const _HabitCardWrapper({
     required this.habit,
@@ -1140,6 +1175,8 @@ class _HabitCardWrapper extends StatefulWidget {
     required this.onArchive,
     required this.onDelete,
     required this.onStats,
+    required this.weekStartsOnMonday,
+    required this.currentDate,
   });
 
   @override
@@ -1148,47 +1185,94 @@ class _HabitCardWrapper extends StatefulWidget {
 
 class _HabitCardWrapperState extends State<_HabitCardWrapper> {
   int? _cachedCompletionCount;
-  DateTime? _cachedDate;
+  DateTime? _cachedSelectedDate; // CRITICAL: Must track this separately
+  bool? _cachedWeekStartsOnMonday;
+  Habit? _cachedHabitReference; // Use for reference comparison with identical()
   bool _isInitialized = false;
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<HabitProvider>(
-      builder: (context, habitProvider, child) {
-        final currentDate = habitProvider.selectedDate;
+  void didUpdateWidget(_HabitCardWrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
-        // Get the updated habit object from provider instead of using stale widget.habit
+    // Use identical() for reference comparison, NOT ==
+    // Habit.operator == compares by ID, not reference
+    if (!identical(oldWidget.habit, widget.habit)) {
+      // Habit reference changed - force rebuild to update cache
+      setState(() {});
+    }
+
+    // Also check if week preference or currentDate changed
+    if (oldWidget.weekStartsOnMonday != widget.weekStartsOnMonday ||
+        oldWidget.currentDate != widget.currentDate) {
+      setState(() {}); // Force rebuild for week-related changes
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<HabitProvider, int>(
+      selector: (context, habitProvider) {
+        final selectedDate = habitProvider.selectedDate;
+        // Always get fresh completion count from provider's habit
+        final updatedHabit = habitProvider.habits.firstWhere(
+          (h) => h.id == widget.habit.id,
+          orElse: () => widget.habit, // Fallback
+        );
+        return updatedHabit.getCompletionCount(selectedDate);
+      },
+      builder: (context, completionCountFromSelector, child) {
+        final habitProvider = Provider.of<HabitProvider>(
+          context,
+          listen: false,
+        );
+
+        // Use provider's selectedDate for completion count checks (for filtering/selection)
+        // This is the date the user has selected to view habits for
+        final selectedDate = habitProvider.selectedDate;
+        // Use widget.currentDate for week calculations (from VirtualDateService)
+        // This is the date used for week boundary calculations
+        final currentDateForWeeks = widget.currentDate;
+
+        // Always get updated habit from provider (source of truth)
         final updatedHabit = habitProvider.habits.firstWhere(
           (h) => h.id == widget.habit.id,
           orElse: () => widget.habit, // Fallback to widget.habit if not found
         );
 
-        // Get completion count directly from cache without FutureBuilder
-        final currentCompletionCount =
-            habitProvider.getCachedCompletionCountSync(
-              widget.habit.id,
-              currentDate,
-            ) ??
-            updatedHabit.getCompletionCount(currentDate);
+        // Check ALL changes using proper comparison methods
+        final habitReferenceChanged = !identical(
+          _cachedHabitReference,
+          updatedHabit,
+        );
+        final completionCountChanged =
+            _cachedCompletionCount != completionCountFromSelector;
+        final selectedDateChanged = _cachedSelectedDate != selectedDate;
+        final weekPrefChanged =
+            _cachedWeekStartsOnMonday != widget.weekStartsOnMonday;
 
-        // Check if this specific habit actually changed
         final hasChanged =
             !_isInitialized ||
-            _cachedCompletionCount != currentCompletionCount ||
-            _cachedDate != currentDate;
+            habitReferenceChanged ||
+            completionCountChanged ||
+            selectedDateChanged ||
+            weekPrefChanged;
 
         if (!hasChanged) {
           return child!; // Return cached widget
         }
 
-        // Update cache
-        _cachedCompletionCount = currentCompletionCount;
-        _cachedDate = currentDate;
+        // Update ALL cache fields with latest values from provider
+        _cachedCompletionCount = completionCountFromSelector;
+        _cachedSelectedDate = selectedDate;
+        _cachedWeekStartsOnMonday = widget.weekStartsOnMonday;
+        _cachedHabitReference =
+            updatedHabit; // CRITICAL: Cache provider's habit, not widget.habit
         _isInitialized = true;
 
+        // Create new HabitCard with updated data
         return HabitCard(
           key: ValueKey(widget.habit.id),
-          habit: updatedHabit, // Use updated habit object
+          habit: updatedHabit, // Use updated habit from provider
           onTap: widget.onTap,
           onComplete: widget.onComplete,
           onIncrement: widget.onIncrement,
@@ -1198,6 +1282,9 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
           onArchive: widget.onArchive,
           onDelete: widget.onDelete,
           onStats: widget.onStats,
+          weekStartsOnMonday: widget.weekStartsOnMonday,
+          currentDate:
+              currentDateForWeeks, // Use VirtualDateService date for week calculations
         );
       },
       child: HabitCard(
@@ -1212,6 +1299,8 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
         onArchive: widget.onArchive,
         onDelete: widget.onDelete,
         onStats: widget.onStats,
+        weekStartsOnMonday: widget.weekStartsOnMonday,
+        currentDate: widget.currentDate,
       ),
     );
   }

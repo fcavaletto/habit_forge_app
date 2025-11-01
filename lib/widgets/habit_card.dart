@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:habit_forge_app/utils/color_extensions.dart';
 import '../models/habit.dart';
 import '../utils/icon_utils.dart';
@@ -9,7 +8,6 @@ import '../services/haptic_feedback_service.dart';
 import '../utils/week_utils.dart';
 import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
-import '../providers/app_state_provider.dart';
 import 'segmented_progress_ring.dart';
 
 /// Smart completion button that adapts its appearance and behavior
@@ -643,6 +641,12 @@ class HabitCard extends StatefulWidget {
   /// When true, card is always collapsed and button is hidden (for preview/edit mode)
   final bool hideCollapseButton;
 
+  /// Whether the week starts on Monday (true) or Sunday (false)
+  final bool weekStartsOnMonday;
+
+  /// The current date to use for week calculations
+  final DateTime currentDate;
+
   const HabitCard({
     super.key,
     required this.habit,
@@ -657,6 +661,8 @@ class HabitCard extends StatefulWidget {
     this.onEdit,
     this.onStats,
     this.hideCollapseButton = false,
+    required this.weekStartsOnMonday,
+    required this.currentDate,
   });
 
   @override
@@ -667,6 +673,11 @@ class _HabitCardState extends State<HabitCard> {
   bool _isCollapsed = true; // Default to collapsed
   bool _isCollapseStateLoaded = false;
   late SettingsRepository _settingsRepository;
+  
+  // Memoization for weeks data to avoid recalculating on every rebuild
+  List<List<DateTime>>? _cachedWeeksData;
+  bool? _cachedWeekStartsOnMonday;
+  DateTime? _cachedCurrentDate;
 
   @override
   void initState() {
@@ -918,17 +929,24 @@ class _HabitCardState extends State<HabitCard> {
                   const SizedBox(height: 8),
 
                   // 4-week progress grid with day labels and collapse functionality
-                  Consumer<AppState>(
-                    builder: (context, appState, child) {
-                      final weekStartsOnMonday = appState.weekStartsOnMonday;
-                      final currentDate = VirtualDateService().currentDate;
-                      final weeksData = WeekUtils.getWeeksData(
-                        currentDate,
-                        weekStartsOnMonday,
-                        numberOfWeeks: 4,
-                      );
+                  Builder(
+                    builder: (context) {
+                      // Memoize weeks data - only recalculate if parameters changed
+                      if (_cachedWeeksData == null ||
+                          _cachedWeekStartsOnMonday != widget.weekStartsOnMonday ||
+                          _cachedCurrentDate != widget.currentDate) {
+                        _cachedWeeksData = WeekUtils.getWeeksData(
+                          widget.currentDate,
+                          widget.weekStartsOnMonday,
+                          numberOfWeeks: 4,
+                        );
+                        _cachedWeekStartsOnMonday = widget.weekStartsOnMonday;
+                        _cachedCurrentDate = widget.currentDate;
+                      }
+                      
+                      final weeksData = _cachedWeeksData!;
                       final dayLabels = WeekUtils.getDayLabels(
-                        weekStartsOnMonday,
+                        widget.weekStartsOnMonday,
                       );
 
                       return Column(

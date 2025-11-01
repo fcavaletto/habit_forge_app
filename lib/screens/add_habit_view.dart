@@ -11,6 +11,7 @@ import '../widgets/habit_card.dart';
 import '../widgets/dialogs/pro_upgrade_dialog.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
+import '../services/virtual_date_service.dart';
 import '../theme.dart';
 
 /// Add Habit View - Pure UI component for adding new habits
@@ -208,20 +209,28 @@ class _AddHabitViewState extends State<AddHabitView> {
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       child: Opacity(
                         opacity: 0.95,
-                        child: HabitCard(
-                          habit: previewHabit,
-                          // Disable all interactions
-                          onTap: null,
-                          onComplete: null,
-                          onIncrement: null,
-                          onDecrement: null,
-                          onCustomCompletion: null,
-                          onEdit: null,
-                          onArchive: null,
-                          onDelete: null,
-                          onStats: null,
-                          // Hide collapse button and always show collapsed in preview/edit mode
-                          hideCollapseButton: true,
+                        child: Selector<AppState, bool>(
+                          selector: (context, appState) =>
+                              appState.weekStartsOnMonday,
+                          builder: (context, weekStartsOnMonday, child) {
+                            return HabitCard(
+                              habit: previewHabit,
+                              // Disable all interactions
+                              onTap: null,
+                              onComplete: null,
+                              onIncrement: null,
+                              onDecrement: null,
+                              onCustomCompletion: null,
+                              onEdit: null,
+                              onArchive: null,
+                              onDelete: null,
+                              onStats: null,
+                              // Hide collapse button and always show collapsed in preview/edit mode
+                              hideCollapseButton: true,
+                              weekStartsOnMonday: weekStartsOnMonday,
+                              currentDate: VirtualDateService().currentDate,
+                            );
+                          },
                         ),
                       ),
                     )
