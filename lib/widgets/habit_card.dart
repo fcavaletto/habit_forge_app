@@ -684,9 +684,11 @@ class _HabitCardState extends State<HabitCard> {
   Future<void> _loadCollapseState() async {
     // Don't load state if button is hidden
     if (widget.hideCollapseButton) return;
-    
+
     try {
-      final isCollapsed = await _settingsRepository.getHabitCardCollapsed(widget.habit.id);
+      final isCollapsed = await _settingsRepository.getHabitCardCollapsed(
+        widget.habit.id,
+      );
       if (mounted) {
         setState(() {
           _isCollapsed = isCollapsed;
@@ -707,12 +709,15 @@ class _HabitCardState extends State<HabitCard> {
   Future<void> _toggleCollapse() async {
     // Don't allow toggling if button is hidden
     if (widget.hideCollapseButton) return;
-    
+
     setState(() {
       _isCollapsed = !_isCollapsed;
     });
     try {
-      await _settingsRepository.saveHabitCardCollapsed(widget.habit.id, _isCollapsed);
+      await _settingsRepository.saveHabitCardCollapsed(
+        widget.habit.id,
+        _isCollapsed,
+      );
     } catch (e) {
       debugPrint('❌ Error saving collapse state: $e');
     }
@@ -772,7 +777,9 @@ class _HabitCardState extends State<HabitCard> {
           child: InkWell(
             // Short tap shows context menu, long press handled by ReorderableListView
             // Only make tappable if callback is provided (for preview mode)
-            onTap: widget.onTap != null ? () => _showContextMenu(context) : null,
+            onTap: widget.onTap != null
+                ? () => _showContextMenu(context)
+                : null,
             // Rounded corners for modern Material 3 design
             borderRadius: BorderRadius.circular(11.0),
             focusColor: habitColor.withValues(alpha: 0.2),
@@ -796,7 +803,7 @@ class _HabitCardState extends State<HabitCard> {
                             borderRadius: BorderRadius.circular(9),
                             border: Border.all(color: habitColor, width: 1),
                           ),
-                            child: Icon(
+                          child: Icon(
                             widget.habit.iconName.toIconData,
                             color: habitColor,
                             size: 25,
@@ -814,7 +821,8 @@ class _HabitCardState extends State<HabitCard> {
                             label: 'View ${widget.habit.name} statistics',
                             hint: 'Opens detailed statistics for this habit',
                             button:
-                                widget.onStats != null, // Disable semantics in preview
+                                widget.onStats !=
+                                null, // Disable semantics in preview
                             child: InkWell(
                               // Disable interaction in preview mode
                               onTap: widget.onStats != null
@@ -822,8 +830,9 @@ class _HabitCardState extends State<HabitCard> {
                                         () {
                                           Navigator.of(context).push(
                                             MaterialPageRoute(
-                                              builder: (context) =>
-                                                  StatsScreen(habit: widget.habit),
+                                              builder: (context) => StatsScreen(
+                                                habit: widget.habit,
+                                              ),
                                             ),
                                           );
                                         })
@@ -918,7 +927,9 @@ class _HabitCardState extends State<HabitCard> {
                         weekStartsOnMonday,
                         numberOfWeeks: 4,
                       );
-                      final dayLabels = WeekUtils.getDayLabels(weekStartsOnMonday);
+                      final dayLabels = WeekUtils.getDayLabels(
+                        weekStartsOnMonday,
+                      );
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -944,68 +955,85 @@ class _HabitCardState extends State<HabitCard> {
                           const SizedBox(height: 4),
                           // 4-week grid
                           Column(
-                            children: List.generate(
-                              _isCollapsed ? 1 : 4,
-                              (weekIndex) {
-                                final weekDates = weeksData[weekIndex];
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: weekIndex < (_isCollapsed ? 0 : 3) ? 2 : 0,
-                                  ),
-                                  child: Row(
-                                    children: List.generate(7, (dayIndex) {
-                                      final date = weekDates[dayIndex];
-                                      final count = widget.habit.getCompletionCount(date);
-                                      // Use goal at completion for that date, not current goal
-                                      // This ensures "Keep Past" option preserves original color intensity
-                                      final goalAtCompletion = widget.habit.getGoalAtCompletion(date);
-                                      final intensity = count > 0
-                                          ? (count / goalAtCompletion).clamp(0.0, 1.0)
-                                          : 0.0;
+                            children: List.generate(_isCollapsed ? 1 : 4, (
+                              weekIndex,
+                            ) {
+                              final weekDates = weeksData[weekIndex];
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: weekIndex < (_isCollapsed ? 0 : 4)
+                                      ? 4
+                                      : 0,
+                                ),
+                                child: Row(
+                                  children: List.generate(7, (dayIndex) {
+                                    final date = weekDates[dayIndex];
+                                    final count = widget.habit
+                                        .getCompletionCount(date);
+                                    // Use goal at completion for that date, not current goal
+                                    // This ensures "Keep Past" option preserves original color intensity
+                                    final goalAtCompletion = widget.habit
+                                        .getGoalAtCompletion(date);
+                                    final intensity = count > 0
+                                        ? (count / goalAtCompletion).clamp(
+                                            0.0,
+                                            1.0,
+                                          )
+                                        : 0.0;
 
-                                      return Expanded(
-                                        child: Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                                          height: 28,
-                                          decoration: BoxDecoration(
-                                            color: count > 0
-                                                ? habitColor.withValues(alpha: intensity)
-                                                : habitColor.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(1),
-                                          ),
-                                          child: widget.habit.isGoalAchieved(date)
-                                              ? const Icon(
-                                                  Icons.check,
-                                                  size: 10,
-                                                  color: Colors.white,
-                                                )
-                                              : count > 0
-                                                  ? Center(
-                                                      child: FittedBox(
-                                                        fit: BoxFit.scaleDown,
-                                                        child: Text(
-                                                          count.toString(),
-                                                          style: const TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 8,
-                                                            fontWeight: FontWeight.w600,
-                                                          ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : null,
+                                    return Expanded(
+                                      child: Container(
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 1.5,
                                         ),
-                                      );
-                                    }),
-                                  ),
-                                );
-                              },
-                            ),
+                                        height: 28,
+                                        decoration: BoxDecoration(
+                                          color: count > 0
+                                              ? habitColor.withValues(
+                                                  alpha: intensity,
+                                                )
+                                              : habitColor.withValues(
+                                                  alpha: 0.1,
+                                                ),
+                                          borderRadius: BorderRadius.circular(
+                                            0,
+                                          ),
+                                        ),
+                                        child: widget.habit.isGoalAchieved(date)
+                                            ? const Icon(
+                                                Icons.check,
+                                                size: 10,
+                                                color: Colors.white,
+                                              )
+                                            : count > 0
+                                            ? Center(
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
+                                                    count.toString(),
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 8,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              );
+                            }),
                           ),
                           // Collapse/expand button (hidden in preview/edit mode)
-                          if (_isCollapseStateLoaded && !widget.hideCollapseButton)
+                          if (_isCollapseStateLoaded &&
+                              !widget.hideCollapseButton)
                             Center(
                               child: InkWell(
                                 onTap: _toggleCollapse,
