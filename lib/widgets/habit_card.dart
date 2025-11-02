@@ -327,7 +327,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
                     ),
             )
           : GestureDetector(
-              onTap: () => _handleButtonPress(todayCount, isCompleted),
+              onTap: () => _handleButtonPress(),
               child: _isBursting
                   ? _buildBurstingWithOverlay(
                       context,
@@ -455,7 +455,15 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   /// - Empty state: Calls [onIncrement] to mark first completion
   /// - Completed state: Calls [onDecrement] to reset (burst animation)
   /// - In progress state: Calls [onIncrement] to add another completion
-  void _handleButtonPress(int todayCount, bool isCompleted) {
+  ///
+  /// Reads fresh state from widget.habit to avoid stale state issues.
+  void _handleButtonPress() {
+    // Read fresh state from widget.habit to avoid stale parameters
+    // This ensures we always have the latest completion state
+    final today = VirtualDateService().currentDate;
+    final todayCount = widget.habit.getCompletionCount(today);
+    final isCompleted = widget.habit.isGoalAchieved(today);
+
     setState(() {
       _wasTappedByUser = true; // Set flag on user tap
     });
