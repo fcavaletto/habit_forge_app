@@ -489,23 +489,67 @@ class _DashboardViewState extends State<DashboardView>
     bool weekStartsOnMonday,
     DateTime currentDate,
   ) {
+    // Store habitId to avoid closure capture issues
+    final habitId = habit.id;
+    
     // Use RepaintBoundary to isolate repaints and implement true selective rebuilds
     return RepaintBoundary(
       child: _HabitCardWrapper(
         habit: habit,
-        onTap: () => _onHabitTap(habit),
-        onComplete: () => _onMarkCompleted(habit),
-        onIncrement: () => _onIncrementCompletion(habit),
-        onDecrement: () => _onCompletionButtonPress(habit),
-        onCustomCompletion: () => _onCustomCompletion(habit),
-        onEdit: () => _showEditHabit(habit),
-        onArchive: () => _onArchiveHabit(habit),
-        onDelete: () => _onDeleteHabit(habit),
-        onStats: () => _showHabitStats(habit),
+        onTap: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _onHabitTap(freshHabit);
+        },
+        onComplete: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _onMarkCompleted(freshHabit);
+        },
+        onIncrement: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _onIncrementCompletion(freshHabit);
+        },
+        onDecrement: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _onCompletionButtonPress(freshHabit);
+        },
+        onCustomCompletion: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _onCustomCompletion(freshHabit);
+        },
+        onEdit: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _showEditHabit(freshHabit);
+        },
+        onArchive: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _onArchiveHabit(freshHabit);
+        },
+        onDelete: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _onDeleteHabit(freshHabit);
+        },
+        onStats: () {
+          final freshHabit = _getFreshHabit(habitId);
+          if (freshHabit != null) _showHabitStats(freshHabit);
+        },
         weekStartsOnMonday: weekStartsOnMonday,
         currentDate: currentDate,
       ),
     );
+  }
+
+  /// Get fresh habit from provider to avoid stale closure captures
+  Habit? _getFreshHabit(String habitId) {
+    try {
+      final habitProvider = Provider.of<HabitProvider>(context, listen: false);
+      return habitProvider.habits.firstWhere(
+        (h) => h.id == habitId,
+        orElse: () => throw Exception('Habit not found: $habitId'),
+      );
+    } catch (e) {
+      debugPrint('⚠️ Failed to get fresh habit $habitId: $e');
+      return null;
+    }
   }
 
   /// Builds the dashboard header with habit statistics

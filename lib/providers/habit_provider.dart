@@ -76,6 +76,9 @@ class HabitState extends ChangeNotifier {
       true; // Whether to show all habits or just today's habits (default: all)
   bool _loadedFromCache =
       false; // Track if last load was from cache (to skip redundant refresh)
+  
+  // Operation serialization: Track ongoing operations per habit to prevent race conditions
+  final Map<String, Future<void>> _pendingOperations = {};
 
   HabitState(this._habitRepository, this._settingsRepository) {
     // Initialize DataAccessService with repository and cache
@@ -658,13 +661,47 @@ class HabitState extends ChangeNotifier {
   /// This method updates the UI immediately (optimistic) and then syncs
   /// to the database in the background. If the database sync fails,
   /// the UI will be rolled back to the previous state.
+  ///
+  /// Operations on the same habit are serialized to prevent race conditions.
   Future<void> updateHabitCompletion(
+    String habitId,
+    DateTime date,
+    int count,
+  ) async {
+    // Serialize operations: Wait for any pending operation on this habit
+    final previousOperation = _pendingOperations[habitId];
+    if (previousOperation != null) {
+      try {
+        await previousOperation;
+      } catch (e) {
+        // Ignore errors from previous operation - we'll still proceed
+        debugPrint('⚠️ Previous operation on habit $habitId had error: $e');
+      }
+    }
+
+    // Create and track this operation
+    final operation = _executeUpdateHabitCompletion(habitId, date, count);
+    _pendingOperations[habitId] = operation;
+
+    try {
+      await operation;
+    } finally {
+      // Remove from pending operations when done
+      if (_pendingOperations[habitId] == operation) {
+        _pendingOperations.remove(habitId);
+      }
+    }
+  }
+
+  /// Internal method that performs the actual update operation
+  Future<void> _executeUpdateHabitCompletion(
     String habitId,
     DateTime date,
     int count,
   ) async {
     try {
       // Get current habit to check existing completion count
+      // Always read fresh state at the start of the operation
       final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
       if (habitIndex < 0) {
         debugPrint('❌ Habit not found: $habitId');
@@ -679,7 +716,7 @@ class HabitState extends ChangeNotifier {
 
       if (difference == 0) {
         debugPrint(
-          '📝 No change needed for habit $habitId on ${date.toIso8601String().split('T')[0]}',
+          '📝 No change needed for habit $habitId on ${date.toIso8601String().split('T')[0]} (already at count $count)',
         );
         return;
       }
@@ -690,7 +727,7 @@ class HabitState extends ChangeNotifier {
       notifyListeners(); // Instant UI update
 
       debugPrint(
-        '⚡ Optimistic update: $habitId on ${date.toIso8601String().split('T')[0]} = $count',
+        '⚡ Optimistic update: $habitId on ${date.toIso8601String().split('T')[0]} = $count (from $currentCount)',
       );
 
       // BACKGROUND DATABASE SYNC: Perform database operations in background
@@ -705,6 +742,7 @@ class HabitState extends ChangeNotifier {
       _error = 'Failed to update habit completion: $e';
       notifyListeners();
       debugPrint('❌ Error updating habit completion: $e');
+      rethrow;
     }
   }
 
@@ -813,10 +851,40 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Reset all completions for a habit on a specific date with optimistic updates
-  /// This completely removes all completion records for that day
+  /// This completely removes all completion records for that day.
+  ///
+  /// Operations on the same habit are serialized to prevent race conditions.
   Future<void> resetAllCompletionsForDate(String habitId, DateTime date) async {
+    // Serialize operations: Wait for any pending operation on this habit
+    final previousOperation = _pendingOperations[habitId];
+    if (previousOperation != null) {
+      try {
+        await previousOperation;
+      } catch (e) {
+        // Ignore errors from previous operation - we'll still proceed
+        debugPrint('⚠️ Previous operation on habit $habitId had error: $e');
+      }
+    }
+
+    // Create and track this operation
+    final operation = _executeResetAllCompletionsForDate(habitId, date);
+    _pendingOperations[habitId] = operation;
+
+    try {
+      await operation;
+    } finally {
+      // Remove from pending operations when done
+      if (_pendingOperations[habitId] == operation) {
+        _pendingOperations.remove(habitId);
+      }
+    }
+  }
+
+  /// Internal method that performs the actual reset operation
+  Future<void> _executeResetAllCompletionsForDate(String habitId, DateTime date) async {
     try {
       // Get current habit to verify it exists
+      // Always read fresh state at the start of the operation
       final habitIndex = _habits.indexWhere((habit) => habit.id == habitId);
       if (habitIndex < 0) {
         debugPrint('❌ Habit not found: $habitId');
@@ -839,7 +907,7 @@ class HabitState extends ChangeNotifier {
       notifyListeners(); // Instant UI update
 
       debugPrint(
-        '⚡ Optimistic reset: $habitId on ${date.toIso8601String().split('T')[0]} = 0',
+        '⚡ Optimistic reset: $habitId on ${date.toIso8601String().split('T')[0]} = 0 (from $currentCount)',
       );
 
       // BACKGROUND DATABASE SYNC: Perform database operations in background
@@ -848,6 +916,7 @@ class HabitState extends ChangeNotifier {
       _error = 'Failed to reset habit completions: $e';
       notifyListeners();
       debugPrint('❌ Error resetting habit completions: $e');
+      rethrow;
     }
   }
 

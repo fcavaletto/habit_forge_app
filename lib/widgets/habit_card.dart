@@ -9,6 +9,7 @@ import '../utils/week_utils.dart';
 import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import 'segmented_progress_ring.dart';
+import 'outlined_icon.dart';
 
 /// Smart completion button that adapts its appearance and behavior
 /// based on the habit's goal and current completion state.
@@ -174,15 +175,27 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
               child: _buildProgressIndicator(todayCount, habitColor, context),
             ),
           ],
-          Icon(
-            _getButtonIcon(buttonState),
-            color: Theme.of(context).brightness == Brightness.light
-                ? isCompleted
+          (() {
+            final iconData = _getButtonIcon(buttonState);
+            final iconSize = _getIconSize(buttonState);
+            final isLight = Theme.of(context).brightness == Brightness.light;
+            if (iconData == Icons.check && isCompleted) {
+              return OutlinedIcon(
+                iconData,
+                size: iconSize,
+                fillColor: Colors.white,
+              );
+            }
+            return Icon(
+              iconData,
+              color: isLight
+                  ? isCompleted
                       ? Colors.white
                       : habitColor.darken(0.1)
-                : Colors.white.withValues(alpha: 0.8),
-            size: _getIconSize(buttonState),
-          ),
+                  : Colors.white.withValues(alpha: 0.8),
+              size: iconSize,
+            );
+          })(),
         ],
       ),
     );
@@ -314,7 +327,7 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
                     ),
             )
           : GestureDetector(
-              onTap: () => _handleButtonPress(todayCount, isCompleted),
+              onTap: () => _handleButtonPress(),
               child: _isBursting
                   ? _buildBurstingWithOverlay(
                       context,
@@ -442,7 +455,15 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
   /// - Empty state: Calls [onIncrement] to mark first completion
   /// - Completed state: Calls [onDecrement] to reset (burst animation)
   /// - In progress state: Calls [onIncrement] to add another completion
-  void _handleButtonPress(int todayCount, bool isCompleted) {
+  ///
+  /// Reads fresh state from widget.habit to avoid stale state issues.
+  void _handleButtonPress() {
+    // Read fresh state from widget.habit to avoid stale parameters
+    // This ensures we always have the latest completion state
+    final today = VirtualDateService().currentDate;
+    final todayCount = widget.habit.getCompletionCount(today);
+    final isCompleted = widget.habit.isGoalAchieved(today);
+
     setState(() {
       _wasTappedByUser = true; // Set flag on user tap
     });
@@ -1019,15 +1040,10 @@ class _HabitCardState extends State<HabitCard> {
                                         ),
                                         child: widget.habit.isGoalAchieved(date)
                                             ? Center(
-                                                child: Stack(
-                                                  alignment: Alignment.center,
-                                                  children: const [
-                                                    Icon(
-                                                      Icons.check,
-                                                      size: 10,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ],
+                                                child: OutlinedIcon(
+                                                  Icons.check,
+                                                  size: 10,
+                                                  fillColor: Colors.white,
                                                 ),
                                               )
                                             : count > 0
@@ -1359,10 +1375,10 @@ class DetailedHabitCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: completed
-                          ? const Icon(
+                          ? OutlinedIcon(
                               Icons.check,
                               size: 14,
-                              color: Colors.white,
+                              fillColor: Colors.white,
                             )
                           : null,
                     );
