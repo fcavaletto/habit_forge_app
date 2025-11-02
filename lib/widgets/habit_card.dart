@@ -1040,15 +1040,10 @@ class _HabitCardState extends State<HabitCard> {
                                         ),
                                         child: widget.habit.isGoalAchieved(date)
                                             ? Center(
-                                                child: Stack(
-                                                  alignment: Alignment.center,
-                                                  children: const [
-                                                    Icon(
-                                                      Icons.check,
-                                                      size: 10,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ],
+                                                child: OutlinedIcon(
+                                                  Icons.check,
+                                                  size: 10,
+                                                  fillColor: Colors.white,
                                                 ),
                                               )
                                             : count > 0
@@ -1380,10 +1375,10 @@ class DetailedHabitCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: completed
-                          ? const Icon(
+                          ? OutlinedIcon(
                               Icons.check,
                               size: 14,
-                              color: Colors.white,
+                              fillColor: Colors.white,
                             )
                           : null,
                     );
