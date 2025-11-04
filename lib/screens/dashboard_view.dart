@@ -447,18 +447,11 @@ class _DashboardViewState extends State<DashboardView>
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           sliver: SliverToBoxAdapter(
-            child: ReorderableListView.builder(
+            child: ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: EdgeInsets.zero,
               itemCount: habits.length,
-              onReorder: (oldIndex, newIndex) {
-                // Handle the reordering logic
-                if (oldIndex < newIndex) {
-                  newIndex -= 1;
-                }
-                _reorderHabits(habits[oldIndex].id, newIndex);
-              },
               itemBuilder: (context, index) {
                 final habit = habits[index];
                 return Container(
@@ -491,7 +484,7 @@ class _DashboardViewState extends State<DashboardView>
   ) {
     // Store habitId to avoid closure capture issues
     final habitId = habit.id;
-    
+
     // Use RepaintBoundary to isolate repaints and implement true selective rebuilds
     return RepaintBoundary(
       child: _HabitCardWrapper(
