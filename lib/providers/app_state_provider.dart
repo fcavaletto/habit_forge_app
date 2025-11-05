@@ -68,6 +68,7 @@ class AppState extends ChangeNotifier {
   bool _hasNotificationPending = false;
   int _lastHabitCount = 0;
   ThemeMode? _lastThemeMode;
+  bool _wasInOverrideMode = false; // Track previous override state
   
   AppState(
     this._habitProvider,
@@ -81,6 +82,7 @@ class AppState extends ChangeNotifier {
     // Initialize last known states
     _lastHabitCount = _habitProvider.habits.length;
     _lastThemeMode = _themeProvider.themeMode;
+    _wasInOverrideMode = _dateProvider.isVirtualMode;
     
     // Listen to changes in child providers with smart cache notification
     _habitProvider.addListener(() {
@@ -95,13 +97,15 @@ class AppState extends ChangeNotifier {
       debugPrint('🔗 AppState received notification from DateProvider');
       // Handle date changes with cache invalidation and data reloading
       await _handleDateChange();
+      // Update tracking state
+      _wasInOverrideMode = _dateProvider.isVirtualMode;
       _smartCacheNotify('DateProvider');
     });
   }
 
   /// Handle date changes with cache invalidation and data reloading
   Future<void> _handleDateChange() async {
-    final wasInOverrideMode = _dateProvider.isVirtualMode;
+    final wasInOverrideMode = _wasInOverrideMode; // Use stored previous state
     final isNowInOverrideMode = _dateProvider.isVirtualMode;
 
     debugPrint('🔍 Date change handling:');
@@ -125,11 +129,13 @@ class AppState extends ChangeNotifier {
       debugPrint('🔄 Reloading habits from database for new virtual date');
       await _habitProvider.refreshDataSilently();
     } else if (wasInOverrideMode && !isNowInOverrideMode) {
-      // Exiting override mode - allow cache recreation
+      // Exiting override mode - reload data for system date
       debugPrint(
-        '🔄 Exiting date override mode - cache will be recreated on next interaction',
+        '🔄 Exiting date override mode - reloading data for system date',
       );
-      // Don't recreate cache here - let Dashboard interactions handle it
+      // CRITICAL: Reload habits from database with system date
+      debugPrint('🔄 Reloading habits from database for system date');
+      await _habitProvider.refreshDataSilently();
     } else if (wasInOverrideMode && isNowInOverrideMode) {
       // Date changed within override mode - invalidate cached data and reload
       debugPrint(
