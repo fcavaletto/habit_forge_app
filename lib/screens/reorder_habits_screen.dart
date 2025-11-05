@@ -5,8 +5,7 @@ import '../models/habit.dart';
 import '../utils/icon_utils.dart';
 
 class ReorderHabitsScreen extends StatefulWidget {
-  final String? initialFocusId;
-  const ReorderHabitsScreen({super.key, this.initialFocusId});
+  const ReorderHabitsScreen({super.key});
 
   @override
   State<ReorderHabitsScreen> createState() => _ReorderHabitsScreenState();
@@ -22,19 +21,6 @@ class _ReorderHabitsScreenState extends State<ReorderHabitsScreen> {
     _scrollController = ScrollController();
     final hp = context.read<AppState>().habitProvider;
     _localHabits = List.of(hp.filteredHabits);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToInitial());
-  }
-
-  void _scrollToInitial() {
-    if (widget.initialFocusId == null) return;
-    final index = _localHabits.indexWhere((h) => h.id == widget.initialFocusId);
-    if (index > 0) {
-      _scrollController.animateTo(
-        index * 72.0,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
   }
 
   Future<void> _onReorder(int oldIndex, int newIndex) async {
