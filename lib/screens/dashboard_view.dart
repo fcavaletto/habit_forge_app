@@ -14,6 +14,7 @@ import '../utils/constants.dart';
 import '../screens/settings_screen.dart';
 import '../screens/add_habit_screen.dart';
 import 'stats_screen.dart';
+import 'reorder_habits_screen.dart';
 import '../utils/data_freshness.dart';
 import '../widgets/custom_completion_modal.dart';
 import '../theme.dart';
@@ -493,6 +494,7 @@ class _DashboardViewState extends State<DashboardView>
           final freshHabit = _getFreshHabit(habitId);
           if (freshHabit != null) _onHabitTap(freshHabit);
         },
+        onLongPress: () => _openReorderScreen(initialFocusId: habitId),
         onComplete: () {
           final freshHabit = _getFreshHabit(habitId);
           if (freshHabit != null) _onMarkCompleted(freshHabit);
@@ -718,6 +720,14 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
+  void _openReorderScreen({String? initialFocusId}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReorderHabitsScreen(initialFocusId: initialFocusId),
+      ),
+    );
+  }
+
   void _showEditHabit(Habit habit) {
     final appState = Provider.of<AppState>(context, listen: false);
 
@@ -831,20 +841,7 @@ class _DashboardViewState extends State<DashboardView>
     }
   }
 
-  /// Reorder habits with filtering context
-  void _reorderHabits(String draggedId, int newPosition) {
-    final appState = Provider.of<AppState>(context, listen: false);
-
-    // Get visible habit IDs for filtering context
-    final visibleHabitIds = appState.habitProvider.getVisibleHabitIds();
-
-    // Use the new filtering-aware reordering method
-    appState.habitProvider.reorderHabitsInContext(
-      draggedId,
-      newPosition,
-      visibleHabitIds,
-    );
-  }
+  // Reordering is handled in a dedicated screen to avoid gesture conflicts on the dashboard
 
   /// Build the date selector widget
   Widget _buildDateSelector(AppState appState) {
@@ -1190,6 +1187,7 @@ class _DashboardViewState extends State<DashboardView>
 class _HabitCardWrapper extends StatefulWidget {
   final Habit habit;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
   final VoidCallback onComplete;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
@@ -1204,6 +1202,7 @@ class _HabitCardWrapper extends StatefulWidget {
   const _HabitCardWrapper({
     required this.habit,
     required this.onTap,
+    required this.onLongPress,
     required this.onComplete,
     required this.onIncrement,
     required this.onDecrement,
@@ -1311,6 +1310,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
           key: ValueKey(widget.habit.id),
           habit: updatedHabit, // Use updated habit from provider
           onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
           onComplete: widget.onComplete,
           onIncrement: widget.onIncrement,
           onDecrement: widget.onDecrement,
@@ -1328,6 +1328,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
         key: ValueKey(widget.habit.id),
         habit: widget.habit,
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         onComplete: widget.onComplete,
         onIncrement: widget.onIncrement,
         onDecrement: widget.onDecrement,
