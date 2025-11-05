@@ -495,6 +495,7 @@ class _DashboardViewState extends State<DashboardView>
           if (freshHabit != null) _onHabitTap(freshHabit);
         },
         onLongPress: () => _openReorderScreen(),
+        onReorder: () => _openReorderScreen(),
         onComplete: () {
           final freshHabit = _getFreshHabit(habitId);
           if (freshHabit != null) _onMarkCompleted(freshHabit);
@@ -1188,6 +1189,7 @@ class _HabitCardWrapper extends StatefulWidget {
   final Habit habit;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final VoidCallback onReorder;
   final VoidCallback onComplete;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
@@ -1203,6 +1205,7 @@ class _HabitCardWrapper extends StatefulWidget {
     required this.habit,
     required this.onTap,
     required this.onLongPress,
+    required this.onReorder,
     required this.onComplete,
     required this.onIncrement,
     required this.onDecrement,
@@ -1311,6 +1314,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
           habit: updatedHabit, // Use updated habit from provider
           onTap: widget.onTap,
           onLongPress: widget.onLongPress,
+          onReorder: widget.onReorder,
           onComplete: widget.onComplete,
           onIncrement: widget.onIncrement,
           onDecrement: widget.onDecrement,
@@ -1329,6 +1333,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
         habit: widget.habit,
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,
+        onReorder: widget.onReorder,
         onComplete: widget.onComplete,
         onIncrement: widget.onIncrement,
         onDecrement: widget.onDecrement,

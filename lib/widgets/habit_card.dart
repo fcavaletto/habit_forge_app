@@ -630,6 +630,9 @@ class HabitCard extends StatefulWidget {
   /// Callback when the card is tapped (typically opens detailed view)
   final VoidCallback? onTap;
 
+  /// Optional long-press callback (e.g., open reorder mode)
+  final VoidCallback? onLongPress;
+
   /// Callback when the completion button is pressed
   final VoidCallback? onComplete;
 
@@ -668,13 +671,14 @@ class HabitCard extends StatefulWidget {
   /// The current date to use for week calculations
   final DateTime currentDate;
 
-  /// Optional long-press callback (used to open reorder screen)
-  final VoidCallback? onLongPress;
+  /// Optional callback to open Reorder screen from context menu
+  final VoidCallback? onReorder;
 
   const HabitCard({
     super.key,
     required this.habit,
     this.onTap,
+    this.onLongPress,
     this.onComplete,
     this.onIncrement,
     this.onDecrement,
@@ -687,7 +691,7 @@ class HabitCard extends StatefulWidget {
     this.hideCollapseButton = false,
     required this.weekStartsOnMonday,
     required this.currentDate,
-    this.onLongPress,
+    this.onReorder,
   });
 
   @override
@@ -1178,7 +1182,7 @@ class _HabitCardState extends State<HabitCard> {
                 ),
               ),
               const Divider(height: 1),
-
+              
               // Menu items
               ListTile(
                 leading: const Icon(Icons.edit),
@@ -1188,7 +1192,17 @@ class _HabitCardState extends State<HabitCard> {
                   widget.onEdit?.call();
                 },
               ),
-
+              
+              // Insert Reorder option after Edit and before Archive
+              ListTile(
+                leading: const Icon(Icons.swap_vert),
+                title: const Text('Reorder Habits'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  widget.onReorder?.call();
+                },
+              ),
+              
               ListTile(
                 leading: const Icon(Icons.archive),
                 title: const Text('Archive Habit'),
@@ -1198,7 +1212,7 @@ class _HabitCardState extends State<HabitCard> {
                   widget.onArchive?.call();
                 },
               ),
-
+              
               ListTile(
                 leading: Icon(
                   Icons.delete,
@@ -1214,7 +1228,7 @@ class _HabitCardState extends State<HabitCard> {
                   widget.onDelete?.call();
                 },
               ),
-
+              
               const SizedBox(height: 8),
             ],
           ),
