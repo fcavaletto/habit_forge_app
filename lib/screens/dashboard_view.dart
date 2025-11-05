@@ -555,24 +555,24 @@ class _DashboardViewState extends State<DashboardView>
   Widget _buildHeader(List<Habit> habits) {
     // Get the provider state
     final appState = Provider.of<AppState>(context, listen: false);
-    final selectedDate = appState.habitProvider.selectedDate;
+    final currentDate = appState.currentDate;
     final isShowingAllHabits = appState.habitProvider.isShowingAllHabits;
 
     // Calculate completion count and rate based on filter mode
     final completedCount = isShowingAllHabits
         ? _controller.getCompletedCountForAllHabits()
-        : _controller.getCompletedCountForDate(selectedDate);
+        : _controller.getCompletedCountForDate(currentDate);
     final completionRate = isShowingAllHabits
         ? _controller.getCompletionRateForAllHabits()
-        : _controller.getCompletionRateForDate(selectedDate);
+        : _controller.getCompletionRateForDate(currentDate);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Date selector - Use Selector to only rebuild when selected date changes
+        // Date selector - Use Selector to only rebuild when current date changes
         Selector<AppState, DateTime>(
-          selector: (context, appState) => appState.habitProvider.selectedDate,
-          builder: (context, selectedDate, child) {
+          selector: (context, appState) => appState.currentDate,
+          builder: (context, currentDate, child) {
             final appState = context.read<AppState>();
             return _buildDateSelector(appState);
           },
@@ -846,7 +846,7 @@ class _DashboardViewState extends State<DashboardView>
 
   /// Build the date selector widget
   Widget _buildDateSelector(AppState appState) {
-    final selectedDate = appState.habitProvider.selectedDate;
+    final currentDate = appState.currentDate;
     final isDateOverridden = appState.isDateOverridden;
 
     // Theme-based border width
@@ -913,7 +913,7 @@ class _DashboardViewState extends State<DashboardView>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _formatDate(selectedDate),
+                      _formatDate(currentDate),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: isDateOverridden
@@ -1130,10 +1130,10 @@ class _DashboardViewState extends State<DashboardView>
 
   /// Show date picker dialog
   Future<void> _showDatePicker(AppState appState) async {
-    final selectedDate = appState.habitProvider.selectedDate;
+    final currentDate = appState.currentDate;
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: selectedDate,
+      initialDate: currentDate,
       firstDate: DateTime(2020),
       lastDate: VirtualDateService().currentDate.add(const Duration(days: 365)),
       builder: (context, child) {
@@ -1148,8 +1148,8 @@ class _DashboardViewState extends State<DashboardView>
       },
     );
 
-    if (pickedDate != null && pickedDate != selectedDate) {
-      appState.habitProvider.updateSelectedDate(pickedDate);
+    if (pickedDate != null && pickedDate != appState.currentDate) {
+      appState.dateProvider.setVirtualDate(pickedDate);
       debugPrint('📅 Date changed to: ${_formatDate(pickedDate)}');
     }
   }
@@ -1249,34 +1249,28 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<HabitProvider, int>(
-      selector: (context, habitProvider) {
-        final selectedDate = habitProvider.selectedDate;
-        // Always get fresh completion count from provider's habit
-        final updatedHabit = habitProvider.habits.firstWhere(
-          (h) => h.id == widget.habit.id,
-          orElse: () => widget.habit, // Fallback
-        );
-        return updatedHabit.getCompletionCount(selectedDate);
-      },
-      builder: (context, completionCountFromSelector, child) {
-        final habitProvider = Provider.of<HabitProvider>(
+    return Selector<AppState, DateTime>(
+      selector: (context, appState) => appState.currentDate,
+      builder: (context, currentDate, child) {
+        final appState = Provider.of<AppState>(
           context,
           listen: false,
         );
 
-        // Use provider's selectedDate for completion count checks (for filtering/selection)
-        // This is the date the user has selected to view habits for
-        final selectedDate = habitProvider.selectedDate;
+        // Use app state's current date for completion count checks
+        // This is the date the app is currently viewing (virtual or system)
         // Use widget.currentDate for week calculations (from VirtualDateService)
         // This is the date used for week boundary calculations
         final currentDateForWeeks = widget.currentDate;
 
         // Always get updated habit from provider (source of truth)
-        final updatedHabit = habitProvider.habits.firstWhere(
+        final updatedHabit = appState.habitProvider.habits.firstWhere(
           (h) => h.id == widget.habit.id,
           orElse: () => widget.habit, // Fallback to widget.habit if not found
         );
+
+        // Get completion count for current date
+        final completionCount = updatedHabit.getCompletionCount(currentDate);
 
         // Check ALL changes using proper comparison methods
         final habitReferenceChanged = !identical(
@@ -1284,8 +1278,8 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
           updatedHabit,
         );
         final completionCountChanged =
-            _cachedCompletionCount != completionCountFromSelector;
-        final selectedDateChanged = _cachedSelectedDate != selectedDate;
+            _cachedCompletionCount != completionCount;
+        final currentDateChanged = _cachedSelectedDate != currentDate;
         final weekPrefChanged =
             _cachedWeekStartsOnMonday != widget.weekStartsOnMonday;
 
@@ -1293,7 +1287,7 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
             !_isInitialized ||
             habitReferenceChanged ||
             completionCountChanged ||
-            selectedDateChanged ||
+            currentDateChanged ||
             weekPrefChanged;
 
         if (!hasChanged) {
@@ -1301,8 +1295,8 @@ class _HabitCardWrapperState extends State<_HabitCardWrapper> {
         }
 
         // Update ALL cache fields with latest values from provider
-        _cachedCompletionCount = completionCountFromSelector;
-        _cachedSelectedDate = selectedDate;
+        _cachedCompletionCount = completionCount;
+        _cachedSelectedDate = currentDate;
         _cachedWeekStartsOnMonday = widget.weekStartsOnMonday;
         _cachedHabitReference =
             updatedHabit; // CRITICAL: Cache provider's habit, not widget.habit

@@ -91,12 +91,57 @@ class AppState extends ChangeNotifier {
       debugPrint('🔗 AppState received notification from ThemeProvider');
       _smartCacheNotify('ThemeProvider');
     });
-    _dateProvider.addListener(() {
+    _dateProvider.addListener(() async {
       debugPrint('🔗 AppState received notification from DateProvider');
+      // Handle date changes with cache invalidation and data reloading
+      await _handleDateChange();
       _smartCacheNotify('DateProvider');
     });
   }
-  
+
+  /// Handle date changes with cache invalidation and data reloading
+  Future<void> _handleDateChange() async {
+    final wasInOverrideMode = _dateProvider.isVirtualMode;
+    final isNowInOverrideMode = _dateProvider.isVirtualMode;
+
+    debugPrint('🔍 Date change handling:');
+    debugPrint('  - wasInOverrideMode: $wasInOverrideMode');
+    debugPrint('  - isNowInOverrideMode: $isNowInOverrideMode');
+
+    // NEW: Simple cache invalidation logic based on override mode changes
+    if (!wasInOverrideMode && isNowInOverrideMode) {
+      // Entering override mode - invalidate cache and reload data
+      debugPrint(
+        '🗑️ Entering date override mode - invalidating persistent cache',
+      );
+      try {
+        await _habitProvider.invalidatePersistentCache();
+        debugPrint('✅ Cleared persistent cache');
+      } catch (e) {
+        debugPrint('❌ Error invalidating cache: $e');
+        // Continue operation even if cache invalidation fails
+      }
+      // CRITICAL: Reload habits from database with new virtual date
+      debugPrint('🔄 Reloading habits from database for new virtual date');
+      await _habitProvider.refreshDataSilently();
+    } else if (wasInOverrideMode && !isNowInOverrideMode) {
+      // Exiting override mode - allow cache recreation
+      debugPrint(
+        '🔄 Exiting date override mode - cache will be recreated on next interaction',
+      );
+      // Don't recreate cache here - let Dashboard interactions handle it
+    } else if (wasInOverrideMode && isNowInOverrideMode) {
+      // Date changed within override mode - invalidate cached data and reload
+      debugPrint(
+        '🗑️ Date changed within override mode - invalidating cached data',
+      );
+      _habitProvider.invalidateCachedData();
+      // CRITICAL: Reload habits from database for new virtual date
+      debugPrint('🔄 Reloading habits from database for new virtual date');
+      await _habitProvider.refreshDataSilently();
+    }
+  }
+
   /// Smart cache notification with change detection and selective debouncing
   /// 
   /// Prevents unnecessary cache invalidations by:
@@ -495,8 +540,8 @@ class AppState extends ChangeNotifier {
 
   /// Reset date override to today's date
   Future<void> resetDateOverride() async {
-    await _habitProvider.updateSelectedDate(DateTime.now());
-    notifyListeners();
+    await _dateProvider.resetToSystemDate();
+    // No need to notifyListeners here as DateProvider will notify its listeners
   }
 
   /// Refresh all data across all providers with intelligent coordination

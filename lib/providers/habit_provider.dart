@@ -6,7 +6,6 @@ import '../repositories/sqlite_habit_repository.dart';
 import '../repositories/settings_repository.dart';
 import '../services/database_service.dart';
 import '../services/virtual_date_service.dart';
-import '../services/virtual_time_service.dart';
 import '../services/completion_cache_service.dart';
 import '../services/habit_metadata_cache_service.dart';
 import '../services/persistent_cache_service.dart';
@@ -70,13 +69,11 @@ class HabitState extends ChangeNotifier {
   Timer? _refreshTimer;
   bool _isSortingMode = false;
   int _reorderCount = 0; // Track reorder operations for normalization
-  late DateTime _selectedDate; // Selected date for filtering
-  late TimeOfDay _selectedTime; // Selected time for completion timestamps
   bool _showAllHabits =
       true; // Whether to show all habits or just today's habits (default: all)
   bool _loadedFromCache =
       false; // Track if last load was from cache (to skip redundant refresh)
-  
+
   // Operation serialization: Track ongoing operations per habit to prevent race conditions
   final Map<String, Future<void>> _pendingOperations = {};
 
@@ -86,10 +83,6 @@ class HabitState extends ChangeNotifier {
       repository: _habitRepository,
       cache: _persistentCache,
     );
-
-    // Initialize with current date and time from global providers
-    _selectedDate = VirtualDateService().currentDate;
-    _selectedTime = VirtualTimeService().currentTime;
   }
 
   // Getters
@@ -105,13 +98,12 @@ class HabitState extends ChangeNotifier {
       DataFreshness.shouldRefreshOnResume(_lastLoadTime!);
   bool get isSortingMode => _isSortingMode;
   bool get loadedFromCache => _loadedFromCache;
-  DateTime get selectedDate => _selectedDate;
-  TimeOfDay get selectedTime => _selectedTime;
   bool get isShowingAllHabits => _showAllHabits;
 
   /// Get habits filtered based on current filter mode (all habits or date-filtered)
-  List<Habit> get filteredHabits =>
-      _showAllHabits ? _habits : getHabitsForDate(_selectedDate);
+  List<Habit> get filteredHabits => _showAllHabits
+      ? _habits
+      : getHabitsForDate(VirtualDateService().currentDate);
 
   /// Get habits filtered by completion status for a specific date
   List<Habit> getHabitsForDate(DateTime date) {
@@ -120,7 +112,9 @@ class HabitState extends ChangeNotifier {
 
   /// Get habit IDs that should be visible based on current filter
   List<String> getVisibleHabitIds() {
-    return getHabitsForDate(_selectedDate).map((h) => h.id).toList();
+    return getHabitsForDate(
+      VirtualDateService().currentDate,
+    ).map((h) => h.id).toList();
   }
 
   /// Get last 30 days completion data for all habits
@@ -165,6 +159,17 @@ class HabitState extends ChangeNotifier {
     debugPrint('🗑️ Invalidating cached data due to date override change');
     // The cached data will be regenerated on next access via getLast30DaysCompletions()
     // This is handled by the fact that we extract data from current _habits state
+  }
+
+  /// Invalidate persistent cache completions
+  Future<void> invalidatePersistentCache() async {
+    try {
+      await _persistentCache.invalidateAllCompletions();
+      debugPrint('✅ Invalidated persistent cache completions');
+    } catch (e) {
+      debugPrint('❌ Error invalidating persistent cache: $e');
+      rethrow;
+    }
   }
 
   /// Get day abbreviation from DateTime (mon, tue, wed, etc.)
@@ -444,7 +449,9 @@ class HabitState extends ChangeNotifier {
       // Find habit in local state
       final habitIndex = _habits.indexWhere((h) => h.id == habit.id);
       if (habitIndex < 0) {
-        debugPrint('❌ [UPDATE_HABIT] Habit not found in local state: ${habit.id}');
+        debugPrint(
+          '❌ [UPDATE_HABIT] Habit not found in local state: ${habit.id}',
+        );
         return HabitSaveResult.error('Habit not found');
       }
 
@@ -528,7 +535,9 @@ class HabitState extends ChangeNotifier {
         // For now, we preserve completions but goal change dialog will handle updates
         if (originalHabit.targetGoal != habit.targetGoal) {
           _completionCache.invalidateHabit(habit.id);
-          debugPrint('🔄 [UPDATE_HABIT] Invalidated completion cache (target goal changed)');
+          debugPrint(
+            '🔄 [UPDATE_HABIT] Invalidated completion cache (target goal changed)',
+          );
         }
 
         // Update persistent cache
@@ -569,7 +578,9 @@ class HabitState extends ChangeNotifier {
   /// @return Number of records updated
   Future<int> updatePastCompletionGoals(String habitId, int newGoal) async {
     try {
-      debugPrint('🔄 [UPDATE_GOALS] Updating past completion goals for habit $habitId to $newGoal');
+      debugPrint(
+        '🔄 [UPDATE_GOALS] Updating past completion goals for habit $habitId to $newGoal',
+      );
 
       // Find the habit in local state
       final habitIndex = _habits.indexWhere((h) => h.id == habitId);
@@ -581,54 +592,67 @@ class HabitState extends ChangeNotifier {
       final originalHabit = _habits[habitIndex];
 
       // Step 1: Update database records
-      final result = await _dataAccessService.atomicDataService.updatePastCompletionGoals(
-        habitId: habitId,
-        newGoal: newGoal,
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'updatePastCompletionGoals',
-          parameters: {'habitId': habitId, 'newGoal': newGoal},
-        ),
-      );
+      final result = await _dataAccessService.atomicDataService
+          .updatePastCompletionGoals(
+            habitId: habitId,
+            newGoal: newGoal,
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'updatePastCompletionGoals',
+              parameters: {'habitId': habitId, 'newGoal': newGoal},
+            ),
+          );
 
       if (!result.success || result.data == null) {
-        debugPrint('❌ [UPDATE_GOALS] Failed to update past completion goals: ${result.errorMessage}');
+        debugPrint(
+          '❌ [UPDATE_GOALS] Failed to update past completion goals: ${result.errorMessage}',
+        );
         throw Exception(result.errorMessage ?? 'Unknown error');
       }
 
-      debugPrint('✅ [UPDATE_GOALS] Updated ${result.data} completion records in database');
+      debugPrint(
+        '✅ [UPDATE_GOALS] Updated ${result.data} completion records in database',
+      );
 
       // Step 2: Invalidate completion cache
       _completionCache.invalidateHabit(habitId);
 
       // Step 3: Reload completions from database with updated goalAtCompletion values
       debugPrint('🔄 [UPDATE_GOALS] Reloading completions from database...');
-      
+
       // Use a wide date range to load all historical completions
       final startDate = DateTime(2020); // Very early date to get full history
-      final endDate = VirtualDateService().currentDate.add(const Duration(days: 365)); // Future date to ensure we get everything
-      
-      final completionsResult = await _dataAccessService.atomicDataService.getCompletions(
-        habitIds: [habitId],
-        startDate: startDate,
-        endDate: endDate,
-        convertToLocal: false,
-        context: DataAccessContext(
-          component: 'HabitProvider',
-          operation: 'updatePastCompletionGoals_reload',
-          parameters: {'habitId': habitId},
-        ),
-      );
+      final endDate = VirtualDateService().currentDate.add(
+        const Duration(days: 365),
+      ); // Future date to ensure we get everything
+
+      final completionsResult = await _dataAccessService.atomicDataService
+          .getCompletions(
+            habitIds: [habitId],
+            startDate: startDate,
+            endDate: endDate,
+            convertToLocal: false,
+            context: DataAccessContext(
+              component: 'HabitProvider',
+              operation: 'updatePastCompletionGoals_reload',
+              parameters: {'habitId': habitId},
+            ),
+          );
 
       if (!completionsResult.success || completionsResult.data == null) {
-        debugPrint('⚠️ [UPDATE_GOALS] Failed to reload completions, using cached data: ${completionsResult.errorMessage}');
+        debugPrint(
+          '⚠️ [UPDATE_GOALS] Failed to reload completions, using cached data: ${completionsResult.errorMessage}',
+        );
         // Non-fatal - UI will update on next full reload
         notifyListeners();
         return result.data!;
       }
 
-      final updatedCompletions = completionsResult.data![habitId] ?? <DateTime, CompletionRecord>{};
-      debugPrint('✅ [UPDATE_GOALS] Reloaded ${updatedCompletions.length} completion records with updated goals');
+      final updatedCompletions =
+          completionsResult.data![habitId] ?? <DateTime, CompletionRecord>{};
+      debugPrint(
+        '✅ [UPDATE_GOALS] Reloaded ${updatedCompletions.length} completion records with updated goals',
+      );
 
       // Step 4: Update in-memory habit with fresh completions
       final updatedHabit = originalHabit.copyWith(
@@ -639,7 +663,9 @@ class HabitState extends ChangeNotifier {
       // Step 5: Update persistent cache with correct data
       try {
         await _persistentCache.updateHabit(updatedHabit);
-        debugPrint('✅ [UPDATE_GOALS] Updated persistent cache with fresh completions');
+        debugPrint(
+          '✅ [UPDATE_GOALS] Updated persistent cache with fresh completions',
+        );
       } catch (e) {
         debugPrint('⚠️ [UPDATE_GOALS] Failed to update persistent cache: $e');
         // Non-fatal - app continues with in-memory data
@@ -648,7 +674,9 @@ class HabitState extends ChangeNotifier {
       // Step 6: Notify listeners to refresh UI
       notifyListeners();
 
-      debugPrint('✅ [UPDATE_GOALS] Completed successfully: ${result.data} records updated, UI refreshed');
+      debugPrint(
+        '✅ [UPDATE_GOALS] Completed successfully: ${result.data} records updated, UI refreshed',
+      );
       return result.data!;
     } catch (e) {
       debugPrint('❌ [UPDATE_GOALS] Error updating past completion goals: $e');
@@ -881,7 +909,10 @@ class HabitState extends ChangeNotifier {
   }
 
   /// Internal method that performs the actual reset operation
-  Future<void> _executeResetAllCompletionsForDate(String habitId, DateTime date) async {
+  Future<void> _executeResetAllCompletionsForDate(
+    String habitId,
+    DateTime date,
+  ) async {
     try {
       // Get current habit to verify it exists
       // Always read fresh state at the start of the operation
@@ -1116,7 +1147,7 @@ class HabitState extends ChangeNotifier {
   /// to improve performance and reduce database queries.
   Future<void> _warmCompletionCache() async {
     try {
-      final currentDate = _selectedDate;
+      final currentDate = VirtualDateService().currentDate;
       debugPrint(
         '🔥 Warming completion cache for ${_habits.length} habits on ${currentDate.toIso8601String().split('T')[0]}',
       );
@@ -2379,75 +2410,6 @@ class HabitProvider extends HabitState {
     }
   }
 
-  /// Update the selected date for filtering
-  Future<void> updateSelectedDate(DateTime newDate) async {
-    if (_selectedDate != newDate) {
-      final wasInOverrideMode = VirtualDateService().isVirtualMode;
-
-      debugPrint('🔍 Date transition debug:');
-      debugPrint('  - Current _selectedDate: ${_formatDate(_selectedDate)}');
-      debugPrint('  - New date: ${_formatDate(newDate)}');
-      debugPrint('  - wasInOverrideMode: $wasInOverrideMode');
-
-      // Update the virtual date service first
-      await VirtualDateService().setVirtualDate(newDate);
-      final isNowInOverrideMode = VirtualDateService().isVirtualMode;
-
-      debugPrint(
-        '  - isNowInOverrideMode (after virtual date update): $isNowInOverrideMode',
-      );
-
-      // NEW: Simple cache invalidation logic based on override mode changes
-      if (!wasInOverrideMode && isNowInOverrideMode) {
-        // Entering override mode - invalidate cache and reload data
-        debugPrint(
-          '🗑️ Entering date override mode - invalidating persistent cache',
-        );
-        try {
-          await _persistentCache.invalidateAllCompletions();
-          debugPrint('✅ Cleared persistent cache');
-        } catch (e) {
-          debugPrint('❌ Error invalidating cache: $e');
-          // Continue operation even if cache invalidation fails
-        }
-        // CRITICAL: Reload habits from database with new virtual date
-        debugPrint('🔄 Reloading habits from database for new virtual date');
-        await refreshDataSilently();
-      } else if (wasInOverrideMode && !isNowInOverrideMode) {
-        // Exiting override mode - allow cache recreation
-        debugPrint(
-          '🔄 Exiting date override mode - cache will be recreated on next interaction',
-        );
-        // Don't recreate cache here - let Dashboard interactions handle it
-      } else if (wasInOverrideMode && isNowInOverrideMode) {
-        // Date changed within override mode - invalidate cached data and reload
-        debugPrint(
-          '🗑️ Date changed within override mode - invalidating cached data',
-        );
-        invalidateCachedData();
-        // CRITICAL: Reload habits from database for new virtual date
-        debugPrint('🔄 Reloading habits from database for new virtual date');
-        await refreshDataSilently();
-      }
-
-      _selectedDate = newDate;
-
-      notifyListeners();
-      debugPrint('📅 Selected date updated to: ${_formatDate(newDate)}');
-    }
-  }
-
-  /// Update the selected time for completion timestamps
-  void updateSelectedTime(TimeOfDay newTime) {
-    if (_selectedTime != newTime) {
-      _selectedTime = newTime;
-      // Also update the virtual time service
-      VirtualTimeService().setTimeOverride(newTime);
-      notifyListeners();
-      debugPrint('🕐 Selected time updated to: ${_formatTime(newTime)}');
-    }
-  }
-
   /// Set whether to show all habits or just today's habits
   void setShowAllHabits(bool showAll) {
     if (_showAllHabits != showAll) {
@@ -2499,31 +2461,5 @@ class HabitProvider extends HabitState {
     } catch (e) {
       debugPrint('❌ Error saving habit filter setting: $e');
     }
-  }
-
-  /// Format date for display
-  String _formatDate(DateTime date) {
-    // Simply show the actual date in a readable format
-    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
-  }
-
-  /// Format time for display in 24-hour format
-  String _formatTime(TimeOfDay time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
