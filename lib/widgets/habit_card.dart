@@ -668,6 +668,9 @@ class HabitCard extends StatefulWidget {
   /// The current date to use for week calculations
   final DateTime currentDate;
 
+  /// Optional long-press callback (used to open reorder screen)
+  final VoidCallback? onLongPress;
+
   const HabitCard({
     super.key,
     required this.habit,
@@ -684,6 +687,7 @@ class HabitCard extends StatefulWidget {
     this.hideCollapseButton = false,
     required this.weekStartsOnMonday,
     required this.currentDate,
+    this.onLongPress,
   });
 
   @override
@@ -812,6 +816,7 @@ class _HabitCardState extends State<HabitCard> {
             onTap: widget.onTap != null
                 ? () => _showContextMenu(context)
                 : null,
+            onLongPress: widget.onLongPress,
             // Rounded corners for modern Material 3 design
             borderRadius: BorderRadius.circular(11.0),
             focusColor: habitColor.withValues(alpha: 0.2),
