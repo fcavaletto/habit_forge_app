@@ -162,9 +162,10 @@ class AppState extends ChangeNotifier {
     
     final hasActualChanges = habitCountChanged || themeChanged;
     
-    if (!hasActualChanges && source != 'HabitProvider') {
-      // For non-HabitProvider sources, skip if no tracked changes detected
+    if (!hasActualChanges && source != 'HabitProvider' && source != 'DateProvider') {
+      // For non-HabitProvider/DateProvider sources, skip if no tracked changes detected
       // Note: HabitProvider always notifies because completions may have changed
+      // DateProvider always notifies because date changes affect UI display
       debugPrint('⏭️ AppState: No cache-relevant changes detected from $source, skipping notification');
       return;
     }
