@@ -373,15 +373,20 @@ class HabitState extends ChangeNotifier {
         today.month,
         today.day,
       ).subtract(const Duration(days: 29));
+      final next6Days = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).add(const Duration(days: 6));
 
       debugPrint(
-        '🔍 [ADD_HABIT] Loading completions for new habit only (last 30 days)',
+        '🔍 [ADD_HABIT] Loading completions for new habit only (last 30 days + next 6 days)',
       );
 
       final completionResult = await _dataAccessService.atomicDataService
           .getCompletions(
             startDate: last30Days,
-            endDate: today,
+            endDate: next6Days,
             habitIds: [newHabit.id], // ← ONLY the new habit!
             context: DataAccessContext(
               component: 'HabitProvider',

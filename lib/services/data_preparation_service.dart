@@ -70,13 +70,16 @@ class DashboardDataPreparationService implements IDataPreparationService {
         );
       }
 
-      // Get completion data for the last 30 days (dashboard-optimized)
+      // Get completion data for the last 30 days + next 6 days (dashboard-optimized)
+      // This ensures the weekly grid always shows correct data, even when viewing past dates
+      // The weekly grid can show dates up to 6 days after the current date
       final today = VirtualDateService().currentDate;
       final last30Days = today.subtract(const Duration(days: 29));
+      final next6Days = today.add(const Duration(days: 6));
 
       final completionsResult = await _atomicService.getCompletions(
         startDate: last30Days,
-        endDate: today,
+        endDate: next6Days,
         context: DataAccessContext(
           component: 'DashboardDataPreparation',
           operation: 'getCompletions',
