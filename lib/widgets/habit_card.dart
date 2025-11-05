@@ -1047,11 +1047,16 @@ class _HabitCardState extends State<HabitCard> {
                                             0,
                                           ),
                                         ),
+                                        // Display completion status in progress grid boxes
+                                        // Visual hierarchy:
+                                        // 1. Goal achieved: Show checkmark icon (size: 10) in white
+                                        // 2. Partially completed: Show completion count number (fontSize: 8)
+                                        // 3. Not completed: Show empty box with low opacity
                                         child: widget.habit.isGoalAchieved(date)
                                             ? Center(
                                                 child: OutlinedIcon(
                                                   Icons.check,
-                                                  size: 10,
+                                                  size: 10, // Completion mark size for achieved goals
                                                   fillColor: Colors.white,
                                                 ),
                                               )
@@ -1063,7 +1068,7 @@ class _HabitCardState extends State<HabitCard> {
                                                     count.toString(),
                                                     style: const TextStyle(
                                                       color: Colors.white,
-                                                      fontSize: 8,
+                                                      fontSize: 8, // Completion count text size
                                                       fontWeight:
                                                           FontWeight.w600,
                                                     ),
@@ -1234,208 +1239,6 @@ class _HabitCardState extends State<HabitCard> {
           ),
         );
       },
-    );
-  }
-}
-
-/// A more detailed habit card with 4-week grid chart for expanded view
-class DetailedHabitCard extends StatelessWidget {
-  final Habit habit;
-  final VoidCallback? onClose;
-
-  const DetailedHabitCard({super.key, required this.habit, this.onClose});
-
-  /// Get the habit color based on current theme brightness
-  Color _getHabitColor(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    return brightness == Brightness.light
-        ? Color(habit.lightColorValue)
-        : Color(habit.darkColorValue);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final habitColor = _getHabitColor(context);
-
-    // Theme-based border width
-    final borderWidth = Theme.of(context).brightness == Brightness.light
-        ? 0.8 // Light theme: subtle borders
-        : 1.2; // Dark theme: more prominent borders
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.outline.withValues(alpha: 0.5),
-            colorScheme.outline.withValues(alpha: 1), // Darker bottom
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Container(
-        margin: EdgeInsets.all(borderWidth), // Theme-based border width
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(11.0),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with icon, title, and close button
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: habitColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      habit.iconName.toIconData,
-                      color: habitColor,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          habit.name,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        if (habit.description.isNotEmpty)
-                          Text(
-                            habit.description,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: colorScheme.onSurfaceVariant),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (onClose != null)
-                    IconButton(
-                      onPressed: onClose,
-                      icon: Icon(
-                        Icons.close,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Statistics
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStatItem(
-                    context,
-                    'Current Streak',
-                    '${habit.currentStreak} days',
-                    habitColor,
-                  ),
-                  _buildStatItem(
-                    context,
-                    'Total Completions',
-                    habit.totalCompletions.toString(),
-                    habitColor,
-                  ),
-                  _buildStatItem(
-                    context,
-                    'Completion Rate',
-                    '${(habit.completionRate * 100).round()}%',
-                    habitColor,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // 4-week grid chart
-              Text(
-                'Last 4 Weeks',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 12),
-
-              SizedBox(
-                height: 160,
-                child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                    crossAxisSpacing: 4,
-                    mainAxisSpacing: 4,
-                  ),
-                  itemCount: 28,
-                  itemBuilder: (context, index) {
-                    final weekIndex = index ~/ 7;
-                    final dayIndex = index % 7;
-                    final completed = habit.last4Weeks[weekIndex][dayIndex];
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: completed
-                            ? habitColor
-                            : habitColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: completed
-                          ? OutlinedIcon(
-                              Icons.check,
-                              size: 14,
-                              fillColor: Colors.white,
-                            )
-                          : null,
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 }
