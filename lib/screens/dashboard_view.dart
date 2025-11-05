@@ -494,7 +494,7 @@ class _DashboardViewState extends State<DashboardView>
           final freshHabit = _getFreshHabit(habitId);
           if (freshHabit != null) _onHabitTap(freshHabit);
         },
-        onLongPress: () => _openReorderScreen(initialFocusId: habitId),
+        onLongPress: () => _openReorderScreen(),
         onComplete: () {
           final freshHabit = _getFreshHabit(habitId);
           if (freshHabit != null) _onMarkCompleted(freshHabit);
@@ -720,10 +720,10 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  void _openReorderScreen({String? initialFocusId}) {
+  void _openReorderScreen() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ReorderHabitsScreen(initialFocusId: initialFocusId),
+        builder: (_) => const ReorderHabitsScreen(),
       ),
     );
   }
