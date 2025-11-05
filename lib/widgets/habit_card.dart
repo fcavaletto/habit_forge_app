@@ -707,6 +707,7 @@ class _HabitCardState extends State<HabitCard> {
   List<List<DateTime>>? _cachedWeeksData;
   bool? _cachedWeekStartsOnMonday;
   DateTime? _cachedCurrentDate;
+  Habit? _cachedHabitReference;
 
   @override
   void initState() {
@@ -964,7 +965,8 @@ class _HabitCardState extends State<HabitCard> {
                       // Memoize weeks data - only recalculate if parameters changed
                       if (_cachedWeeksData == null ||
                           _cachedWeekStartsOnMonday != widget.weekStartsOnMonday ||
-                          _cachedCurrentDate != widget.currentDate) {
+                          _cachedCurrentDate != widget.currentDate ||
+                          _cachedHabitReference != widget.habit) {
                         _cachedWeeksData = WeekUtils.getWeeksData(
                           widget.currentDate,
                           widget.weekStartsOnMonday,
@@ -972,6 +974,7 @@ class _HabitCardState extends State<HabitCard> {
                         );
                         _cachedWeekStartsOnMonday = widget.weekStartsOnMonday;
                         _cachedCurrentDate = widget.currentDate;
+                        _cachedHabitReference = widget.habit;
                       }
                       
                       final weeksData = _cachedWeeksData!;

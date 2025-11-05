@@ -302,7 +302,7 @@ class _DashboardViewState extends State<DashboardView>
             ),
           ),
           builder: (context, habitData, child) {
-            final habitIds = habitData.$1;
+            // habitData.$1 contains habit IDs, $2 contains completion counts
             final habitProvider = Provider.of<HabitProvider>(
               context,
               listen: false,
