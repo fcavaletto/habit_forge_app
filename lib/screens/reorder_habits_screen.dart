@@ -53,6 +53,7 @@ class _ReorderHabitsScreenState extends State<ReorderHabitsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reorder Habits'),
@@ -63,21 +64,24 @@ class _ReorderHabitsScreenState extends State<ReorderHabitsScreen> {
           ),
         ],
       ),
-      body: ReorderableListView.builder(
-        scrollController: _scrollController,
-        buildDefaultDragHandles: false,
-        padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
-        itemCount: _localHabits.length,
-        onReorder: _onReorder,
-        itemBuilder: (context, index) {
-          final habit = _localHabits[index];
-          return _ReorderHabitTile(
-            key: ValueKey(habit.id),
-            habit: habit,
-            index: index,
-            theme: theme,
-          );
-        },
+      body: SafeArea(
+        bottom: true,
+        child: ReorderableListView.builder(
+          scrollController: _scrollController,
+          buildDefaultDragHandles: false,
+          padding: EdgeInsets.fromLTRB(10, 12, 10, bottomInset + 16),
+          itemCount: _localHabits.length,
+          onReorder: _onReorder,
+          itemBuilder: (context, index) {
+            final habit = _localHabits[index];
+            return _ReorderHabitTile(
+              key: ValueKey(habit.id),
+              habit: habit,
+              index: index,
+              theme: theme,
+            );
+          },
+        ),
       ),
     );
   }
