@@ -180,6 +180,13 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
+
+    // Handle habit completion changes immediately for responsive UI
+    if (source == 'HabitProvider') {
+      debugPrint('📱 AppState: Habit change detected, notifying immediately');
+      notifyListeners();
+      return;
+    }
     
     // For other changes, use debouncing
     // Mark that we have a pending notification
