@@ -1032,17 +1032,6 @@ class _HabitCardState extends State<HabitCard> {
                                           )
                                         : 0.0;
 
-                                    // Check if this date is the current date for highlighting
-                                    final currentDate = VirtualDateService().currentDate;
-                                    final isCurrentDate = date.year == currentDate.year &&
-                                                          date.month == currentDate.month &&
-                                                          date.day == currentDate.day;
-
-                                    // Theme-aware border color for current date highlight
-                                    final borderColor = Theme.of(context).brightness == Brightness.light
-                                        ? Colors.black
-                                        : Colors.white;
-
                                     return Expanded(
                                       child: Container(
                                         margin: const EdgeInsets.symmetric(
@@ -1060,10 +1049,6 @@ class _HabitCardState extends State<HabitCard> {
                                           borderRadius: BorderRadius.circular(
                                             0,
                                           ),
-                                          border: isCurrentDate ? Border.all(
-                                            color: borderColor,
-                                            width: 1.0,
-                                          ) : null,
                                         ),
                                         // Display completion status in progress grid boxes
                                         // Visual hierarchy:
