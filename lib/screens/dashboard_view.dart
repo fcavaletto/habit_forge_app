@@ -288,12 +288,21 @@ class _DashboardViewState extends State<DashboardView>
     return Selector<AppState, bool>(
       selector: (context, appState) => appState.weekStartsOnMonday,
       builder: (context, weekStartsOnMonday, child) {
-        // Use Selector<HabitProvider, List<String>> to listen only to habit list changes
-        // This prevents rebuilding when individual habit completions change
-        return Selector<HabitProvider, List<String>>(
-          selector: (context, habitProvider) =>
-              habitProvider.filteredHabits.map((h) => h.id).toList(),
-          builder: (context, habitIds, child) {
+        // Use Selector<HabitProvider, (List<String>, Map<String, int>)> to listen to both habit list changes AND completion changes
+        // This ensures UI updates when completions are added/modified
+        return Selector<HabitProvider, (List<String>, Map<String, int>)>(
+          selector: (context, habitProvider) => (
+            habitProvider.filteredHabits.map((h) => h.id).toList(),
+            // Include completion counts for current date to trigger rebuilds on completion changes
+            Map.fromEntries(
+              habitProvider.filteredHabits.map((h) => MapEntry(
+                h.id,
+                h.getCompletionCount(VirtualDateService().currentDate),
+              )),
+            ),
+          ),
+          builder: (context, habitData, child) {
+            final habitIds = habitData.$1;
             final habitProvider = Provider.of<HabitProvider>(
               context,
               listen: false,
