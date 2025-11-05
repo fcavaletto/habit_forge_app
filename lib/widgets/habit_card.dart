@@ -1056,10 +1056,10 @@ class _HabitCardState extends State<HabitCard> {
                                         // 2. Partially completed: Show completion count number (fontSize: 8)
                                         // 3. Not completed: Show empty box with low opacity
                                         child: widget.habit.isGoalAchieved(date)
-                                            ? Center(
+                                            ? const Center(
                                                 child: OutlinedIcon(
                                                   Icons.check,
-                                                  size: 10, // Completion mark size for achieved goals
+                                                  size: 15, // Completion mark size for achieved goals
                                                   fillColor: Colors.white,
                                                 ),
                                               )
