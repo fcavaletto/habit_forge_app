@@ -4,12 +4,9 @@ import 'package:flutter/material.dart';
 class HabitColorPair {
   final Color light;
   final Color dark;
-  
-  const HabitColorPair({
-    required this.light,
-    required this.dark,
-  });
-  
+
+  const HabitColorPair({required this.light, required this.dark});
+
   /// Get the appropriate color based on brightness
   Color getColor(Brightness brightness) {
     return brightness == Brightness.light ? light : dark;
@@ -116,7 +113,6 @@ class AppTheme {
     useMaterial3: true,
     colorScheme: lightColorScheme,
     fontFamily: 'Roboto', // Roboto sans-serif as requested
-
     // App bar styling
     appBarTheme: AppBarTheme(
       backgroundColor: lightColorScheme.surface,
@@ -133,19 +129,14 @@ class AppTheme {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: lightColorScheme.outlineVariant,
-          width: 1,
-        ),
+        side: BorderSide(color: lightColorScheme.outlineVariant, width: 1),
       ),
     ),
 
     // Button styling
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),
 
@@ -207,18 +198,13 @@ class AppTheme {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: darkColorScheme.outlineVariant,
-          width: 1,
-        ),
+        side: BorderSide(color: darkColorScheme.outlineVariant, width: 1),
       ),
     ),
 
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),
 
@@ -273,12 +259,12 @@ extension HabitColors on ColorScheme {
   /// - Modern design inspired by Material You, iOS 17, and Tailwind CSS
   /// - Full spectrum distribution with desaturated dark variants
   static const List<HabitColorPair> _habitColorPairs = [
-    // Row 1: Warm Spectrum (Red → Yellow) [0-6]
-    // 0. Coral Red - Energetic, motivating
-    HabitColorPair(light: Color(0xFFEF4444), dark: Color(0xFFFC8181)),
-
-    // 1. Cherry Red - Bold, powerful
+    // Row 1: Warm Spectrum (Red → Yellow) [0-5]
+    // 0. Cherry Red - Bold, powerful
     HabitColorPair(light: Color(0xFFDC2626), dark: Color(0xFFFF6B6B)),
+
+    // 1. Coral Red - Energetic, motivating
+    HabitColorPair(light: Color(0xFFF24F4F), dark: Color(0xFFFD9090)),
 
     // 2. Tangerine - Vibrant, creative
     HabitColorPair(light: Color(0xFFF97316), dark: Color(0xFFFFA366)),
@@ -286,55 +272,55 @@ extension HabitColors on ColorScheme {
     // 3. Amber - Warm, optimistic
     HabitColorPair(light: Color(0xFFF59E0B), dark: Color(0xFFFFBF66)),
 
-    // 4. Sunshine - Cheerful, bright
-    HabitColorPair(light: Color(0xFFEAB308), dark: Color(0xFFFCD34D)),
+    // 4. Canary - Cheerful, bright
+    HabitColorPair(light: Color(0xFFF5CC04), dark: Color(0xFFFEE127)),
 
-    // 5. Gold - Valuable, achievement
-    HabitColorPair(light: Color(0xFFCA8A04), dark: Color(0xFFF0B429)),
-
-    // 6. Lime - Fresh, energizing
+    // 5. Lime - Fresh, energizing
     HabitColorPair(light: Color(0xFF84CC16), dark: Color(0xFFA3E635)),
 
-    // Row 2: Cool Spectrum (Green → Blue) [7-13]
-    // 7. Emerald - Growth, balance
+    // Row 2: Cool Spectrum (Green → Blue) [6-12]
+    // 6. Emerald - Growth, balance
     HabitColorPair(light: Color(0xFF10B981), dark: Color(0xFF34D399)),
 
-    // 8. Jade - Calm, natural
+    // 7. Jade - Calm, natural
     HabitColorPair(light: Color(0xFF059669), dark: Color(0xFF10B981)),
 
-    // 9. Forest - Stability, focus
-    HabitColorPair(light: Color(0xFF047857), dark: Color(0xFF059669)),
+    // 8. Forest - Stability, focus
+    HabitColorPair(light: Color(0xFF035A44), dark: Color(0xFF047857)),
+
+    // 9. Teal - Professional, trust
+    HabitColorPair(light: Color(0xFF0891B2), dark: Color(0xFF06B6D4)),
 
     // 10. Aqua - Refreshing, clear
     HabitColorPair(light: Color(0xFF06B6D4), dark: Color(0xFF22D3EE)),
 
-    // 11. Teal - Professional, trust
-    HabitColorPair(light: Color(0xFF0891B2), dark: Color(0xFF06B6D4)),
-
-    // 12. Sky - Open, peaceful
+    // 11. Sky - Open, peaceful
     HabitColorPair(light: Color(0xFF0EA5E9), dark: Color(0xFF38BDF8)),
 
-    // 13. Azure - Serene, confident
+    // 12. Azure - Serene, confident
     HabitColorPair(light: Color(0xFF0284C7), dark: Color(0xFF0EA5E9)),
 
-    // Row 3: Purple/Pink Spectrum [14-19]
-    // 14. Sapphire - Deep, intelligent
+    // Row 3: Purple/Pink Spectrum [13-19]
+    // 13. Sapphire - Deep, intelligent
     HabitColorPair(light: Color(0xFF2563EB), dark: Color(0xFF60A5FA)),
 
-    // 15. Indigo - Mysterious, wise
+    // 14. Indigo - Mysterious, wise
     HabitColorPair(light: Color(0xFF4F46E5), dark: Color(0xFF818CF8)),
 
-    // 16. Violet - Creative, luxury
+    // 15. Violet - Creative, luxury
     HabitColorPair(light: Color(0xFF7C3AED), dark: Color(0xFFA78BFA)),
 
-    // 17. Lavender - Gentle, elegant
+    // 16. Lavender - Gentle, elegant
     HabitColorPair(light: Color(0xFF8B5CF6), dark: Color(0xFFC4B5FD)),
 
-    // 18. Fuchsia - Bold, playful
+    // 17. Fuchsia - Bold, playful
     HabitColorPair(light: Color(0xFFD946EF), dark: Color(0xFFE879F9)),
 
-    // 19. Rose - Romantic, warm
+    // 18. Rose - Romantic, warm
     HabitColorPair(light: Color(0xFFEC4899), dark: Color(0xFFF472B6)),
+
+    // 19. White & Black - High Contrast
+    HabitColorPair(light: Color(0xFF000000), dark: Color(0xFFFFFFFF)),
   ];
 
   /// Convert integer color value to Color object

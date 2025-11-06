@@ -393,8 +393,8 @@ class DashboardController {
       Habit.createWithUuid(
         name: 'Push Ups',
         description: 'Build upper body strength with daily push-ups',
-        lightColorValue: 0xFFEF4444, // Coral Red light
-        darkColorValue: 0xFFFC8181,  // Coral Red dark
+        lightColorValue: 0xFFF24F4F, // Coral Red light
+        darkColorValue: 0xFFFD9090,  // Coral Red dark
         iconName: 'fitness_center',
         targetGoal: 1,
         allowExceedGoal: false,
