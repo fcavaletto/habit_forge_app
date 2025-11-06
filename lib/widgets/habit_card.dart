@@ -272,6 +272,35 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
     );
   }
 
+  /// Builds both empty and completed state buttons for preview mode
+  Widget _buildPreviewButtons(
+    BuildContext context,
+    Color habitColor,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Empty state button
+        _buildButtonContainer(
+          habitColor: habitColor,
+          buttonState: ButtonState.empty,
+          todayCount: 0,
+          isCompleted: false,
+          context: context,
+        ),
+        const SizedBox(width: 8),
+        // Completed state button
+        _buildButtonContainer(
+          habitColor: habitColor,
+          buttonState: ButtonState.completed,
+          todayCount: widget.habit.targetGoal,
+          isCompleted: true,
+          context: context,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get current completion state
@@ -310,21 +339,10 @@ class _SmartCompletionButtonState extends State<SmartCompletionButton>
       button: !isPreview, // Disable button semantics in preview
       child: isPreview
           ? IgnorePointer(
-              child: _isBursting
-                  ? _buildBurstingWithOverlay(
-                      context,
-                      habitColor,
-                      todayCount,
-                      isCompleted,
-                      buttonState,
-                    )
-                  : _buildNormalButton(
-                      context,
-                      habitColor,
-                      todayCount,
-                      isCompleted,
-                      buttonState,
-                    ),
+              child: _buildPreviewButtons(
+                context,
+                habitColor,
+              ),
             )
           : GestureDetector(
               onTap: () => _handleButtonPress(),
