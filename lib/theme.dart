@@ -261,63 +261,63 @@ extension HabitColors on ColorScheme {
   static const List<HabitColorPair> _habitColorPairs = [
     // Row 1: Warm Spectrum (Red → Yellow) [0-5]
     // 0. Cherry Red - Bold, powerful
-    HabitColorPair(light: Color(0xFFDC2626), dark: Color(0xFFFF6B6B)),
+    HabitColorPair(light: Color(0xFFDC2626), dark: Color(0xFFE55C5C)),
 
     // 1. Coral Red - Energetic, motivating
-    HabitColorPair(light: Color(0xFFF24F4F), dark: Color(0xFFFD9090)),
+    HabitColorPair(light: Color(0xFFF24F4F), dark: Color(0xFFF57B7B)),
 
     // 2. Tangerine - Vibrant, creative
-    HabitColorPair(light: Color(0xFFF97316), dark: Color(0xFFFFA366)),
+    HabitColorPair(light: Color(0xFFF97316), dark: Color(0xFFFB9638)),
 
     // 3. Amber - Warm, optimistic
-    HabitColorPair(light: Color(0xFFF59E0B), dark: Color(0xFFFFBF66)),
+    HabitColorPair(light: Color(0xFFF59E0B), dark: Color(0xFFF8B648)),
 
     // 4. Canary - Cheerful, bright
-    HabitColorPair(light: Color(0xFFF5CC04), dark: Color(0xFFFEE127)),
+    HabitColorPair(light: Color(0xFFF5CC04), dark: Color(0xFFF8D943)),
 
     // 5. Lime - Fresh, energizing
-    HabitColorPair(light: Color(0xFF84CC16), dark: Color(0xFFA3E635)),
+    HabitColorPair(light: Color(0xFF84CC16), dark: Color(0xFFA3D950)),
 
     // Row 2: Cool Spectrum (Green → Blue) [6-12]
     // 6. Emerald - Growth, balance
-    HabitColorPair(light: Color(0xFF10B981), dark: Color(0xFF34D399)),
+    HabitColorPair(light: Color(0xFF10B981), dark: Color(0xFF4CCBA1)),
 
     // 7. Jade - Calm, natural
-    HabitColorPair(light: Color(0xFF059669), dark: Color(0xFF10B981)),
+    HabitColorPair(light: Color(0xFF059669), dark: Color(0xFF44B08F)),
 
     // 8. Forest - Stability, focus
-    HabitColorPair(light: Color(0xFF035A44), dark: Color(0xFF047857)),
+    HabitColorPair(light: Color(0xFF035A44), dark: Color(0xFF428373)),
 
     // 9. Teal - Professional, trust
-    HabitColorPair(light: Color(0xFF0891B2), dark: Color(0xFF06B6D4)),
+    HabitColorPair(light: Color(0xFF0891B2), dark: Color(0xFF46ADC5)),
 
     // 10. Aqua - Refreshing, clear
-    HabitColorPair(light: Color(0xFF06B6D4), dark: Color(0xFF22D3EE)),
+    HabitColorPair(light: Color(0xFF06B6D4), dark: Color(0xFF44C8DF)),
 
     // 11. Sky - Open, peaceful
-    HabitColorPair(light: Color(0xFF0EA5E9), dark: Color(0xFF38BDF8)),
+    HabitColorPair(light: Color(0xFF0EA5E9), dark: Color(0xFF4ABCEE)),
 
     // 12. Azure - Serene, confident
-    HabitColorPair(light: Color(0xFF0284C7), dark: Color(0xFF0EA5E9)),
+    HabitColorPair(light: Color(0xFF0284C7), dark: Color(0xFF41A3D5)),
 
     // Row 3: Purple/Pink Spectrum [13-19]
     // 13. Sapphire - Deep, intelligent
-    HabitColorPair(light: Color(0xFF2563EB), dark: Color(0xFF60A5FA)),
+    HabitColorPair(light: Color(0xFF2563EB), dark: Color(0xFF5C8AF0)),
 
     // 14. Indigo - Mysterious, wise
-    HabitColorPair(light: Color(0xFF4F46E5), dark: Color(0xFF818CF8)),
+    HabitColorPair(light: Color(0xFF4F46E5), dark: Color(0xFF7B74EC)),
 
     // 15. Violet - Creative, luxury
-    HabitColorPair(light: Color(0xFF7C3AED), dark: Color(0xFFA78BFA)),
+    HabitColorPair(light: Color(0xFF7C3AED), dark: Color(0xFF9D6BF2)),
 
     // 16. Lavender - Gentle, elegant
-    HabitColorPair(light: Color(0xFF8B5CF6), dark: Color(0xFFC4B5FD)),
+    HabitColorPair(light: Color(0xFF8B5CF6), dark: Color(0xFFA885F8)),
 
     // 17. Fuchsia - Bold, playful
-    HabitColorPair(light: Color(0xFFD946EF), dark: Color(0xFFE879F9)),
+    HabitColorPair(light: Color(0xFFD946EF), dark: Color(0xFFE374F3)),
 
     // 18. Rose - Romantic, warm
-    HabitColorPair(light: Color(0xFFEC4899), dark: Color(0xFFF472B6)),
+    HabitColorPair(light: Color(0xFFEC4899), dark: Color(0xFFF176B3)),
 
     // 19. White & Black - High Contrast
     HabitColorPair(light: Color(0xFF000000), dark: Color(0xFFFFFFFF)),
